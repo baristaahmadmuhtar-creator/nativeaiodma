@@ -1832,6 +1832,38 @@ app.post('/api/admin/rag/test-query', requireAdminAuth, (req, res) => {
   });
 });
 
+// --- MODULE 14: CUSTOMER HABIT & MEMORY STORE ---
+// GET /api/customer/profile - Retrieve persistent customer habit profile
+app.get('/api/customer/profile', (req, res) => {
+  const customerId = req.headers['x-customer-id'] || req.query.customerId || 'default_guest';
+  db.customerProfiles = db.customerProfiles || {};
+  const profile = db.customerProfiles[customerId] || {
+    customerId,
+    visitCount: 1,
+    preferences: {},
+    allergies: [],
+    favoriteItems: []
+  };
+  res.json({ success: true, profile });
+});
+
+// POST /api/customer/profile - Update customer habits & dietary preferences
+app.post('/api/customer/profile', (req, res) => {
+  const { customerId = 'default_guest', preferences = {}, allergies = [], favoriteItems = [] } = req.body;
+  db.customerProfiles = db.customerProfiles || {};
+  const existing = db.customerProfiles[customerId] || { customerId, visitCount: 0 };
+  db.customerProfiles[customerId] = {
+    ...existing,
+    visitCount: (existing.visitCount || 0) + 1,
+    preferences: { ...(existing.preferences || {}), ...preferences },
+    allergies: [...new Set([...(existing.allergies || []), ...allergies])],
+    favoriteItems: [...new Set([...(existing.favoriteItems || []), ...favoriteItems])],
+    lastUpdated: new Date().toISOString()
+  };
+  saveDatabase();
+  res.json({ success: true, profile: db.customerProfiles[customerId] });
+});
+
 // GET /api/ai/config - Public client AI status (Zero Key Exposure)
 app.get('/api/ai/config', (req, res) => {
   const currentDb = loadDatabase();
@@ -1846,19 +1878,20 @@ app.get('/api/ai/config', (req, res) => {
 // GET /api/admin/config - Get server AI config (API Key Zero-Exposure)
 app.get('/api/admin/config', requireAdminAuth, (req, res) => {
   const currentDb = loadDatabase();
+  const cfg = (currentDb && currentDb.aiConfig) ? currentDb.aiConfig : (db.aiConfig || {});
   res.json({
     success: true,
     config: {
-      model: currentDb.aiConfig.model || 'gemini-3.7-flash',
-      tone: currentDb.aiConfig.tone || 'warm',
-      temperature: currentDb.aiConfig.temperature || 0.7,
-      thinkingBudget: currentDb.aiConfig.thinkingBudget || 512,
-      maxOutputTokens: currentDb.aiConfig.maxOutputTokens || 600,
-      remainingCredits: currentDb.aiConfig.remainingCredits || 48000,
-      totalInputTokens: currentDb.aiConfig.totalInputTokens || 0,
-      totalOutputTokens: currentDb.aiConfig.totalOutputTokens || 0,
-      apiKeyMasked: currentDb.aiConfig.apiKey ? (currentDb.aiConfig.apiKey.substring(0, 7) + '...' + currentDb.aiConfig.apiKey.slice(-4)) : '',
-      hasServerApiKey: Boolean(currentDb.aiConfig.apiKey)
+      model: cfg.model || db.aiConfig?.model || 'gemini-3.7-flash',
+      tone: cfg.tone || db.aiConfig?.tone || 'warm',
+      temperature: cfg.temperature !== undefined ? cfg.temperature : 0.7,
+      thinkingBudget: cfg.thinkingBudget || db.aiConfig?.thinkingBudget || 512,
+      maxOutputTokens: cfg.maxOutputTokens || db.aiConfig?.maxOutputTokens || 600,
+      remainingCredits: cfg.remainingCredits !== undefined ? cfg.remainingCredits : (db.aiConfig?.remainingCredits || 48000),
+      totalInputTokens: cfg.totalInputTokens || db.aiConfig?.totalInputTokens || 0,
+      totalOutputTokens: cfg.totalOutputTokens || db.aiConfig?.totalOutputTokens || 0,
+      apiKeyMasked: cfg.apiKey ? (cfg.apiKey.substring(0, 7) + '...' + cfg.apiKey.slice(-4)) : (db.aiConfig?.apiKey ? db.aiConfig.apiKey.substring(0, 7) + '...' : ''),
+      hasServerApiKey: Boolean(cfg.apiKey || db.aiConfig?.apiKey)
     }
   });
 });
@@ -1942,7 +1975,7 @@ async function callGeminiWithFallback(apiKey, payload, requestedModel = 'gemini-
 app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan chat. Harap tunggu beberapa detik.'), async (req, res) => {
   try {
     const merchant = resolveMerchant(req);
-    const { message, history = [], clientApiKey, model: clientModel, table = 'Meja 5', cart = [] } = req.body;
+    const { message, history = [], clientApiKey, model: clientModel, table = 'Meja 5', cart = [], customerProfile, language = 'id' } = req.body;
     const apiKey = (clientApiKey || db.aiConfig.apiKey || '').trim();
     const model = clientModel || db.aiConfig.model || 'gemini-3.7-flash';
     const temp = db.aiConfig.temperature || 0.7;
@@ -1964,7 +1997,9 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
         success: true,
         text: `Sistem beroperasi dalam mode aman untuk melayani ${table} di ${merchant.name}. Ada pesanan kopi atau hidangan yang ingin disiapkan?`,
         functionCalls: [],
-        usage: { inputTokens: 20, outputTokens: 35 }
+        usage: { inputTokens: 20, outputTokens: 35 },
+        customerProfile: customerProfile || null,
+        language
       });
     }
 
@@ -1982,30 +2017,59 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
     }
 
     if (!apiKey || apiKey.length < 20 || apiKey.startsWith('AIzaSyDummy')) {
-      // Intelligent Local Sommelier Engine (Zero-Latency Local Knowledge + RAG)
+      // Intelligent Local Sommelier Engine (Zero-Latency Local Knowledge + RAG + Customer Memory)
       const lower = cleanMessage.toLowerCase();
+      const isEn = language === 'en';
+      const isRepeat = customerProfile && Number(customerProfile.visitCount) > 1;
+      const hasOatMilk = customerProfile?.preferences?.milkAlternative === 'Oat Milk' || (Array.isArray(customerProfile?.allergies) && customerProfile.allergies.includes('lactose'));
       let mockReply = '';
       let mockCalls = [];
 
-      if (ragResults.length > 0 && ragResults[0].score >= 1.0 && !lower.includes('rekomendasi')) {
+      if (ragResults.length > 0 && ragResults[0].score >= 1.0 && !lower.includes('rekomendasi') && !lower.includes('recommend')) {
         const topDoc = ragResults[0].chunk;
-        mockReply = `Mengenai **${topDoc.title}** di ${merchant.name}:\n\n${topDoc.content}\n\nAda hidangan atau minuman yang ingin Anda pesan ke ${table}?`;
-      } else if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi')) {
+        mockReply = isEn
+          ? `Regarding **${topDoc.title}** at ${merchant.name}:\n\n${topDoc.content}\n\nWould you like to order any items for ${table}?`
+          : `Mengenai **${topDoc.title}** di ${merchant.name}:\n\n${topDoc.content}\n\nAda hidangan atau minuman yang ingin Anda pesan ke ${table}?`;
+      } else if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi') || lower.includes('recommend')) {
         if (merchant.currency === 'BND') {
-          mockReply = `Untuk hidangan istimewa di **${merchant.name}**, kami sangat merekomendasikan **Pepperoni Pizza** (panggangan kayu api tradisional) atau **Creamy Mushroom Chicken Pizza**.\n\nSangat pas jika disandingkan dengan kesegaran **Garden Mojito** dingin. Anda lebih menyukai topping gurih daging atau keju jamur?`;
+          if (isEn) {
+            mockReply = hasOatMilk
+              ? `Welcome back! Based on your non-dairy milk preference, we highly recommend our **Iced Latte with Oat Milk** paired with **Pepperoni Pizza**.\n\nWould you prefer a savory meal or a refreshing coffee?`
+              : `For exceptional recommendations at **${merchant.name}**, we suggest **Pepperoni Pizza** (traditional wood-fired oven) and **Creamy Mushroom Chicken Pizza**.\n\nPairs wonderfully with our **Garden Mojito**. Do you prefer savory meat or mushroom toppings?`;
+          } else {
+            mockReply = hasOatMilk
+              ? `Senang melihat Anda kembali! Mengingat preferensi susu non-dairy Anda, kami merekomendasikan **Iced Latte dengan Oatly Oat Milk** disandingkan dengan **Pepperoni Pizza**.\n\nAnda ingin kami siapkan minuman kopi atau hidangan hangat?`
+              : `Untuk hidangan istimewa di **${merchant.name}**, kami sangat merekomendasikan **Pepperoni Pizza** (panggangan kayu api tradisional) atau **Creamy Mushroom Chicken Pizza**.\n\nSangat pas jika disandingkan dengan kesegaran **Garden Mojito** dingin. Anda lebih menyukai topping gurih daging atau keju jamur?`;
+          }
           mockCalls.push({
             name: 'showRecommendations',
-            args: { itemIds: ['pizza_pepperoni', 'pizza_creamy_mushroom_chicken', 'sig_garden_mojito'], reason: 'Pilihan Favorit The Coffeenity Yard' }
+            args: { itemIds: ['pizza_pepperoni', 'pizza_creamy_mushroom_chicken', 'sig_garden_mojito'], reason: isEn ? 'The Coffeenity Yard Favorites' : 'Pilihan Favorit The Coffeenity Yard' }
           });
         } else {
-          mockReply = `Untuk hidangan di **${merchant.name}**, kami merekomendasikan **Beef Pepperoni Pizza** dan **Kopi Milk Aren**.\n\nAnda menyukai minuman segar atau kopi creamy?`;
+          if (isEn) {
+            mockReply = hasOatMilk
+              ? `Great to see you again! Based on your preferences, we suggest our **Kopi Milk Aren with Oat Milk** and **Beef Pepperoni Pizza**.\n\nWould you like hot or iced coffee?`
+              : `For recommendations at **${merchant.name}**, we suggest **Beef Pepperoni Pizza** and **Kopi Milk Aren**.\n\nDo you prefer refreshing drinks or creamy coffee?`;
+          } else {
+            mockReply = hasOatMilk
+              ? `Senang menyapa Anda kembali! Mengingat preferensi non-dairy Anda, kami merekomendasikan **Kopi Milk Aren dengan Oat Milk** dan **Beef Pepperoni Pizza**.\n\nAnda menyukai minuman segar atau kopi dingin?`
+              : `Untuk hidangan di **${merchant.name}**, kami merekomendasikan **Beef Pepperoni Pizza** dan **Kopi Milk Aren**.\n\nAnda menyukai minuman segar atau kopi creamy?`;
+          }
           mockCalls.push({
             name: 'showRecommendations',
-            args: { itemIds: ['pizza_pepperoni', 'kopi_milk_aren'], reason: 'Menu Unggulan' }
+            args: { itemIds: ['pizza_pepperoni', 'kopi_milk_aren'], reason: isEn ? 'Featured Highlights' : 'Menu Unggulan' }
           });
         }
       } else {
-        mockReply = `Halo! Selamat datang di **${merchant.name}** (${table}). Ada menu yang ingin Anda pesan hari ini?`;
+        if (isEn) {
+          mockReply = isRepeat
+            ? `Welcome back to **${merchant.name}** (${table})! Delighted to serve you again. What would you like to enjoy today?`
+            : `Hello! Welcome to **${merchant.name}** (${table}). What would you like to order today?`;
+        } else {
+          mockReply = isRepeat
+            ? `Selamat datang kembali di **${merchant.name}** (${table})! Senang menyapa Anda lagi. Ada menu favorit yang ingin disiapkan hari ini?`
+            : `Halo! Selamat datang di **${merchant.name}** (${table}). Ada menu yang ingin Anda pesan hari ini?`;
+        }
       }
 
       return res.json({
@@ -2020,7 +2084,9 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
           category: r.chunk.category,
           score: r.score,
           matchedTerms: r.matchedTerms
-        }))
+        })),
+        customerProfile: customerProfile || null,
+        language
       });
     }
 
@@ -2063,12 +2129,33 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
     if (nowHour >= 5 && nowHour < 11) timeMealCategory = 'Pagi (Sarapan & Fresh Coffee Boost)';
     else if (nowHour >= 11 && nowHour < 15) timeMealCategory = 'Siang (Makan Siang & Refreshing Drink)';
     else if (nowHour >= 15 && nowHour < 18) timeMealCategory = 'Sore (Afternoon Tea, Artisan Coffee & Pastry)';
-    else timeMealCategory = 'Malam (Dinner, Wood-Fired Pizza & Soothing Drink)';
+    // Customer Memory & Habit Intelligence Context
+    let customerMemoryContext = '';
+    if (customerProfile && typeof customerProfile === 'object') {
+      const prefs = [];
+      if (customerProfile.preferences?.sweetnessLevel) prefs.push(`Tingkat manis favorit: ${customerProfile.preferences.sweetnessLevel}`);
+      if (customerProfile.preferences?.milkAlternative) prefs.push(`Susu favorit: ${customerProfile.preferences.milkAlternative}`);
+      if (customerProfile.preferences?.temperature) prefs.push(`Suhu favorit: ${customerProfile.preferences.temperature}`);
+      if (Array.isArray(customerProfile.allergies) && customerProfile.allergies.length > 0) {
+        prefs.push(`ALERGI & PANTANGAN: ${customerProfile.allergies.join(', ')} (WAJIB PERHATIKAN ALERGEN INI!)`);
+      }
+      if (Array.isArray(customerProfile.favoriteItems) && customerProfile.favoriteItems.length > 0) {
+        prefs.push(`Menu favorit: ${customerProfile.favoriteItems.join(', ')}`);
+      }
+      const visitDesc = Number(customerProfile.visitCount) > 1 ? `Pelanggan Setia (Kunjungan ke-${customerProfile.visitCount})` : 'Kunjungan Pertama';
+      customerMemoryContext = `\n\nPROFIL & MEMORI KEBIASAAN PELANGGAN:\n- Status Kunjungan: ${visitDesc}\n- Catatan Preferensi: ${prefs.join(' | ') || 'Belum ada preferensi khusus'}\n- INSTRUKSI MEMORI: Kenali dan hormati preferensi rasa dan pantangan alergi pelanggan di atas. Jika kunjungan berulang, sambut dengan hangat dan personal.\n`;
+    }
 
-
+    const langInstruction = (language === 'en')
+      ? `\nLANGUAGE REQUIREMENT: Respond strictly in natural, warm English. Keep outlet menu item names exact as in catalog. Operational currency: ${merchant.currency} (${merchant.currencySymbol}).`
+      : (language === 'ms')
+      ? `\nKEPERLUAN BAHASA: Jawab dalam Bahasa Melayu yang sopan, mesra, dan santun mengikut budaya Brunei Darussalam. Mata wang: ${merchant.currency} (${merchant.currencySymbol}).`
+      : `\nPANDUAN BAHASA: Jawab dalam Bahasa Indonesia yang ramah, sopan, natural, dan profesional. Mata uang: ${merchant.currency} (${merchant.currencySymbol}).`;
 
     const systemInstruction = `Anda adalah asisten cerdas dan Master Kasir & Sommelier AIODMA untuk outlet "${merchant.name}" (${merchant.brandUnit || ''}) melayani ${table}. Mata uang operasional: ${merchant.currency} (${merchant.currencySymbol}). Waktu: ${timeMealCategory}.
 ${ragContext}
+${customerMemoryContext}
+${langInstruction}
 STANDAR KOMUNIKASI KASIR & SOMMELIER CERDAS SITUASIONAL (1, 2, ATAU 3 GELEMBUNG):
 1. KECERDASAN RITME SITUASIONAL (DYNAMIC PARAGRAPH CADENCE):
    Pisahkan setiap gelembung dengan dua baris kosong (paragraf baru):
@@ -2103,9 +2190,15 @@ ${cartContext}
 STATUS AKTIF DAPUR KDS & PEMBAYARAN:
 ${kdsStatusContext}`;
 
-    const contents = [...history];
-    if (message) {
-      contents.push({ role: 'user', parts: [{ text: message }] });
+    const contents = (history || []).map(h => {
+      if (h.parts) return h;
+      return {
+        role: (h.role === 'assistant' || h.role === 'model') ? 'model' : 'user',
+        parts: [{ text: String(h.text || h.content || '') }]
+      };
+    });
+    if (cleanMessage) {
+      contents.push({ role: 'user', parts: [{ text: cleanMessage }] });
     }
 
     const payload = {
@@ -2215,28 +2308,57 @@ ${kdsStatusContext}`;
     if (!result.success) {
       console.warn(`[AI] Upstream Gemini error (${result.status}): ${result.error}. Falling back to local Sommelier engine.`);
       const lower = cleanMessage.toLowerCase();
+      const isEn = language === 'en';
+      const isRepeat = customerProfile && Number(customerProfile.visitCount) > 1;
+      const hasOatMilk = customerProfile?.preferences?.milkAlternative === 'Oat Milk' || (Array.isArray(customerProfile?.allergies) && customerProfile.allergies.includes('lactose'));
       let fallbackReply = '';
       let fallbackCalls = [];
 
-      if (ragResults.length > 0 && ragResults[0].score >= 1.0 && !lower.includes('rekomendasi')) {
+      if (ragResults.length > 0 && ragResults[0].score >= 1.0 && !lower.includes('rekomendasi') && !lower.includes('recommend')) {
         const topDoc = ragResults[0].chunk;
-        fallbackReply = `Mengenai **${topDoc.title}** di ${merchant.name}:\n\n${topDoc.content}\n\nAda hidangan atau minuman yang ingin Anda pesan ke ${table}?`;
-      } else if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi')) {
+        fallbackReply = isEn
+          ? `Regarding **${topDoc.title}** at ${merchant.name}:\n\n${topDoc.content}\n\nWould you like to order any items for ${table}?`
+          : `Mengenai **${topDoc.title}** di ${merchant.name}:\n\n${topDoc.content}\n\nAda hidangan atau minuman yang ingin Anda pesan ke ${table}?`;
+      } else if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi') || lower.includes('recommend')) {
         if (merchant.currency === 'BND') {
-          fallbackReply = `Untuk rekomendasi istimewa di **${merchant.name}**, kami menyarankan **Pepperoni Pizza** (panggangan kayu api tradisional) atau **Creamy Mushroom Chicken Pizza**.\n\nSangat pas jika disandingkan dengan kesegaran **Garden Mojito** dingin. Anda lebih menyukai topping gurih daging atau keju jamur?`;
+          if (isEn) {
+            fallbackReply = hasOatMilk
+              ? `Welcome back! Based on your non-dairy milk preference, we highly recommend our **Iced Latte with Oat Milk** paired with **Pepperoni Pizza**.\n\nWould you prefer a savory meal or a refreshing coffee?`
+              : `For exceptional recommendations at **${merchant.name}**, we suggest **Pepperoni Pizza** (traditional wood-fired oven) and **Creamy Mushroom Chicken Pizza**.\n\nPairs wonderfully with our **Garden Mojito**. Do you prefer savory meat or mushroom toppings?`;
+          } else {
+            fallbackReply = hasOatMilk
+              ? `Senang melihat Anda kembali! Mengingat preferensi susu non-dairy Anda, kami merekomendasikan **Iced Latte dengan Oatly Oat Milk** disandingkan dengan **Pepperoni Pizza**.\n\nAnda ingin kami siapkan minuman kopi atau hidangan hangat?`
+              : `Untuk rekomendasi istimewa di **${merchant.name}**, kami menyarankan **Pepperoni Pizza** (panggangan kayu api tradisional) atau **Creamy Mushroom Chicken Pizza**.\n\nSangat pas jika disandingkan dengan kesegaran **Garden Mojito** dingin. Anda lebih menyukai topping gurih daging atau keju jamur?`;
+          }
           fallbackCalls.push({
             name: 'showRecommendations',
-            args: { itemIds: ['pizza_pepperoni', 'pizza_creamy_mushroom_chicken', 'sig_garden_mojito'], reason: 'Pilihan Favorit The Coffeenity Yard' }
+            args: { itemIds: ['pizza_pepperoni', 'pizza_creamy_mushroom_chicken', 'sig_garden_mojito'], reason: isEn ? 'The Coffeenity Yard Favorites' : 'Pilihan Favorit The Coffeenity Yard' }
           });
         } else {
-          fallbackReply = `Untuk rekomendasi di **${merchant.name}**, kami menyarankan **Beef Pepperoni Pizza** dan **Kopi Milk Aren**.\n\nAnda menyukai minuman segar atau kopi creamy?`;
+          if (isEn) {
+            fallbackReply = hasOatMilk
+              ? `Great to see you again! Based on your preferences, we suggest our **Kopi Milk Aren with Oat Milk** and **Beef Pepperoni Pizza**.\n\nWould you like hot or iced coffee?`
+              : `For recommendations at **${merchant.name}**, we suggest **Beef Pepperoni Pizza** and **Kopi Milk Aren**.\n\nDo you prefer refreshing drinks or creamy coffee?`;
+          } else {
+            fallbackReply = hasOatMilk
+              ? `Senang menyapa Anda kembali! Mengingat preferensi non-dairy Anda, kami merekomendasikan **Kopi Milk Aren dengan Oat Milk** dan **Beef Pepperoni Pizza**.\n\nAnda menyukai minuman segar atau kopi dingin?`
+              : `Untuk rekomendasi di **${merchant.name}**, kami menyarankan **Beef Pepperoni Pizza** dan **Kopi Milk Aren**.\n\nAnda menyukai minuman segar atau kopi creamy?`;
+          }
           fallbackCalls.push({
             name: 'showRecommendations',
-            args: { itemIds: ['pizza_pepperoni', 'kopi_milk_aren'], reason: 'Menu Unggulan' }
+            args: { itemIds: ['pizza_pepperoni', 'kopi_milk_aren'], reason: isEn ? 'Featured Highlights' : 'Menu Unggulan' }
           });
         }
       } else {
-        fallbackReply = `Halo! Selamat datang di **${merchant.name}** (${table}). Ada menu yang ingin Anda pesan hari ini?`;
+        if (isEn) {
+          fallbackReply = isRepeat
+            ? `Welcome back to **${merchant.name}** (${table})! Delighted to serve you again. What would you like to enjoy today?`
+            : `Hello! Welcome to **${merchant.name}** (${table}). What would you like to order today?`;
+        } else {
+          fallbackReply = isRepeat
+            ? `Selamat datang kembali di **${merchant.name}** (${table})! Senang menyapa Anda lagi. Ada menu favorit yang ingin disiapkan hari ini?`
+            : `Halo! Selamat datang di **${merchant.name}** (${table}). Ada menu yang ingin Anda pesan hari ini?`;
+        }
       }
 
       return res.json({
@@ -2251,7 +2373,9 @@ ${kdsStatusContext}`;
           category: r.chunk.category,
           score: r.score,
           matchedTerms: r.matchedTerms
-        }))
+        })),
+        customerProfile: customerProfile || null,
+        language
       });
     }
 
@@ -2316,7 +2440,9 @@ ${kdsStatusContext}`;
         category: r.chunk.category,
         score: r.score,
         matchedTerms: r.matchedTerms
-      }))
+      })),
+      customerProfile: customerProfile || null,
+      language
     });
 
   } catch (err) {

@@ -4154,8 +4154,8 @@ body {
    ============================================================ */
 @media (max-width: 768px), (display-mode: standalone), (display-mode: fullscreen) {
   html, body {
-    background: #FFFFFF !important;
-    background-color: #FFFFFF !important;
+    background: var(--bg-canvas-mesh, #FFFFFF) !important;
+    background-color: var(--bg-canvas-mesh, #FFFFFF) !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;

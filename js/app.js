@@ -527,6 +527,364 @@
   }
   const formatRupiah = formatCurrency;
 
+  // --- ACCESSIBILITY ANNOUNCER (WCAG 2.2 AA) ---
+  function announceToScreenReader(message) {
+    const region = document.getElementById('accessibilityLiveRegion');
+    if (!region) return;
+    region.textContent = '';
+    setTimeout(() => {
+      region.textContent = message;
+    }, 50);
+  }
+
+  // --- CUSTOMER HABIT & CONVERSATIONAL MEMORY ENGINE ---
+  const CustomerMemory = {
+    STORAGE_KEY: 'aiodma_customer_profile',
+
+    getProfile() {
+      try {
+        const raw = localStorage.getItem(this.STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') return parsed;
+        }
+      } catch (e) {}
+      return {
+        customerId: 'cust_' + Math.random().toString(36).substring(2, 9),
+        visitCount: 1,
+        preferences: {
+          sweetnessLevel: 'Normal',
+          milkAlternative: 'Standar Fresh Milk',
+          temperature: 'Iced'
+        },
+        allergies: [],
+        favoriteItems: []
+      };
+    },
+
+    saveProfile(profile) {
+      try {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(profile));
+        if (typeof fetch !== 'undefined') {
+          fetch('/api/customer/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(profile)
+          }).catch(() => {});
+        }
+      } catch (e) {}
+      updateMemoryIndicator();
+    },
+
+    recordOrder(items) {
+      const p = this.getProfile();
+      p.visitCount = (p.visitCount || 1) + 1;
+      p.favoriteItems = p.favoriteItems || [];
+      (items || []).forEach(it => {
+        if (it.name && !p.favoriteItems.includes(it.name)) {
+          p.favoriteItems.push(it.name);
+        }
+        if (it.subtext) {
+          const subLower = it.subtext.toLowerCase();
+          if (subLower.includes('less sugar') || subLower.includes('sedikit gula')) {
+            p.preferences.sweetnessLevel = 'Less Sugar 50%';
+          }
+          if (subLower.includes('oat milk') || subLower.includes('susu oat')) {
+            p.preferences.milkAlternative = 'Oat Milk';
+          }
+        }
+      });
+      p.favoriteItems = p.favoriteItems.slice(-5);
+      this.saveProfile(p);
+      return p;
+    },
+
+    updatePreference(key, value) {
+      const p = this.getProfile();
+      p.preferences = p.preferences || {};
+      p.preferences[key] = value;
+      this.saveProfile(p);
+      return p;
+    },
+
+    resetProfile() {
+      const newProfile = {
+        customerId: 'cust_' + Math.random().toString(36).substring(2, 9),
+        visitCount: 1,
+        preferences: {
+          sweetnessLevel: 'Normal',
+          milkAlternative: 'Standar Fresh Milk',
+          temperature: 'Iced'
+        },
+        allergies: [],
+        favoriteItems: []
+      };
+      this.saveProfile(newProfile);
+      return newProfile;
+    }
+  };
+
+  function updateMemoryIndicator() {
+    const label = document.getElementById('labelCustomerMemory');
+    if (!label) return;
+    const p = CustomerMemory.getProfile();
+    const prefs = [];
+    if (p.preferences?.milkAlternative && p.preferences.milkAlternative !== 'Standar Fresh Milk') {
+      prefs.push(p.preferences.milkAlternative);
+    }
+    if (p.preferences?.sweetnessLevel && p.preferences.sweetnessLevel !== 'Normal') {
+      prefs.push(p.preferences.sweetnessLevel);
+    }
+    label.textContent = prefs.length > 0
+      ? `Preferensi: ${prefs.join(', ')}`
+      : (p.visitCount > 1 ? `Pelanggan Setia (${p.visitCount}x)` : 'Preferensi: Standar');
+  }
+
+  // --- HARDENED CLIENT-SIDE CORS & NETWORK CLIENT ---
+  async function apiFetch(endpoint, options = {}, retries = 2) {
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      'x-merchant-id': state.merchantId || 'coffeenity',
+      'x-table-token': `table_${state.tableId || 5}`
+    };
+
+    const mergedOptions = {
+      credentials: 'include',
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...(options.headers || {})
+      }
+    };
+
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(endpoint, mergedOptions);
+        return res;
+      } catch (err) {
+        lastError = err;
+        if (attempt < retries) {
+          const delay = Math.floor(150 * Math.pow(2, attempt) + Math.random() * 80);
+          await new Promise(r => setTimeout(r, delay));
+        }
+      }
+    }
+    throw lastError || new Error('Network / CORS request failed');
+  }
+
+  // --- UNIVERSAL MULTI-LANGUAGE (i18n) DICTIONARY & ENGINE ---
+  const I18N = {
+    'id': {
+      headerLang: 'ID',
+      modeChat: 'Chat',
+      modeMenu: 'Menu',
+      chatHeroTitle: 'Ada yang bisa kami bantu?',
+      chatHeroSubtitle: 'Pesan langsung hidangan favorit Anda atau tanyakan rekomendasi Sommelier.',
+      inputPlaceholder: 'Ketik pesanan atau tanya rekomendasi...',
+      cartTitle: 'Keranjang Pesanan',
+      cartCheckout: 'Lanjut ke Pembayaran',
+      cartEmpty: 'Keranjang Anda masih kosong',
+      waiterCall: 'Panggil Pelayan',
+      callWaiterTitle: 'Panggil Pelayan ke Meja',
+      callWaiterDesc: 'Pilih alasan agar staf kami dapat melayani Anda dengan lebih cepat:',
+      callWaiterSubmit: 'Kirim Panggilan Pelayan',
+      orderTracker: 'Lacak Pesanan Saya (Live KDS)',
+      themeDark: 'Mode Gelap',
+      themeLight: 'Mode Terang',
+      catAll: 'Semua',
+      catPizza: 'Pizza',
+      catEspresso: 'Espresso',
+      catFilter: 'Manual Brew',
+      catBreakfast: 'Sarapan',
+      catSnacks: 'Camilan',
+      catMatcha: 'Matcha & Teh',
+      searchPlaceholder: 'Cari menu, rasa, atau bahan...',
+      customizerTitle: 'Kustomisasi Pesanan',
+      customizerAdd: 'Tambahkan ke Pesanan',
+      receiptTitle: 'Struk Pembayaran Resmi',
+      receiptPrint: 'Cetak Struk',
+      memoryTitle: 'Preferensi & Memori Pelanggan',
+      memorySubtitle: 'AI Sommelier mengingat kebiasaan Anda secara otomatis untuk memberikan layanan yang dipersonalisasi.',
+      memoryReset: 'Reset Memori Saya',
+      memorySavedNotice: 'Memori preferensi berhasil diperbarui.',
+      orderSuccessTitle: 'Pesanan Diterima di Dapur!',
+      orderSuccessSub: 'Barista kami segera meracik pesanan Anda dengan cermat.'
+    },
+    'en': {
+      headerLang: 'EN',
+      modeChat: 'Chat',
+      modeMenu: 'Menu',
+      chatHeroTitle: 'How can we delight you today?',
+      chatHeroSubtitle: 'Order your favorites directly or ask our AI Sommelier for curated pairings.',
+      inputPlaceholder: 'Type your order or ask for recommendations...',
+      cartTitle: 'Your Order Cart',
+      cartCheckout: 'Proceed to Payment',
+      cartEmpty: 'Your cart is currently empty',
+      waiterCall: 'Call Staff',
+      callWaiterTitle: 'Call Staff to Your Table',
+      callWaiterDesc: 'Select a reason so our team can attend to you promptly:',
+      callWaiterSubmit: 'Dispatch Waiter Call',
+      orderTracker: 'Live Order Tracker (KDS)',
+      themeDark: 'Dark Mode',
+      themeLight: 'Light Mode',
+      catAll: 'All',
+      catPizza: 'Pizza',
+      catEspresso: 'Espresso',
+      catFilter: 'Manual Brew',
+      catBreakfast: 'Breakfast',
+      catSnacks: 'Snacks',
+      catMatcha: 'Matcha & Tea',
+      searchPlaceholder: 'Search menu, flavors, or ingredients...',
+      customizerTitle: 'Customize Your Order',
+      customizerAdd: 'Add to Order',
+      receiptTitle: 'Official Payment Receipt',
+      receiptPrint: 'Print Receipt',
+      memoryTitle: 'Customer Habits & Memory',
+      memorySubtitle: 'AI Sommelier automatically recalls your dietary preferences and favorites for a personalized touch.',
+      memoryReset: 'Reset My Memory Profile',
+      memorySavedNotice: 'Customer preferences updated successfully.',
+      orderSuccessTitle: 'Order Received by Kitchen!',
+      orderSuccessSub: 'Our baristas and chefs are preparing your items with care.'
+    },
+    'ms': {
+      headerLang: 'MS',
+      modeChat: 'Sembang',
+      modeMenu: 'Menu',
+      chatHeroTitle: 'Ada apa yang boleh kami bantu?',
+      chatHeroSubtitle: 'Pesan hidangan kegemaran anda atau tanyakan cadangan Sommelier kami.',
+      inputPlaceholder: 'Taip pesanan atau minta cadangan menu...',
+      cartTitle: 'Troli Pesanan',
+      cartCheckout: 'Terus ke Pembayaran',
+      cartEmpty: 'Troli anda masih kosong',
+      waiterCall: 'Panggil Pelayan',
+      callWaiterTitle: 'Panggil Pelayan ke Meja',
+      callWaiterDesc: 'Pilih sebab panggilan agar staf kami dapat melayani dengan pantas:',
+      callWaiterSubmit: 'Hantar Panggilan Pelayan',
+      orderTracker: 'Penjejak Pesanan Langsung (KDS)',
+      themeDark: 'Mod Gelap',
+      themeLight: 'Mod Terang',
+      catAll: 'Semua',
+      catPizza: 'Pizza',
+      catEspresso: 'Espresso',
+      catFilter: 'Kopi Manual',
+      catBreakfast: 'Sarapan',
+      catSnacks: 'Kudapan',
+      catMatcha: 'Matcha & Teh',
+      searchPlaceholder: 'Cari hidangan, rasa, atau bahan...',
+      customizerTitle: 'Ubah Suai Pesanan',
+      customizerAdd: 'Tambah ke Pesanan',
+      receiptTitle: 'Resit Rasmi Pembayaran',
+      receiptPrint: 'Cetak Resit',
+      memoryTitle: 'Pilihan & Memori Pelanggan',
+      memorySubtitle: 'AI Sommelier mengingati pilihan rasa anda secara automatik untuk layanan lebih mesra.',
+      memoryReset: 'Set Semula Memori Saya',
+      memorySavedNotice: 'Memori pilihan berjaya dikemas kini.',
+      orderSuccessTitle: 'Pesanan Diterima di Dapur!',
+      orderSuccessSub: 'Barista dan tukang masak kami sedang menyiapkan pesanan anda.'
+    }
+  };
+
+  function getLangCode() {
+    const raw = state.selectedLang || localStorage.getItem('aiodma_user_lang') || 'id-ID';
+    if (raw.startsWith('en')) return 'en';
+    if (raw.startsWith('ms')) return 'ms';
+    return 'id';
+  }
+
+  function t(key) {
+    const code = getLangCode();
+    return I18N[code]?.[key] || I18N['id'][key] || key;
+  }
+
+  function applyLanguage(langCode) {
+    state.selectedLang = langCode === 'en' ? 'en-US' : (langCode === 'ms' ? 'ms-BN' : 'id-ID');
+    localStorage.setItem('aiodma_user_lang', state.selectedLang);
+    const code = getLangCode();
+
+    const langBtnText = document.getElementById('headerLangText');
+    if (langBtnText) langBtnText.textContent = I18N[code].headerLang;
+
+    const labelMenuLang = document.getElementById('labelMenuLanguage');
+    if (labelMenuLang) {
+      labelMenuLang.textContent = `Bahasa: ${code === 'en' ? 'English' : (code === 'ms' ? 'Melayu' : 'Indonesia')}`;
+    }
+
+    const labelMenuWaiter = document.getElementById('labelMenuWaiter');
+    if (labelMenuWaiter) labelMenuWaiter.textContent = I18N[code].waiterCall;
+
+    const labelMenuTracker = document.getElementById('labelMenuTracker');
+    if (labelMenuTracker) labelMenuTracker.textContent = I18N[code].orderTracker;
+
+    const chatHeroTitle = document.getElementById('chatHeroTitle');
+    if (chatHeroTitle) chatHeroTitle.textContent = I18N[code].chatHeroTitle;
+
+    const chatHeroSubtitle = document.getElementById('chatHeroSubtitle');
+    if (chatHeroSubtitle) chatHeroSubtitle.textContent = I18N[code].chatHeroSubtitle;
+
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) chatInput.placeholder = I18N[code].inputPlaceholder;
+
+    const searchInput = document.getElementById('menuSearchInput');
+    if (searchInput) searchInput.placeholder = I18N[code].searchPlaceholder;
+
+    const memTitle = document.getElementById('memoryModalTitle');
+    if (memTitle) memTitle.textContent = I18N[code].memoryTitle;
+    const memSub = document.getElementById('memoryModalSubtitle');
+    if (memSub) memSub.textContent = I18N[code].memorySubtitle;
+    const btnResetMem = document.getElementById('btnResetMemoryProfile');
+    if (btnResetMem) btnResetMem.textContent = I18N[code].memoryReset;
+
+    updateMemoryIndicator();
+    announceToScreenReader(`Bahasa diubah ke ${code === 'en' ? 'English' : (code === 'ms' ? 'Bahasa Melayu' : 'Bahasa Indonesia')}`);
+  }
+
+  function openCustomerMemoryModal() {
+    const modal = document.getElementById('customerMemoryBackdropModal');
+    if (!modal) return;
+    const content = document.getElementById('memoryModalContent');
+    const p = CustomerMemory.getProfile();
+
+    if (content) {
+      const code = getLangCode();
+      const visitLabel = code === 'en' ? `${p.visitCount} visit(s)` : `${p.visitCount} kali kunjungan`;
+      const sweetLabel = p.preferences?.sweetnessLevel || 'Normal';
+      const milkLabel = p.preferences?.milkAlternative || 'Standar Fresh Milk';
+      const favsLabel = p.favoriteItems?.length > 0
+        ? p.favoriteItems.join(', ')
+        : (code === 'en' ? 'None recorded yet' : 'Belum ada catatan');
+
+      content.innerHTML = `
+        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05);">
+          <span style="color: var(--text-secondary, #64748B);">Kunjungan:</span>
+          <span style="font-weight: 700;">${visitLabel}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05);">
+          <span style="color: var(--text-secondary, #64748B);">Manis:</span>
+          <span style="font-weight: 700;">${sweetLabel}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05);">
+          <span style="color: var(--text-secondary, #64748B);">Susu:</span>
+          <span style="font-weight: 700;">${milkLabel}</span>
+        </div>
+        <div style="padding: 4px 0;">
+          <div style="color: var(--text-secondary, #64748B); margin-bottom: 2px;">Menu Favorit:</div>
+          <div style="font-weight: 700; color: #D97706;">${favsLabel}</div>
+        </div>
+      `;
+    }
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeCustomerMemoryModal() {
+    const modal = document.getElementById('customerMemoryBackdropModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
   function updateClock() {
     const clockEl = document.getElementById('iosClock');
     if (!clockEl) return;
@@ -1938,18 +2296,16 @@ ${cartSummary}`;
       // 1. Try Server-Side AI Barista Proxy (Uses central cafe API Key)
       (async () => {
         try {
-          const sRes = await fetch('/api/ai/chat', {
+          const sRes = await apiFetch('/api/ai/chat', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-merchant-id': state.merchantId || 'coffeenity'
-            },
             body: JSON.stringify({
               merchantId: state.merchantId || 'coffeenity',
               message: userText,
               history: state.aiChatHistory.slice(-8),
               table: `Meja ${state.tableId || 5}`,
-              cart: state.cart.map(c => ({ name: c.name, qty: c.qty, subtext: c.subtext }))
+              cart: state.cart.map(c => ({ name: c.name, qty: c.qty, subtext: c.subtext })),
+              customerProfile: CustomerMemory.getProfile(),
+              language: getLangCode()
             })
           });
 
@@ -2555,12 +2911,8 @@ ${cartSummary}`;
     };
 
     try {
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-merchant-id': state.merchantId || 'coffeenity'
-        },
         body: JSON.stringify(payload)
       });
 
@@ -2576,6 +2928,8 @@ ${cartSummary}`;
 
       state.orderId = serverOrder.orderNumber;
       state.lastPlacedOrder = serverOrder;
+      CustomerMemory.recordOrder(payload.items);
+      announceToScreenReader('Pesanan berhasil dikirim ke dapur.');
 
       // Update Order Success Screen subtitle with real orderNumber
       const successSubtitle = document.querySelector('#screenOrderSuccess .order-success-subtitle');
@@ -3159,10 +3513,28 @@ ${cartSummary}`;
       modifiers: [...activeCustomizer.addons]
     });
 
+    // Automatically update customer memory profile with chosen customizations
+    if (modifierNotes.length > 0) {
+      const notesLower = modifierNotes.join(', ').toLowerCase();
+      if (notesLower.includes('less sugar') || notesLower.includes('sedikit')) {
+        CustomerMemory.updatePreference('sweetnessLevel', 'Less Sugar 50%');
+      }
+      if (notesLower.includes('oat milk') || notesLower.includes('susu oat')) {
+        CustomerMemory.updatePreference('milkAlternative', 'Oat Milk');
+      }
+      if (notesLower.includes('iced') || notesLower.includes('es')) {
+        CustomerMemory.updatePreference('temperature', 'Iced');
+      } else if (notesLower.includes('hot') || notesLower.includes('panas')) {
+        CustomerMemory.updatePreference('temperature', 'Hot');
+      }
+    }
+
     renderCartSheetItems();
     updateCartBadgesAndTotals();
     closeModifierModal();
-    showToast(`${activeCustomizer.item.name} (${activeCustomizer.qty}x) ditambahkan`);
+    const addMsg = `${activeCustomizer.item.name} (${activeCustomizer.qty}x) ditambahkan ke keranjang`;
+    showToast(addMsg);
+    announceToScreenReader(addMsg);
   }
 
 
@@ -3189,11 +3561,14 @@ ${cartSummary}`;
       showScreen('screenSelectLanguage');
     }
 
+    // Apply saved language & memory state
+    const savedLang = urlParams.get('lang') || localStorage.getItem('aiodma_user_lang') || 'id-ID';
+    applyLanguage(savedLang);
+
     // 1. Language Cards Onboarding
     document.querySelectorAll('.lang-card-pill').forEach(card => {
       card.addEventListener('click', () => {
-        state.selectedLang = card.dataset.lang;
-        localStorage.setItem('aiodma_user_lang', state.selectedLang);
+        applyLanguage(card.dataset.lang);
         playHaptic('tap');
         // Smooth spring transition to Main Chat
         switchToMode('chat');
@@ -3219,6 +3594,19 @@ ${cartSummary}`;
       btnLangBack.addEventListener('click', () => {
         playHaptic('tap');
         switchToMode('chat');
+      });
+    }
+
+    // Language Quick Toggle in Header
+    const btnHeaderLangToggle = document.getElementById('btnHeaderLangToggle');
+    if (btnHeaderLangToggle) {
+      btnHeaderLangToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playHaptic('tap');
+        const cur = getLangCode();
+        const nextLang = cur === 'id' ? 'en' : (cur === 'en' ? 'ms' : 'id');
+        applyLanguage(nextLang);
+        showToast(nextLang === 'en' ? 'Language: English' : (nextLang === 'ms' ? 'Bahasa: Melayu Brunei' : 'Bahasa: Indonesia'));
       });
     }
 
@@ -3253,6 +3641,42 @@ ${cartSummary}`;
         modeDropdown?.classList.remove('open');
       });
     }
+
+    // Ellipsis Menu Item: Change Language
+    document.getElementById('menuItemChangeLanguage')?.addEventListener('click', () => {
+      closeAllPopups();
+      playHaptic('tap');
+      const cur = getLangCode();
+      const nextLang = cur === 'id' ? 'en' : (cur === 'en' ? 'ms' : 'id');
+      applyLanguage(nextLang);
+      showToast(nextLang === 'en' ? 'Language: English' : (nextLang === 'ms' ? 'Bahasa: Melayu Brunei' : 'Bahasa: Indonesia'));
+    });
+
+    // Ellipsis Menu Item: Customer Memory & Preferences
+    document.getElementById('menuItemCustomerMemory')?.addEventListener('click', () => {
+      closeAllPopups();
+      playHaptic('tap');
+      openCustomerMemoryModal();
+    });
+
+    document.getElementById('btnCloseMemoryModal')?.addEventListener('click', () => {
+      playHaptic('tap');
+      closeCustomerMemoryModal();
+    });
+
+    document.getElementById('customerMemoryBackdropModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'customerMemoryBackdropModal') {
+        closeCustomerMemoryModal();
+      }
+    });
+
+    document.getElementById('btnResetMemoryProfile')?.addEventListener('click', () => {
+      playHaptic('impact');
+      CustomerMemory.resetProfile();
+      openCustomerMemoryModal();
+      showToast('Memori preferensi telah direset.');
+      announceToScreenReader('Memori preferensi berhasil direset.');
+    });
 
     // --- THEME MANAGEMENT (Apple Dark Mode & Liquid Glass) ---
     function initTheme() {
@@ -3353,11 +3777,11 @@ ${cartSummary}`;
     document.getElementById('menuItemCallWaiter')?.addEventListener('click', async () => {
       closeAllPopups();
       playHaptic('success');
-      showToast(`Pelayan telah dipanggil ke Meja ${state.tableId || 5}. Staf segera menuju meja Anda.`);
+      showToast(`${t('waiterCall')}: Meja ${state.tableId || 5}`);
+      announceToScreenReader('Pelayan telah dipanggil ke meja Anda.');
       try {
-        await fetch('/api/waiter/call', {
+        await apiFetch('/api/waiter/call', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             table: `Meja ${state.tableId || 5}`,
             reason: 'Bantuan Pelayan di Meja'
@@ -3719,11 +4143,11 @@ ${cartSummary}`;
     if (btnTrackerCallWaiter) {
       btnTrackerCallWaiter.addEventListener('click', () => {
         playHaptic('success');
-        showToast('Pelayan sedang menuju ke Meja 5.');
-        fetch('/api/waiter/call', {
+        showToast('Pelayan sedang menuju ke Meja ' + (state.tableId || 5));
+        announceToScreenReader('Pelayan sedang menuju ke meja.');
+        apiFetch('/api/waiter/call', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table: 'Meja 5', reason: 'Bantuan dari Pelacak Pesanan' })
+          body: JSON.stringify({ table: `Meja ${state.tableId || 5}`, reason: 'Bantuan dari Pelacak Pesanan' })
         }).catch(() => {});
       });
     }
