@@ -1877,21 +1877,20 @@ app.get('/api/ai/config', (req, res) => {
 
 // GET /api/admin/config - Get server AI config (API Key Zero-Exposure)
 app.get('/api/admin/config', requireAdminAuth, (req, res) => {
-  const currentDb = loadDatabase();
-  const cfg = (currentDb && currentDb.aiConfig) ? currentDb.aiConfig : (db.aiConfig || {});
+  const cfg = db.aiConfig || {};
   res.json({
     success: true,
     config: {
-      model: cfg.model || db.aiConfig?.model || 'gemini-3.7-flash',
-      tone: cfg.tone || db.aiConfig?.tone || 'warm',
+      model: cfg.model || 'gemini-3.7-flash',
+      tone: cfg.tone || 'warm',
       temperature: cfg.temperature !== undefined ? cfg.temperature : 0.7,
-      thinkingBudget: cfg.thinkingBudget || db.aiConfig?.thinkingBudget || 512,
-      maxOutputTokens: cfg.maxOutputTokens || db.aiConfig?.maxOutputTokens || 600,
-      remainingCredits: cfg.remainingCredits !== undefined ? cfg.remainingCredits : (db.aiConfig?.remainingCredits || 48000),
-      totalInputTokens: cfg.totalInputTokens || db.aiConfig?.totalInputTokens || 0,
-      totalOutputTokens: cfg.totalOutputTokens || db.aiConfig?.totalOutputTokens || 0,
-      apiKeyMasked: cfg.apiKey ? (cfg.apiKey.substring(0, 7) + '...' + cfg.apiKey.slice(-4)) : (db.aiConfig?.apiKey ? db.aiConfig.apiKey.substring(0, 7) + '...' : ''),
-      hasServerApiKey: Boolean(cfg.apiKey || db.aiConfig?.apiKey)
+      thinkingBudget: cfg.thinkingBudget || 512,
+      maxOutputTokens: cfg.maxOutputTokens || 600,
+      remainingCredits: cfg.remainingCredits !== undefined ? cfg.remainingCredits : 48000,
+      totalInputTokens: cfg.totalInputTokens || 0,
+      totalOutputTokens: cfg.totalOutputTokens || 0,
+      apiKeyMasked: cfg.apiKey ? (cfg.apiKey.substring(0, 7) + '...' + cfg.apiKey.slice(-4)) : '',
+      hasServerApiKey: Boolean(cfg.apiKey)
     }
   });
 });
