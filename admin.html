@@ -551,6 +551,47 @@
             </div>
           </div>
         </div>
+
+        <!-- RAG Knowledge Base & Semantic Search Engine Card -->
+        <div class="admin-card" style="margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h3 class="type-heading" style="margin: 0;">Hybrid RAG Knowledge Base (BM25 + TF-IDF Vector)</h3>
+              <p class="type-caption" style="margin: 4px 0 0 0;">Basis pengetahuan outlet untuk mengeliminasi halusinasi AI Sommelier (biji kopi, adonan pizza kayu api, alergen, Wi-Fi, musholla).</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="admin-btn secondary" id="btnOpenAddRagModal">+ Tambah Dokumen RAG</button>
+            </div>
+          </div>
+
+          <!-- RAG Interactive Semantic Tester -->
+          <div style="background: rgba(255, 107, 0, 0.05); border: 1px solid rgba(255, 107, 0, 0.2); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; font-size: 13px; color: #FF6B00; margin-bottom: 6px;">Uji Temu Balik RAG (Interactive Semantic Query Tester)</div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="inputRagTestQuery" class="form-input" placeholder="Contoh: fermentasi adonan pizza, biji kopi v60, fasilitas wifi..." style="flex: 1;" />
+              <button class="admin-btn secondary" id="btnExecuteRagTest" style="border-color: #FF6B00; color: #FF6B00; font-weight: 700;">Uji Relevansi</button>
+            </div>
+            <div id="ragTestFeedback" style="display: none; margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 12px; background: #FFF;"></div>
+          </div>
+
+          <!-- RAG Documents Table -->
+          <div class="admin-table-wrap">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Judul Dokumen</th>
+                  <th>Kategori</th>
+                  <th>Tags Kunci</th>
+                  <th>Cuplikan Konten</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="ragDocumentsTableBody">
+                <!-- Populated dynamically by admin.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <!-- ============================================================
@@ -697,6 +738,38 @@
                 Kirim Test Ping Webhook
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Dynamic CORS Management Card -->
+        <div class="admin-card" style="margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h3 class="type-heading" style="margin: 0;">Cross-Origin Resource Sharing (CORS) Whitelist</h3>
+              <p class="type-caption" style="margin: 4px 0 0 0;">Domain yang diizinkan mengakses API AIODMA secara cross-origin dengan preflight cache 86.400 detik (24 jam).</p>
+            </div>
+            <span class="status-badge badge-success" id="corsStatusBadge">Max-Age: 86400s • Credentials: On</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+            <input type="text" id="inputNewCorsOrigin" class="form-input" placeholder="https://domain-outlet-anda.com" style="flex: 1;" />
+            <button class="admin-btn primary" id="btnAddCorsOrigin">Tambah Origin</button>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Allowed Origin Domain</th>
+                  <th>Kategori Domain</th>
+                  <th>Status Preflight</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="corsWhitelistTableBody">
+                <!-- Populated dynamically by admin.js -->
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -879,6 +952,45 @@
       <div class="confirm-actions-row">
         <button class="admin-btn secondary" id="btnWizardPrev" style="display: none;">Sebelumnya</button>
         <button class="admin-btn primary" id="btnWizardNext">Lanjut ke Langkah 2</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah Dokumen RAG (PRD v16.0) -->
+  <div class="confirm-modal-backdrop" id="modalAddRagBackdrop" style="display: none;">
+    <div class="confirm-modal-card" style="width: 580px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--admin-border); padding-bottom: 12px;">
+        <h3 class="type-heading" style="margin: 0;">Tambah Dokumen Pengetahuan RAG</h3>
+        <button class="row-actions-btn" id="btnCloseAddRagModal">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px 0;">
+        <div class="form-field-group">
+          <label class="form-label">Judul Dokumen</label>
+          <input type="text" id="inputRagTitle" class="form-input" placeholder="Contoh: Profil Roasting & Single Origin Ethiopia" />
+        </div>
+        <div class="form-field-group">
+          <label class="form-label">Kategori Pengetahuan</label>
+          <select id="selectRagCategory" class="form-select">
+            <option value="culinary_craft">Culinary Craft & Resep Dapur</option>
+            <option value="bean_origins_and_roast">Asal Biji Kopi & Profil Sangrai</option>
+            <option value="dietary_and_allergens">Alergen & Panduan Diet Halal</option>
+            <option value="amenities_and_faq">Fasilitas, Wi-Fi & Musholla</option>
+            <option value="sommelier_pairing_matrix">Sommelier Food Pairing</option>
+            <option value="story_and_concept">Cerita & Filosofi Outlet</option>
+          </select>
+        </div>
+        <div class="form-field-group">
+          <label class="form-label">Kata Kunci / Tags Kunci (Pisahkan dengan koma)</label>
+          <input type="text" id="inputRagTags" class="form-input" placeholder="kopi, ethiopia, v60, floral, asam" />
+        </div>
+        <div class="form-field-group">
+          <label class="form-label">Isi Pengetahuan Faktual</label>
+          <textarea id="textareaRagContent" class="form-textarea" rows="4" placeholder="Tuliskan informasi faktual secara detail agar AI Sommelier dapat menjawab pelanggan dengan akurat..." style="width: 100%; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 13px;"></textarea>
+        </div>
+      </div>
+      <div class="confirm-actions-row">
+        <button class="admin-btn secondary" id="btnCancelAddRag">Batal</button>
+        <button class="admin-btn primary" id="btnSubmitAddRag">Simpan ke Basis Pengetahuan</button>
       </div>
     </div>
   </div>

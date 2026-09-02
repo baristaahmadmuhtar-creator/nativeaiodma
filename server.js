@@ -24,16 +24,34 @@ app.use((req, res, next) => {
   next();
 });
 
-const allowedOriginRegex = /^(https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?)$/;
+// --- 1. HARDENED DYNAMIC MULTI-ORIGIN CORS LAYER ---
+const devOriginRegex = /^(https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?)$/;
+const mobileWebViewSchemes = ['capacitor://localhost', 'ionic://localhost', 'http://localhost'];
+
+function isOriginAllowed(origin) {
+  if (!origin || origin === 'null') return true; // Standalone PWA / native mobile WebViews
+  if (devOriginRegex.test(origin)) return true;
+  if (mobileWebViewSchemes.includes(origin)) return true;
+
+  // Check process.env.ALLOWED_ORIGINS
+  if (process.env.ALLOWED_ORIGINS) {
+    const envOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().toLowerCase());
+    if (envOrigins.includes(origin.toLowerCase())) return true;
+  }
+
+  // Check persistent db.corsOrigins
+  const persistentOrigins = (db && Array.isArray(db.corsOrigins)) ? db.corsOrigins : [];
+  if (persistentOrigins.some(o => o.toLowerCase() === origin.toLowerCase())) return true;
+
+  return false;
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOriginRegex.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Fallback safe for standalone PWA / WebViews
-    }
+    callback(null, isOriginAllowed(origin));
   },
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
@@ -46,11 +64,29 @@ app.use(cors({
     'traceparent',
     'baggage',
     'Accept',
-    'Origin'
+    'Origin',
+    'Cache-Control',
+    'Pragma'
   ],
-  exposedHeaders: ['Retry-After', 'X-Content-Type-Options', 'Content-Type', 'x-merchant-id'],
-  maxAge: 86400 // 24 hours preflight cache
+  exposedHeaders: [
+    'Retry-After',
+    'X-Content-Type-Options',
+    'Content-Type',
+    'x-merchant-id',
+    'x-rate-limit-remaining',
+    'x-rate-limit-reset'
+  ],
+  maxAge: 86400, // 24 hours preflight cache
+  optionsSuccessStatus: 204
 }));
+
+// Fast-path HTTP OPTIONS preflight responder
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
@@ -209,6 +245,30 @@ function loadDatabase() {
         }
       }
 
+      if (!Array.isArray(db.corsOrigins)) {
+        db.corsOrigins = [];
+      }
+      const defaultCors = [
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'https://thecoffeenityyard.bn',
+        'https://aiodma.coffeenity.bn',
+        'https://senopaticafe.id',
+        'https://senopati.aiodma.id',
+        'https://nativeaidoma.pages.dev',
+        'capacitor://localhost',
+        'ionic://localhost'
+      ];
+      defaultCors.forEach(orig => {
+        if (!db.corsOrigins.includes(orig)) {
+          db.corsOrigins.push(orig);
+        }
+      });
+
       if (expiredCount > 0) saveDatabase();
       console.log(`[DB] Multi-tenant DB loaded: ${Object.keys(db.merchants).length} merchants registered.`);
     }
@@ -295,6 +355,99 @@ function resolveMerchant(req) {
     auditLogs: db.auditLogs || [],
     stats: db.stats || { grossRevenue: 0, totalOrdersToday: 0, averageTicket: 0 }
   };
+}
+
+// --- 2.2 IN-MEMORY HYBRID RAG RETRIEVAL ENGINE (BM25 + TF-IDF) ---
+const STOPWORDS = new Set([
+  'ada', 'adalah', 'akan', 'antara', 'apa', 'apakah', 'atas', 'atau', 'bagaimana', 'bagi',
+  'bahkan', 'bahwa', 'banyak', 'bawah', 'belakang', 'bisa', 'boleh', 'buat', 'dalam', 'dan', 'dapat', 'dari',
+  'dengan', 'depan', 'di', 'dia', 'dimana', 'hanya', 'harus', 'ini', 'itu', 'juga', 'kalau', 'kami',
+  'karena', 'ke', 'kepada', 'kita', 'lagi', 'lebih', 'luar', 'mau', 'mereka', 'mungkin', 'nama', 'namun', 'oleh',
+  'pada', 'paling', 'para', 'pasti', 'saat', 'saja', 'sangat', 'saya', 'sebab', 'sebagai', 'sebuah', 'secara',
+  'sedang', 'sekarang', 'selain', 'selama', 'semoga', 'semua', 'seperti', 'serta', 'setiap', 'sudah', 'tahu', 'tentang',
+  'terhadap', 'tetapi', 'tidak', 'tolong', 'untuk', 'ya', 'yang',
+  'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'in', 'to', 'for', 'of', 'with'
+]);
+
+function tokenizeRAGText(text) {
+  if (!text) return [];
+  return String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 1 && !STOPWORDS.has(t));
+}
+
+function retrieveKnowledgeChunks(merchantId, query, maxK = 3) {
+  const merchant = db.merchants?.[merchantId] || db.merchants?.[db.defaultMerchantId];
+  if (!merchant || !Array.isArray(merchant.knowledgeBase) || merchant.knowledgeBase.length === 0) {
+    return [];
+  }
+
+  const queryTokens = tokenizeRAGText(query);
+  if (queryTokens.length === 0) return [];
+
+  const chunks = merchant.knowledgeBase;
+  const N = chunks.length;
+
+  const docFreq = {};
+  chunks.forEach(chunk => {
+    const chunkTokens = new Set([
+      ...tokenizeRAGText(chunk.title),
+      ...tokenizeRAGText(chunk.category),
+      ...(chunk.tags || []).map(t => String(t).toLowerCase()),
+      ...tokenizeRAGText(chunk.content)
+    ]);
+    chunkTokens.forEach(token => {
+      docFreq[token] = (docFreq[token] || 0) + 1;
+    });
+  });
+
+  const docLengths = chunks.map(c => tokenizeRAGText(c.content).length + tokenizeRAGText(c.title).length * 2);
+  const avgDocLen = docLengths.reduce((a, b) => a + b, 0) / (N || 1);
+
+  const k1 = 1.2;
+  const b = 0.75;
+
+  const scoredChunks = chunks.map((chunk, idx) => {
+    const titleTokens = tokenizeRAGText(chunk.title);
+    const tagTokens = (chunk.tags || []).map(t => String(t).toLowerCase());
+    const categoryTokens = tokenizeRAGText(chunk.category);
+    const contentTokens = tokenizeRAGText(chunk.content);
+    const docLen = docLengths[idx];
+
+    let score = 0;
+    const matchedTerms = [];
+
+    queryTokens.forEach(term => {
+      const df = docFreq[term] || 0;
+      const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1);
+
+      let tf = 0;
+      if (titleTokens.includes(term)) tf += 3.0;
+      if (tagTokens.includes(term)) tf += 2.5;
+      if (categoryTokens.includes(term)) tf += 2.0;
+      const contentMatches = contentTokens.filter(t => t === term).length;
+      tf += contentMatches;
+
+      if (tf > 0) {
+        const termScore = idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / avgDocLen))));
+        score += termScore;
+        matchedTerms.push(term);
+      }
+    });
+
+    return {
+      chunk,
+      score: Math.round(score * 100) / 100,
+      matchedTerms: [...new Set(matchedTerms)]
+    };
+  });
+
+  return scoredChunks
+    .filter(item => item.score >= 0.15)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxK);
 }
 
 // --- 3. SERVER-SENT EVENTS (SSE) BROADCASTER ---
@@ -1228,6 +1381,65 @@ app.delete('/api/admin/promos/:id', requireAdminAuth, (req, res) => {
   res.json({ success: true, message: `Promo ${deleted.title} berhasil dihapus` });
 });
 
+// POST /api/promos/validate - Client promo code validation engine
+app.post('/api/promos/validate', (req, res) => {
+  const merchant = resolveMerchant(req);
+  const { code, subtotal = 0 } = req.body;
+  if (!code) {
+    return res.status(400).json({ success: false, error: 'Kode promo wajib diisi' });
+  }
+
+  const promos = merchant.promos || [];
+  const cleanCode = String(code).trim().toUpperCase();
+  const promo = promos.find(p => (p.code && p.code.toUpperCase() === cleanCode) && p.active !== false);
+
+  if (!promo) {
+    return res.status(404).json({ success: false, valid: false, error: 'Kode promo tidak valid atau telah kedaluwarsa' });
+  }
+
+  const numSubtotal = Number(subtotal) || 0;
+  if (promo.minSpend && numSubtotal < promo.minSpend) {
+    const minStr = merchant.currency === 'BND' ? `$${promo.minSpend}` : `Rp ${promo.minSpend.toLocaleString()}`;
+    return res.status(400).json({
+      success: false,
+      valid: false,
+      error: `Minimal pembelanjaan untuk promo ini adalah ${minStr}`
+    });
+  }
+
+  let discount = 0;
+  if (promo.type === 'percent') {
+    discount = (numSubtotal * (promo.value / 100));
+    if (promo.maxDiscount && discount > promo.maxDiscount) {
+      discount = promo.maxDiscount;
+    }
+  } else {
+    discount = promo.value;
+  }
+
+  if (merchant.currency === 'BND') {
+    discount = Number(discount.toFixed(2));
+  } else {
+    discount = Math.round(discount);
+  }
+
+  const finalDiscount = Math.min(discount, numSubtotal);
+
+  res.json({
+    success: true,
+    valid: true,
+    discount: finalDiscount,
+    promo: {
+      id: promo.id,
+      code: promo.code,
+      type: promo.type,
+      value: promo.value,
+      discountAmount: finalDiscount,
+      description: promo.desc || promo.title
+    }
+  });
+});
+
 // --- MODULE 7: CREDIT & BILLING ---
 // GET /api/admin/credits - Live token balance and pricing tier
 app.get('/api/admin/credits', requireAdminAuth, (req, res) => {
@@ -1406,6 +1618,220 @@ app.post('/api/admin/audit-logs', requireAdminAuth, (req, res) => {
   res.status(201).json({ success: true, log: newLog });
 });
 
+// --- MODULE 12: DYNAMIC CORS MANAGEMENT ---
+// GET /api/admin/cors - List configured origins and policy
+app.get('/api/admin/cors', requireAdminAuth, (req, res) => {
+  const persistent = Array.isArray(db.corsOrigins) ? db.corsOrigins : [];
+  const envOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    : [];
+
+  res.json({
+    success: true,
+    policy: {
+      devOriginRegex: devOriginRegex.toString(),
+      preflightMaxAge: 86400,
+      credentials: true,
+      allowedMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS', 'HEAD']
+    },
+    envOrigins,
+    persistentOrigins: persistent,
+    allAllowedOrigins: [...new Set([...persistent, ...envOrigins])]
+  });
+});
+
+// POST /api/admin/cors - Add new origin to whitelist
+app.post('/api/admin/cors', requireAdminAuth, (req, res) => {
+  const { origin } = req.body;
+  if (!origin || typeof origin !== 'string') {
+    return res.status(400).json({ success: false, error: 'Origin domain wajib diisi' });
+  }
+
+  const cleanOrigin = origin.trim().toLowerCase();
+  db.corsOrigins = Array.isArray(db.corsOrigins) ? db.corsOrigins : [];
+
+  if (!db.corsOrigins.includes(cleanOrigin)) {
+    db.corsOrigins.push(cleanOrigin);
+    saveDatabase();
+  }
+
+  res.status(201).json({
+    success: true,
+    message: `Origin ${cleanOrigin} berhasil ditambahkan ke whitelist CORS`,
+    origins: db.corsOrigins
+  });
+});
+
+// DELETE /api/admin/cors/:origin - Remove origin from whitelist
+app.delete('/api/admin/cors/:origin', requireAdminAuth, (req, res) => {
+  const target = decodeURIComponent(req.params.origin).trim().toLowerCase();
+  db.corsOrigins = Array.isArray(db.corsOrigins) ? db.corsOrigins : [];
+
+  const idx = db.corsOrigins.indexOf(target);
+  if (idx === -1) {
+    return res.status(404).json({ success: false, error: 'Origin tidak ditemukan dalam whitelist' });
+  }
+
+  db.corsOrigins.splice(idx, 1);
+  saveDatabase();
+
+  res.json({
+    success: true,
+    message: `Origin ${target} berhasil dihapus dari whitelist`,
+    origins: db.corsOrigins
+  });
+});
+
+// POST /api/admin/cors/test - Test origin preflight simulation
+app.post('/api/admin/cors/test', requireAdminAuth, (req, res) => {
+  const { origin = 'http://localhost:3000', method = 'GET' } = req.body;
+  const allowed = isOriginAllowed(origin);
+
+  res.json({
+    success: true,
+    origin,
+    method,
+    isAllowed: allowed,
+    status: allowed ? 204 : 403,
+    headers: allowed ? {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS, HEAD',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Max-Age': '86400'
+    } : {
+      error: 'Origin blocked by CORS policy'
+    }
+  });
+});
+
+// --- MODULE 13: HYBRID RAG KNOWLEDGE BASE MANAGEMENT ---
+// GET /api/admin/rag/documents - List knowledge base chunks
+app.get('/api/admin/rag/documents', requireAdminAuth, (req, res) => {
+  const merchant = resolveMerchant(req);
+  const kb = Array.isArray(merchant.knowledgeBase) ? merchant.knowledgeBase : [];
+  const { category } = req.query;
+
+  const filtered = category
+    ? kb.filter(c => c.category === category)
+    : kb;
+
+  res.json({
+    success: true,
+    merchantId: merchant.id,
+    merchantName: merchant.name,
+    count: filtered.length,
+    documents: filtered
+  });
+});
+
+// POST /api/admin/rag/documents - Add new knowledge chunk
+app.post('/api/admin/rag/documents', requireAdminAuth, (req, res) => {
+  const merchant = resolveMerchant(req);
+  merchant.knowledgeBase = Array.isArray(merchant.knowledgeBase) ? merchant.knowledgeBase : [];
+
+  const { title, category = 'culinary_craft', tags = [], content } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ success: false, error: 'Judul dan konten dokumen wajib diisi' });
+  }
+
+  const newDoc = {
+    id: 'rag_' + merchant.id.slice(0, 4) + '_' + Date.now().toString(36),
+    merchantId: merchant.id,
+    title: String(title).trim(),
+    category: String(category).trim(),
+    tags: Array.isArray(tags) ? tags.map(t => String(t).trim()) : String(tags).split(',').map(t => t.trim()).filter(Boolean),
+    content: String(content).trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  merchant.knowledgeBase.push(newDoc);
+  saveDatabase();
+
+  res.status(201).json({
+    success: true,
+    message: `Dokumen "${newDoc.title}" berhasil ditambahkan ke RAG Knowledge Base`,
+    document: newDoc
+  });
+});
+
+// PUT /api/admin/rag/documents/:id - Update knowledge chunk
+app.put('/api/admin/rag/documents/:id', requireAdminAuth, (req, res) => {
+  const merchant = resolveMerchant(req);
+  merchant.knowledgeBase = Array.isArray(merchant.knowledgeBase) ? merchant.knowledgeBase : [];
+
+  const { id } = req.params;
+  const doc = merchant.knowledgeBase.find(d => d.id === id);
+  if (!doc) {
+    return res.status(404).json({ success: false, error: 'Dokumen RAG tidak ditemukan' });
+  }
+
+  const { title, category, tags, content } = req.body;
+  if (title) doc.title = String(title).trim();
+  if (category) doc.category = String(category).trim();
+  if (tags) doc.tags = Array.isArray(tags) ? tags.map(t => String(t).trim()) : String(tags).split(',').map(t => t.trim()).filter(Boolean);
+  if (content) doc.content = String(content).trim();
+  doc.updatedAt = new Date().toISOString();
+
+  saveDatabase();
+
+  res.json({
+    success: true,
+    message: `Dokumen "${doc.title}" berhasil diperbarui`,
+    document: doc
+  });
+});
+
+// DELETE /api/admin/rag/documents/:id - Delete knowledge chunk
+app.delete('/api/admin/rag/documents/:id', requireAdminAuth, (req, res) => {
+  const merchant = resolveMerchant(req);
+  merchant.knowledgeBase = Array.isArray(merchant.knowledgeBase) ? merchant.knowledgeBase : [];
+
+  const { id } = req.params;
+  const idx = merchant.knowledgeBase.findIndex(d => d.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ success: false, error: 'Dokumen RAG tidak ditemukan' });
+  }
+
+  const deleted = merchant.knowledgeBase.splice(idx, 1)[0];
+  saveDatabase();
+
+  res.json({
+    success: true,
+    message: `Dokumen "${deleted.title}" berhasil dihapus dari Knowledge Base`,
+    deletedId: id
+  });
+});
+
+// POST /api/admin/rag/test-query - Test RAG hybrid retrieval simulation
+app.post('/api/admin/rag/test-query', requireAdminAuth, (req, res) => {
+  const merchant = resolveMerchant(req);
+  const { query, maxK = 3 } = req.body;
+
+  if (!query || !String(query).trim()) {
+    return res.status(400).json({ success: false, error: 'Pertanyaan uji (query) wajib diisi' });
+  }
+
+  const startTime = Date.now();
+  const results = retrieveKnowledgeChunks(merchant.id, String(query).trim(), Number(maxK) || 3);
+  const latencyMs = Date.now() - startTime;
+
+  res.json({
+    success: true,
+    merchantId: merchant.id,
+    query: String(query).trim(),
+    latencyMs,
+    count: results.length,
+    results: results.map(r => ({
+      id: r.chunk.id,
+      title: r.chunk.title,
+      category: r.chunk.category,
+      score: r.score,
+      matchedTerms: r.matchedTerms,
+      snippet: r.chunk.content.length > 160 ? r.chunk.content.slice(0, 160) + '...' : r.chunk.content
+    }))
+  });
+});
+
 // GET /api/ai/config - Public client AI status (Zero Key Exposure)
 app.get('/api/ai/config', (req, res) => {
   const currentDb = loadDatabase();
@@ -1542,13 +1968,29 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
       });
     }
 
+    // In-Memory Hybrid RAG Retrieval Engine (Top-3 Contextual Chunks)
+    const ragResults = retrieveKnowledgeChunks(merchant.id, cleanMessage, 3);
+    let ragContext = '';
+    if (ragResults.length > 0) {
+      ragContext = `\n\nFAKTA KHUSUS OUTLET (RETRIEVED RAG GROUND-TRUTH):\n` +
+        ragResults.map((r, i) =>
+          `[DOKUMEN RAG #${i + 1}] Judul: "${r.chunk.title}" | Kategori: ${r.chunk.category} | Relevansi: ${r.score}\n` +
+          `Informasi Faktual: ${r.chunk.content}`
+        ).join('\n\n') +
+        `\n\nINSTRUKSI PENGGUNAAN INFORMASI RAG:\n` +
+        `- Jika pelanggan bertanya tentang topik di atas (biji kopi, profil sangrai/roast, oven kayu bakar, fermentasi adonan pizza, topping Indomee, alergen/diet, Wi-Fi, musholla, fasilitas), wajib gunakan informasi faktual di atas dengan percaya diri dan tanpa halusinasi.\n`;
+    }
+
     if (!apiKey || apiKey.length < 20 || apiKey.startsWith('AIzaSyDummy')) {
-      // Intelligent Local Sommelier Engine (Zero-Latency Local Knowledge)
+      // Intelligent Local Sommelier Engine (Zero-Latency Local Knowledge + RAG)
       const lower = cleanMessage.toLowerCase();
       let mockReply = '';
       let mockCalls = [];
 
-      if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi')) {
+      if (ragResults.length > 0 && ragResults[0].score >= 1.0 && !lower.includes('rekomendasi')) {
+        const topDoc = ragResults[0].chunk;
+        mockReply = `Mengenai **${topDoc.title}** di ${merchant.name}:\n\n${topDoc.content}\n\nAda hidangan atau minuman yang ingin Anda pesan ke ${table}?`;
+      } else if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi')) {
         if (merchant.currency === 'BND') {
           mockReply = `Untuk hidangan istimewa di **${merchant.name}**, kami sangat merekomendasikan **Pepperoni Pizza** (panggangan kayu api tradisional) atau **Creamy Mushroom Chicken Pizza**.\n\nSangat pas jika disandingkan dengan kesegaran **Garden Mojito** dingin. Anda lebih menyukai topping gurih daging atau keju jamur?`;
           mockCalls.push({
@@ -1571,7 +2013,14 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
         text: mockReply,
         functionCalls: mockCalls,
         modelUsed: 'gemini-3.7-flash',
-        usage: { inTokens: 25, outTokens: 40, remainingCredits: db.aiConfig.remainingCredits }
+        usage: { inTokens: 25, outTokens: 40, remainingCredits: db.aiConfig.remainingCredits },
+        ragChunks: ragResults.map(r => ({
+          id: r.chunk.id,
+          title: r.chunk.title,
+          category: r.chunk.category,
+          score: r.score,
+          matchedTerms: r.matchedTerms
+        }))
       });
     }
 
@@ -1616,8 +2065,10 @@ app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan
     else if (nowHour >= 15 && nowHour < 18) timeMealCategory = 'Sore (Afternoon Tea, Artisan Coffee & Pastry)';
     else timeMealCategory = 'Malam (Dinner, Wood-Fired Pizza & Soothing Drink)';
 
-    const systemInstruction = `Anda adalah asisten cerdas dan Master Kasir & Sommelier AIODMA untuk outlet "${merchant.name}" (${merchant.brandUnit || ''}) melayani ${table}. Mata uang operasional: ${merchant.currency} (${merchant.currencySymbol}). Waktu: ${timeMealCategory}.
 
+
+    const systemInstruction = `Anda adalah asisten cerdas dan Master Kasir & Sommelier AIODMA untuk outlet "${merchant.name}" (${merchant.brandUnit || ''}) melayani ${table}. Mata uang operasional: ${merchant.currency} (${merchant.currencySymbol}). Waktu: ${timeMealCategory}.
+${ragContext}
 STANDAR KOMUNIKASI KASIR & SOMMELIER CERDAS SITUASIONAL (1, 2, ATAU 3 GELEMBUNG):
 1. KECERDASAN RITME SITUASIONAL (DYNAMIC PARAGRAPH CADENCE):
    Pisahkan setiap gelembung dengan dua baris kosong (paragraf baru):
@@ -1767,7 +2218,10 @@ ${kdsStatusContext}`;
       let fallbackReply = '';
       let fallbackCalls = [];
 
-      if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi')) {
+      if (ragResults.length > 0 && ragResults[0].score >= 1.0 && !lower.includes('rekomendasi')) {
+        const topDoc = ragResults[0].chunk;
+        fallbackReply = `Mengenai **${topDoc.title}** di ${merchant.name}:\n\n${topDoc.content}\n\nAda hidangan atau minuman yang ingin Anda pesan ke ${table}?`;
+      } else if (lower.includes('rekomendasi') || lower.includes('pizza') || lower.includes('kopi')) {
         if (merchant.currency === 'BND') {
           fallbackReply = `Untuk rekomendasi istimewa di **${merchant.name}**, kami menyarankan **Pepperoni Pizza** (panggangan kayu api tradisional) atau **Creamy Mushroom Chicken Pizza**.\n\nSangat pas jika disandingkan dengan kesegaran **Garden Mojito** dingin. Anda lebih menyukai topping gurih daging atau keju jamur?`;
           fallbackCalls.push({
@@ -1790,7 +2244,14 @@ ${kdsStatusContext}`;
         text: fallbackReply,
         functionCalls: fallbackCalls,
         modelUsed: 'gemini-3.7-flash',
-        usage: { inTokens: 25, outTokens: 40, remainingCredits: db.aiConfig.remainingCredits }
+        usage: { inTokens: 25, outTokens: 40, remainingCredits: db.aiConfig.remainingCredits },
+        ragChunks: ragResults.map(r => ({
+          id: r.chunk.id,
+          title: r.chunk.title,
+          category: r.chunk.category,
+          score: r.score,
+          matchedTerms: r.matchedTerms
+        }))
       });
     }
 
@@ -1848,7 +2309,14 @@ ${kdsStatusContext}`;
       text: cleanedText,
       functionCalls,
       modelUsed: result.modelUsed,
-      usage: { inTokens, outTokens, remainingCredits: db.aiConfig.remainingCredits }
+      usage: { inTokens, outTokens, remainingCredits: db.aiConfig.remainingCredits },
+      ragChunks: ragResults.map(r => ({
+        id: r.chunk.id,
+        title: r.chunk.title,
+        category: r.chunk.category,
+        score: r.score,
+        matchedTerms: r.matchedTerms
+      }))
     });
 
   } catch (err) {

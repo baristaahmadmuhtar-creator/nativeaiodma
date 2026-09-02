@@ -1,6 +1,6 @@
 /**
  * AIODMA — Master End-to-End QA/QE Automated Test Suite Runner
- * Executes all 10 specialized test suites in sequence and aggregates results.
+ * Executes all 11 specialized test suites in sequence and aggregates results.
  */
 
 const { execSync } = require('child_process');
@@ -16,7 +16,8 @@ const testSuites = [
   { name: '7. AI Sommelier Intelligence & WCAG 2.2 a11y', file: 'verify_ai_sommelier_and_a11y.js' },
   { name: '8. Interactive Menu Card Recommendations', file: 'verify_menu_card_recommendations.js' },
   { name: '9. Apple HIG Dark Mode & Liquid Glass Refinement', file: 'verify_apple_dark_mode.js' },
-  { name: '10. User Experience & Stepper Ergonomics', file: 'test_user_experience_flow.js' }
+  { name: '10. User Experience & Stepper Ergonomics', file: 'test_user_experience_flow.js' },
+  { name: '11. Enterprise Hybrid RAG Engine, CORS & Admin Operations', file: 'verify_enterprise_rag_and_cors.js' }
 ];
 
 console.log('\n======================================================================');

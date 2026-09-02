@@ -1685,6 +1685,108 @@
       ],
       "orders": [
         {
+          "id": "ORD_COFF_1788366107708_VYT",
+          "orderNumber": "#5KVYT",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_pepperoni",
+              "name": "Pepperoni Pizza",
+              "price": 14,
+              "basePrice": 8,
+              "addonPrice": 6,
+              "qty": 1,
+              "subtext": "Large (12\")",
+              "image": "assets/products/pizza_pepperoni.jpg"
+            },
+            {
+              "itemId": "indomee_custom_bar",
+              "name": "Indomee Custom Bar",
+              "price": 5,
+              "basePrice": 2,
+              "addonPrice": 3,
+              "qty": 1,
+              "subtext": "Telur Mata Sapi, Kerang Dara",
+              "image": "assets/products/nasi_goreng.jpg"
+            },
+            {
+              "itemId": "coffee_americano",
+              "name": "Americano",
+              "price": 4,
+              "basePrice": 3.5,
+              "addonPrice": 0.5,
+              "qty": 1,
+              "subtext": "Iced",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 23,
+          "tax": 0,
+          "total": 23,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_COFF_1788366107708_VYT",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:47.708Z",
+          "updatedAt": "2026-09-02T16:21:47.708Z"
+        },
+        {
+          "id": "ORD_COFF_1788362991728_1IA",
+          "orderNumber": "#5K1IA",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_pepperoni",
+              "name": "Pepperoni Pizza",
+              "price": 14,
+              "basePrice": 8,
+              "addonPrice": 6,
+              "qty": 1,
+              "subtext": "Large (12\")",
+              "image": "assets/products/pizza_pepperoni.jpg"
+            },
+            {
+              "itemId": "indomee_custom_bar",
+              "name": "Indomee Custom Bar",
+              "price": 5,
+              "basePrice": 2,
+              "addonPrice": 3,
+              "qty": 1,
+              "subtext": "Telur Mata Sapi, Kerang Dara",
+              "image": "assets/products/nasi_goreng.jpg"
+            },
+            {
+              "itemId": "coffee_americano",
+              "name": "Americano",
+              "price": 4,
+              "basePrice": 3.5,
+              "addonPrice": 0.5,
+              "qty": 1,
+              "subtext": "Iced",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 23,
+          "tax": 0,
+          "total": 23,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_COFF_1788362991728_1IA",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:51.728Z",
+          "updatedAt": "2026-09-02T15:29:51.728Z"
+        },
+        {
           "id": "ORD_COFF_1788362970028_VSC",
           "orderNumber": "#5KVSC",
           "merchantId": "coffeenity",
@@ -2316,6 +2418,66 @@
       ],
       "waiterCalls": [
         {
+          "id": "CALL_COFF_1788366108930",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan dan tisu",
+          "status": "pending",
+          "timestamp": "2026-09-02T16:21:48.930Z",
+          "createdAt": "2026-09-02T16:21:48.930Z"
+        },
+        {
+          "id": "CALL_COFF_1788366107543",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan",
+          "status": "pending",
+          "timestamp": "2026-09-02T16:21:47.543Z",
+          "createdAt": "2026-09-02T16:21:47.543Z"
+        },
+        {
+          "id": "CALL_COFF_1788366107249",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Tolong tambah sendok & garpu",
+          "status": "pending",
+          "timestamp": "2026-09-02T16:21:47.249Z",
+          "createdAt": "2026-09-02T16:21:47.249Z"
+        },
+        {
+          "id": "CALL_COFF_1788362992911",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan dan tisu",
+          "status": "pending",
+          "timestamp": "2026-09-02T15:29:52.911Z",
+          "createdAt": "2026-09-02T15:29:52.911Z"
+        },
+        {
+          "id": "CALL_COFF_1788362991544",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan",
+          "status": "pending",
+          "timestamp": "2026-09-02T15:29:51.544Z",
+          "createdAt": "2026-09-02T15:29:51.544Z"
+        },
+        {
+          "id": "CALL_COFF_1788362991334",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Tolong tambah sendok & garpu",
+          "status": "pending",
+          "timestamp": "2026-09-02T15:29:51.334Z",
+          "createdAt": "2026-09-02T15:29:51.335Z"
+        },
+        {
           "id": "CALL_COFF_1788362971380",
           "merchantId": "coffeenity",
           "table": "Meja 5",
@@ -2418,6 +2580,62 @@
       ],
       "auditLogs": [
         {
+          "id": "log_1788366109432",
+          "timestamp": "00:21:49",
+          "action": "SECURITY_PIN_ROTATION",
+          "actor": "Ahmad Owner",
+          "detail": "Master admin PIN verified."
+        },
+        {
+          "id": "log_1788366107728",
+          "timestamp": "00:21:47",
+          "action": "ORDER_DISPATCHED",
+          "actor": "Ahmad Owner",
+          "detail": "Order #5KVYT diterima di dapur ($ 23.00 via BIBD)."
+        },
+        {
+          "id": "log_1788365028868",
+          "timestamp": "00:03:48",
+          "action": "AI_CONFIG_SAVED",
+          "actor": "Ahmad Owner",
+          "detail": "Konfigurasi AI diperbarui: Model gemini-3.7-flash, Tone warm, Temp 0.7."
+        },
+        {
+          "id": "log_1788365028701",
+          "timestamp": "00:03:48",
+          "action": "AI_CONFIG_SAVED",
+          "actor": "Ahmad Owner",
+          "detail": "Konfigurasi AI diperbarui: Model gemini-3.7-flash, Tone warm, Temp 0.7."
+        },
+        {
+          "id": "log_1788365028504",
+          "timestamp": "00:03:48",
+          "action": "AI_CONFIG_SAVED",
+          "actor": "Ahmad Owner",
+          "detail": "Konfigurasi AI diperbarui: Model gemini-3.7-flash, Tone warm, Temp 0.7."
+        },
+        {
+          "id": "log_1788365028326",
+          "timestamp": "00:03:48",
+          "action": "AI_CONFIG_SAVED",
+          "actor": "Ahmad Owner",
+          "detail": "Konfigurasi AI diperbarui: Model gemini-3.7-flash, Tone warm, Temp 0.7."
+        },
+        {
+          "id": "log_1788365027348",
+          "timestamp": "00:03:47",
+          "action": "AI_CONFIG_SAVED",
+          "actor": "Ahmad Owner",
+          "detail": "Konfigurasi AI diperbarui: Model gemini-3.7-flash, Tone warm, Temp 0.7."
+        },
+        {
+          "id": "log_1788362993367",
+          "timestamp": "23:29:53",
+          "action": "SECURITY_PIN_ROTATION",
+          "actor": "Ahmad Owner",
+          "detail": "Master admin PIN verified."
+        },
+        {
           "id": "log_1788362971802",
           "timestamp": "23:29:31",
           "action": "SECURITY_PIN_ROTATION",
@@ -2495,9 +2713,9 @@
         }
       ],
       "stats": {
-        "grossRevenue": 138282,
-        "totalOrdersToday": 13,
-        "averageTicket": 10637.08
+        "grossRevenue": 138328,
+        "totalOrdersToday": 15,
+        "averageTicket": 9221.87
       },
       "staff": [],
       "apiKeys": [
@@ -2564,6 +2782,154 @@
           "status": "active",
           "rateLimit": "120 req/min",
           "createdAt": "2026-09-02T15:29:31.793Z"
+        },
+        {
+          "id": "key_1788362993361",
+          "name": "POS Moka Integration",
+          "key": "aiodma_live_262faeb1db0c8740584a186a",
+          "status": "active",
+          "rateLimit": "120 req/min",
+          "createdAt": "2026-09-02T15:29:53.361Z"
+        },
+        {
+          "id": "key_1788366109425",
+          "name": "POS Moka Integration",
+          "key": "aiodma_live_cb31ee8c0cf7ccc70df2d6d9",
+          "status": "active",
+          "rateLimit": "120 req/min",
+          "createdAt": "2026-09-02T16:21:49.427Z"
+        }
+      ],
+      "knowledgeBase": [
+        {
+          "id": "rag_coff_01",
+          "merchantId": "coffeenity",
+          "category": "culinary_craft",
+          "title": "Wood-Fired Pizza Dough & Oven Kayu Api 450°C",
+          "tags": [
+            "pizza",
+            "adonan",
+            "dough",
+            "fermentasi",
+            "oven",
+            "kayu api",
+            "biga",
+            "marzano",
+            "mozzarella"
+          ],
+          "content": "Doughboy Pizza di The Coffeenity Yard menggunakan adonan cold-fermentation 48 jam dengan ragi alami pre-ferment biga untuk menghasilkan cornicione (tepi pizza) berongga, renyah di luar dan empuk di dalam. Dipanggang dalam oven kubah kayu api berbahan kayu bakar pohon rambutan dan oak pada suhu 450°C selama 90 detik. Saus tomat dibuat dari 100% tomat San Marzano asli Italia dan keju Fior di Latte mozzarella segar.",
+          "updatedAt": "2026-09-02T16:07:18.138Z"
+        },
+        {
+          "id": "rag_coff_02",
+          "merchantId": "coffeenity",
+          "category": "bean_origins_and_roast",
+          "title": "Biji Kopi Manual Brew & Profil Roasting Coffeenity",
+          "tags": [
+            "kopi",
+            "manual brew",
+            "v60",
+            "biji kopi",
+            "beans",
+            "ethiopia",
+            "colombia",
+            "roasting",
+            "single origin"
+          ],
+          "content": "Barista Coffeenity menyediakan dua pilihan single origin unggulan: (1) Ethiopia Yirgacheffe Washed dengan notes floral melati, bergamot, dan keasaman sitrun yang cerah; (2) Colombia Huila Supremo Natural dengan body tebal, rasa cokelat gelap, brown sugar, dan lingering caramel. Tersedia metode seduh V60 Dripper, AeroPress, dan Japanese Iced Drip dengan rasio 1:15.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_coff_03",
+          "merchantId": "coffeenity",
+          "category": "culinary_craft",
+          "title": "Indomee Customization Bar & Topping Premium",
+          "tags": [
+            "indomee",
+            "mie",
+            "noodles",
+            "topping",
+            "telur",
+            "sambal",
+            "keju",
+            "pedas"
+          ],
+          "content": "Indomee Bar di The Coffeenity Yard menyajikan Indomee kuah dan goreng dengan racikan bumbu khas cafe. Pilihan tingkat kepedasan: Level 1 (Santai), Level 2 (Sedang), Level 3 (Pedas Gila). Opsi topping premium meliputi Telur Mata Sapi setengah matang, Keju Cheddar serut meleleh, Kornet Sapi tumis bawang, dan Sosis Bakar iris.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_coff_04",
+          "merchantId": "coffeenity",
+          "category": "dietary_and_allergens",
+          "title": "Panduan Diet, Alergen & Jaminan 100% Halal",
+          "tags": [
+            "halal",
+            "alergi",
+            "diet",
+            "vegan",
+            "laktosa",
+            "oat milk",
+            "gluten",
+            "kacang"
+          ],
+          "content": "Semua bahan makanan dan minuman di The Coffeenity Yard 100% Halal bersertifikat, bebas alkohol dan gelatin non-halal. Tersedia alternatif susu nabati Oatly Barista Edition untuk pelanggan intoleransi laktosa atau vegan. Perhatian alergen: menu Calzone dan Pizza mengandung gluten gandum; Cookies dan Waffles dibuat di area yang mungkin bersentuhan dengan kacang (almond & hazelnut).",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_coff_05",
+          "merchantId": "coffeenity",
+          "category": "amenities_and_faq",
+          "title": "Fasilitas Cafe: Wi-Fi, Stopkontak, Meja Outdoor & Parkir",
+          "tags": [
+            "wifi",
+            "fasilitas",
+            "colokan",
+            "outdoor",
+            "parkir",
+            "musholla",
+            "jam buka",
+            "toilet"
+          ],
+          "content": "The Coffeenity Yard buka setiap hari pukul 08:00 - 23:00. Fasilitas Wi-Fi berkecepatan 100 Mbps gratis untuk pelanggan (SSID: Coffeenity_Guest, Password: YardCommunity2026). Stopkontak tersedia di setiap meja indoor dan booth semi-outdoor. Area parkir luas gratis di halaman belakang. Tempat wudhu dan Musholla berada di samping lorong galeri.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_coff_06",
+          "merchantId": "coffeenity",
+          "category": "sommelier_pairing_matrix",
+          "title": "Rekomendasi Sommelier Food Pairing Coffeenity",
+          "tags": [
+            "pairing",
+            "rekomendasi",
+            "kombinasi",
+            "sommelier",
+            "pizza pairing",
+            "croissant"
+          ],
+          "content": "Panduan pairing Sommelier Coffeenity: (1) Pepperoni Pizza & Smoked Beef Calzone sangat cocok disandingkan dengan Iced Americano atau Garden Citrus Fizz untuk menetralkan rasa gurih keju dengan keasaman segar. (2) Chocolate Lava Cake dan Waffles paling pas dinikmati bersama Hot Flat White atau Manual Brew Colombia untuk menonjolkan aroma kakao.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        }
+      ],
+      "promos": [
+        {
+          "id": "PROMO_COFF_1",
+          "code": "YARDVIBES",
+          "type": "percent",
+          "value": 15,
+          "minSpend": 10,
+          "maxDiscount": 5,
+          "active": true,
+          "desc": "Diskon 15% untuk makan malam"
+        },
+        {
+          "id": "PROMO_COFF_2",
+          "code": "PIZZATIME",
+          "type": "fixed",
+          "value": 3,
+          "minSpend": 15,
+          "maxDiscount": 3,
+          "active": true,
+          "desc": "Potongan  setiap pembelian pizza"
         }
       ]
     },
@@ -4368,6 +4734,438 @@
         }
       ],
       "orders": [
+        {
+          "id": "ORD_SENO_1788366109557_LG9",
+          "orderNumber": "#5KLG9",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 38000,
+              "basePrice": 28000,
+              "addonPrice": 10000,
+              "qty": 1,
+              "subtext": "Less Sugar 50%, Ganti Oat Milk, Extra Shot",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 83000,
+              "basePrice": 58000,
+              "addonPrice": 25000,
+              "qty": 1,
+              "subtext": "Stuffed Cheese Crust, Ekstra Mozzarella",
+              "image": "assets/products/pizza_margherita.jpg"
+            }
+          ],
+          "subtotal": 121000,
+          "tax": 12100,
+          "total": 133100,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788366109557_LG9",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:49.557Z",
+          "updatedAt": "2026-09-02T16:21:49.557Z"
+        },
+        {
+          "id": "ORD_SENO_1788366108658_2CD",
+          "orderNumber": "#5K2CD",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 58000,
+              "basePrice": 58000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "Reguler 6-Slice",
+              "image": "assets/products/pizza_margherita.jpg"
+            },
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 34000,
+              "basePrice": 28000,
+              "addonPrice": 6000,
+              "qty": 1,
+              "subtext": "Less Sugar (50%), Oat Milk (+Rp 6rb)",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 150000,
+          "tax": 15000,
+          "total": 165000,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "ready",
+          "idempotencyKey": "sim_idemp_1788366108655_ck4p4",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:48.658Z",
+          "updatedAt": "2026-09-02T16:21:48.755Z"
+        },
+        {
+          "id": "ORD_SENO_1788366107520_S23",
+          "orderNumber": "#3KS23",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 3",
+          "tableNum": 3,
+          "items": [
+            {
+              "itemId": "americano",
+              "name": "Iced Americano",
+              "price": 22000,
+              "basePrice": 22000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 22000,
+          "tax": 2200,
+          "total": 24200,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788366107520_S23",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:47.520Z",
+          "updatedAt": "2026-09-02T16:21:47.529Z"
+        },
+        {
+          "id": "ORD_SENO_1788366107514_OJ5",
+          "orderNumber": "#5KOJ5",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "iced_latte",
+              "name": "Iced Caffe Latte",
+              "price": 26000,
+              "basePrice": 26000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/iced_latte.jpg"
+            }
+          ],
+          "subtotal": 26000,
+          "tax": 2600,
+          "total": 28600,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788366107514_OJ5",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:47.514Z",
+          "updatedAt": "2026-09-02T16:21:47.514Z"
+        },
+        {
+          "id": "ORD_SENO_1788366107510_NMB",
+          "orderNumber": "#5KNMB",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 28000,
+          "tax": 2800,
+          "total": 30800,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PENDING_CASHIER",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788366107510_NMB",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:47.510Z",
+          "updatedAt": "2026-09-02T16:21:47.510Z"
+        },
+        {
+          "id": "ORD_SENO_1788366107218_O8K",
+          "orderNumber": "#5KO8K",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "almond_croissant",
+              "name": "Almond Pain au Chocolat",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/almond_croissant.jpg"
+            }
+          ],
+          "subtotal": 84000,
+          "tax": 8400,
+          "total": 92400,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "preparing",
+          "idempotencyKey": "IDEMP_1788366107215_bdxdw",
+          "notes": "",
+          "createdAt": "2026-09-02T16:21:47.218Z",
+          "updatedAt": "2026-09-02T16:21:47.245Z"
+        },
+        {
+          "id": "ORD_SENO_1788362993512_WE1",
+          "orderNumber": "#5KWE1",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 38000,
+              "basePrice": 28000,
+              "addonPrice": 10000,
+              "qty": 1,
+              "subtext": "Less Sugar 50%, Ganti Oat Milk, Extra Shot",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 83000,
+              "basePrice": 58000,
+              "addonPrice": 25000,
+              "qty": 1,
+              "subtext": "Stuffed Cheese Crust, Ekstra Mozzarella",
+              "image": "assets/products/pizza_margherita.jpg"
+            }
+          ],
+          "subtotal": 121000,
+          "tax": 12100,
+          "total": 133100,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788362993512_WE1",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:53.512Z",
+          "updatedAt": "2026-09-02T15:29:53.512Z"
+        },
+        {
+          "id": "ORD_SENO_1788362992597_W5W",
+          "orderNumber": "#5KW5W",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 58000,
+              "basePrice": 58000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "Reguler 6-Slice",
+              "image": "assets/products/pizza_margherita.jpg"
+            },
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 34000,
+              "basePrice": 28000,
+              "addonPrice": 6000,
+              "qty": 1,
+              "subtext": "Less Sugar (50%), Oat Milk (+Rp 6rb)",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 150000,
+          "tax": 15000,
+          "total": 165000,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "ready",
+          "idempotencyKey": "sim_idemp_1788362992592_m4gox",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:52.597Z",
+          "updatedAt": "2026-09-02T15:29:52.708Z"
+        },
+        {
+          "id": "ORD_SENO_1788362991528_Q9O",
+          "orderNumber": "#3KQ9O",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 3",
+          "tableNum": 3,
+          "items": [
+            {
+              "itemId": "americano",
+              "name": "Iced Americano",
+              "price": 22000,
+              "basePrice": 22000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 22000,
+          "tax": 2200,
+          "total": 24200,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788362991528_Q9O",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:51.528Z",
+          "updatedAt": "2026-09-02T15:29:51.532Z"
+        },
+        {
+          "id": "ORD_SENO_1788362991523_CGJ",
+          "orderNumber": "#5KCGJ",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "iced_latte",
+              "name": "Iced Caffe Latte",
+              "price": 26000,
+              "basePrice": 26000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/iced_latte.jpg"
+            }
+          ],
+          "subtotal": 26000,
+          "tax": 2600,
+          "total": 28600,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788362991523_CGJ",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:51.523Z",
+          "updatedAt": "2026-09-02T15:29:51.523Z"
+        },
+        {
+          "id": "ORD_SENO_1788362991519_467",
+          "orderNumber": "#5K467",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 28000,
+          "tax": 2800,
+          "total": 30800,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PENDING_CASHIER",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1788362991519_467",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:51.519Z",
+          "updatedAt": "2026-09-02T15:29:51.519Z"
+        },
+        {
+          "id": "ORD_SENO_1788362991320_RVW",
+          "orderNumber": "#5KRVW",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "almond_croissant",
+              "name": "Almond Pain au Chocolat",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/almond_croissant.jpg"
+            }
+          ],
+          "subtotal": 84000,
+          "tax": 8400,
+          "total": 92400,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "preparing",
+          "idempotencyKey": "IDEMP_1788362991318_70kyq",
+          "notes": "",
+          "createdAt": "2026-09-02T15:29:51.320Z",
+          "updatedAt": "2026-09-02T15:29:51.330Z"
+        },
         {
           "id": "ORD_SENO_1788362971955_YR2",
           "orderNumber": "#5KYR2",
@@ -8860,10 +9658,135 @@
         }
       ],
       "stats": {
-        "grossRevenue": 16772606.5,
-        "totalOrdersToday": 167,
-        "averageTicket": 100435
-      }
+        "grossRevenue": 17720806.5,
+        "totalOrdersToday": 179,
+        "averageTicket": 98999
+      },
+      "knowledgeBase": [
+        {
+          "id": "rag_seno_01",
+          "merchantId": "senopati_cafe",
+          "category": "bean_origins_and_roast",
+          "title": "Artisan Espresso Blend & Single Origin Senopati",
+          "tags": [
+            "espresso",
+            "kopi",
+            "biji kopi",
+            "beans",
+            "gayo",
+            "flores",
+            "roasting",
+            "latte"
+          ],
+          "content": "Senopati Artisan Cafe menyangrai biji kopi secara in-house dengan profil sangrai medium. Blend espresso andalan adalah House Blend Senopati (70% Aceh Gayo Anaerobic Washed + 30% Flores Bajawa Honey), menghasilkan espresso dengan aroma hazelnut, crema tebal keemasan, dan rasa akhir gula aren karamel yang manis seimbang.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_seno_02",
+          "merchantId": "senopati_cafe",
+          "category": "culinary_craft",
+          "title": "Fresh Viennoiserie & Bakery Tradisi Prancis",
+          "tags": [
+            "croissant",
+            "pastry",
+            "bakery",
+            "butter",
+            "mentega",
+            "prancis",
+            "french"
+          ],
+          "content": "Semua pastry dan viennoiserie dipanggang segar setiap pagi (freshly baked at 06:30) menggunakan mentega Prancis AOP Elle & Vire dengan teknik laminasi 27 lapisan. Almond Croissant diisi dengan pasta frangipane almond buatan sendiri dan ditaburi kacang almond panggang renyah.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_seno_03",
+          "merchantId": "senopati_cafe",
+          "category": "culinary_craft",
+          "title": "Kopi Milk Aren Spesial Senopati & Gula Aren Organik",
+          "tags": [
+            "kopi aren",
+            "aren",
+            "gula aren",
+            "susu",
+            "milk aren",
+            "best seller"
+          ],
+          "content": "Menu terlaris Kopi Milk Aren (Es) diracik dengan double ristretto espresso, susu segar pasteurisasi, dan sirup gula aren organik asal Lebak Banten yang dimasak perlahan bersama daun pandan wangi. Tingkat kemanisan standar seimbang (100%), namun pelanggan dapat meminta opsi Less Sugar (50%) atau No Sugar.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_seno_04",
+          "merchantId": "senopati_cafe",
+          "category": "dietary_and_allergens",
+          "title": "Opsi Susu Nabati, Alergen & Bebas Gluten",
+          "tags": [
+            "diet",
+            "alergi",
+            "oat milk",
+            "gluten",
+            "susu nabati",
+            "laktosa",
+            "halal"
+          ],
+          "content": "Tersedia susu oat nabati premium (Oatly Barista) dan almond milk dengan tambahan Rp 8.000 untuk semua minuman kopi. Menu gluten-free bersertifikasi: Salad Quinoa Truffle dan Flourless Chocolate Cake. Dapur kami 100% menggunakan bahan baku berstandar Halal.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_seno_05",
+          "merchantId": "senopati_cafe",
+          "category": "amenities_and_faq",
+          "title": "Fasilitas Senopati: Musholla Lt. 2, Wi-Fi 200Mbps, VIP Room",
+          "tags": [
+            "wifi",
+            "musholla",
+            "vip",
+            "fasilitas",
+            "parkir",
+            "colokan",
+            "jam buka"
+          ],
+          "content": "Senopati Cafe buka pukul 07:00 - 22:00 setiap hari. Wi-Fi berkecepatan 200 Mbps (SSID: Senopati_Artisan_Guest, Password: KopiSenopati2026). Musholla ber-AC dan tempat wudhu bersih terletak di Lantai 2. Ruang VIP berkapasitas 10 orang dapat direservasi melalui kasir. Parkir valet tersedia di lobi depan.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        },
+        {
+          "id": "rag_seno_06",
+          "merchantId": "senopati_cafe",
+          "category": "sommelier_pairing_matrix",
+          "title": "Panduan Harmoni Sommelier Senopati",
+          "tags": [
+            "pairing",
+            "sommelier",
+            "rekomendasi",
+            "pasta",
+            "truffle",
+            "matcha"
+          ],
+          "content": "Rekomendasi rasa Sommelier: (1) Creamy Carbonara atau Truffle Fries disarankan berpasangan dengan Berry Lemonade atau Peach Iced Tea untuk memberikan sentuhan asam yang menyegarkan lidah. (2) Matcha Latte Uji Kyoto sangat serasi dinikmati bersama Classic Italian Tiramisu dengan sentuhan mascarpone lembut.",
+          "updatedAt": "2026-09-02T16:07:18.159Z"
+        }
+      ],
+      "promos": [
+        {
+          "id": "PROMO_SENO_1",
+          "code": "SENOPATIPAGI",
+          "type": "percent",
+          "value": 20,
+          "minSpend": 50000,
+          "maxDiscount": 25000,
+          "active": true,
+          "desc": "Diskon 20% sarapan pagi"
+        },
+        {
+          "id": "PROMO_SENO_2",
+          "code": "KOPIAREN2026",
+          "type": "fixed",
+          "value": 10000,
+          "minSpend": 40000,
+          "maxDiscount": 10000,
+          "active": true,
+          "desc": "Potongan Rp 10.000 untuk Kopi Aren"
+        }
+      ]
     }
   },
   "aiConfig": {
@@ -8873,7 +9796,7 @@
     "temperature": 0.7,
     "thinkingBudget": 512,
     "maxOutputTokens": 600,
-    "remainingCredits": 490825,
+    "remainingCredits": 590825,
     "totalInputTokens": 8695,
     "totalOutputTokens": 2935
   },
@@ -10661,6 +11584,66 @@
   ],
   "waiterCalls": [
     {
+      "id": "CALL_COFF_1788366108930",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan dan tisu",
+      "status": "pending",
+      "timestamp": "2026-09-02T16:21:48.930Z",
+      "createdAt": "2026-09-02T16:21:48.930Z"
+    },
+    {
+      "id": "CALL_COFF_1788366107543",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan",
+      "status": "pending",
+      "timestamp": "2026-09-02T16:21:47.543Z",
+      "createdAt": "2026-09-02T16:21:47.543Z"
+    },
+    {
+      "id": "CALL_COFF_1788366107249",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Tolong tambah sendok & garpu",
+      "status": "pending",
+      "timestamp": "2026-09-02T16:21:47.249Z",
+      "createdAt": "2026-09-02T16:21:47.249Z"
+    },
+    {
+      "id": "CALL_COFF_1788362992911",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan dan tisu",
+      "status": "pending",
+      "timestamp": "2026-09-02T15:29:52.911Z",
+      "createdAt": "2026-09-02T15:29:52.911Z"
+    },
+    {
+      "id": "CALL_COFF_1788362991544",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan",
+      "status": "pending",
+      "timestamp": "2026-09-02T15:29:51.544Z",
+      "createdAt": "2026-09-02T15:29:51.544Z"
+    },
+    {
+      "id": "CALL_COFF_1788362991334",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Tolong tambah sendok & garpu",
+      "status": "pending",
+      "timestamp": "2026-09-02T15:29:51.334Z",
+      "createdAt": "2026-09-02T15:29:51.335Z"
+    },
+    {
       "id": "CALL_COFF_1788362971380",
       "merchantId": "coffeenity",
       "table": "Meja 5",
@@ -10760,5 +11743,20 @@
       "timestamp": "2026-09-02T15:26:51.074Z",
       "createdAt": "2026-09-02T15:26:51.074Z"
     }
+  ],
+  "corsOrigins": [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://aiodma.coffeenity.bn",
+    "https://senopati.aiodma.id",
+    "capacitor://localhost",
+    "ionic://localhost",
+    "https://thecoffeenityyard.bn",
+    "https://senopaticafe.id",
+    "https://nativeaidoma.pages.dev"
   ]
 }

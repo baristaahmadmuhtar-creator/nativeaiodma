@@ -436,6 +436,14 @@
         await updateOrderStatus(orderId, nextStatus);
       });
     });
+
+    document.querySelectorAll('.btn-settle-cash').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const orderId = btn.getAttribute('data-order-id');
+        await settleCashPayment(orderId);
+      });
+    });
   }
 
   function createKdsOrderCardHtml(order, stage) {
@@ -450,7 +458,9 @@
     `).join('');
 
     let actionBtnHtml = '';
-    if (stage === 'received') {
+    if (order.paymentStatus === 'PENDING_CASHIER') {
+      actionBtnHtml = `<button class="admin-btn primary btn-settle-cash" data-order-id="${order.id}" style="background: #D97706; border-color: #D97706; font-size: 12px; padding: 6px 12px;">Konfirmasi Lunas (Kasir)</button>`;
+    } else if (stage === 'received') {
       actionBtnHtml = `<button class="admin-btn primary kds-action-btn" data-order-id="${order.id}" data-next-status="preparing" style="font-size: 12px; padding: 6px 12px;">Mulai Racik 👨‍🍳</button>`;
     } else if (stage === 'preparing') {
       actionBtnHtml = `<button class="admin-btn primary kds-action-btn" data-order-id="${order.id}" data-next-status="ready" style="background: #10B981; border-color: #10B981; font-size: 12px; padding: 6px 12px;">Siap Saji 🛎️</button>`;
@@ -459,6 +469,8 @@
     }
 
     const timeAgo = order.createdAt ? formatTimeAgo(new Date(order.createdAt)) : 'Baru saja';
+    const payBadge = order.paymentStatus === 'PENDING_CASHIER' ? 'MENUNGGU KASIR' : (order.paymentMethod || 'PAID');
+    const payClass = order.paymentStatus === 'PENDING_CASHIER' ? 'badge-danger' : 'badge-success';
 
     return `
       <div class="kds-card" data-id="${order.id}" tabindex="0" style="background: #FFFFFF; border: 1px solid var(--admin-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow-sm);">
@@ -469,7 +481,7 @@
           </div>
           <div style="text-align: right;">
             <div style="font-size: 11px; color: var(--admin-text-muted);">${timeAgo}</div>
-            <span class="status-badge badge-success" style="font-size: 10px; padding: 2px 6px;">${order.paymentMethod || 'PAID'}</span>
+            <span class="status-badge ${payClass}" style="font-size: 10px; padding: 2px 6px;">${payBadge}</span>
           </div>
         </div>
         <div style="margin-bottom: 12px;">
@@ -481,6 +493,25 @@
         </div>
       </div>
     `;
+  }
+
+  async function settleCashPayment(orderId) {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/payment`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ paymentStatus: 'PAID' })
+      });
+      if (res.ok) {
+        const ord = adminState.kdsOrders.find(o => o.id === orderId || o.orderNumber === orderId);
+        if (ord) ord.paymentStatus = 'PAID';
+        renderKdsGrid();
+        showAdminToast('success', `Pembayaran tunai pesanan ${ord ? ord.orderNumber : orderId} berhasil dikonfirmasi lunas.`);
+        addAuditLog('ORDER_PAYMENT_SETTLED', `Pesanan ${ord ? ord.orderNumber : orderId} dikonfirmasi lunas oleh kasir.`);
+      }
+    } catch (e) {
+      showAdminToast('error', 'Gagal memproses konfirmasi pelunasan kasir.');
+    }
   }
 
   async function updateOrderStatus(orderId, nextStatus) {
@@ -981,6 +1012,7 @@
 
   // --- 14. MODULE 6: AI CONFIGURATION & GUARDRAILS ---
   function renderAiConfigTab() {
+    renderRagDocumentsTable();
     fetch('/api/admin/config', { headers: getAuthHeaders() })
       .then(r => r.json())
       .then(d => {
@@ -1000,6 +1032,154 @@
       })
       .catch(() => {});
   }
+
+  async function renderRagDocumentsTable() {
+    const tbody = document.getElementById('ragDocumentsTableBody');
+    if (!tbody) return;
+
+    try {
+      const res = await fetch(`/api/admin/rag/documents?merchant=${encodeURIComponent(adminState.activeMerchantId)}`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const docs = d.documents || [];
+        adminState.ragDocuments = docs;
+
+        if (docs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--admin-text-muted); padding: 24px;">Belum ada dokumen RAG untuk outlet ini.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = docs.map(doc => `
+          <tr>
+            <td><strong>${escapeHtml(doc.title)}</strong></td>
+            <td><span class="status-badge" style="background: rgba(255,107,0,0.1); color: #FF6B00;">${escapeHtml(doc.category)}</span></td>
+            <td><div style="display: flex; flex-wrap: wrap; gap: 4px;">${(doc.tags || []).slice(0, 4).map(t => `<span style="font-size: 11px; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px;">#${escapeHtml(t)}</span>`).join('')}</div></td>
+            <td style="font-size: 12px; color: var(--admin-text-muted); max-width: 250px;">${escapeHtml(doc.content.length > 90 ? doc.content.slice(0, 90) + '...' : doc.content)}</td>
+            <td>
+              <button class="admin-btn secondary btn-sm" onclick="window.deleteRagDocument('${doc.id}')" style="color: #EF4444; border-color: rgba(239, 68, 68, 0.3);">Hapus</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    } catch (e) {
+      console.debug('Error loading RAG documents:', e);
+    }
+  }
+
+  async function executeRagQueryTest() {
+    const queryInput = document.getElementById('inputRagTestQuery');
+    const feedback = document.getElementById('ragTestFeedback');
+    const query = queryInput?.value.trim();
+
+    if (!query) {
+      showAdminToast('error', 'Masukkan pertanyaan uji coba terlebih dahulu.');
+      return;
+    }
+
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.innerHTML = '<span style="color: #6B7280;">Menganalisis kemiripan semantik TF-IDF + BM25...</span>';
+    }
+
+    try {
+      const res = await fetch(`/api/admin/rag/test-query?merchant=${encodeURIComponent(adminState.activeMerchantId)}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ query, maxK: 3 })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const results = data.results || [];
+        if (results.length === 0) {
+          feedback.innerHTML = `<span style="color: #EF4444;">Tidak ada dokumen RAG dengan skor relevansi cukup (Threshold >= 0.15). AI akan merespons dengan panduan umum.</span>`;
+        } else {
+          feedback.innerHTML = `
+            <div style="font-weight: 700; color: #10B981; margin-bottom: 6px;">
+              Ditemukan ${results.length} Dokumen Relevan (${data.latencyMs}ms):
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${results.map((r, i) => `
+                <div style="padding: 8px; background: rgba(0,0,0,0.02); border-left: 3px solid #FF6B00; border-radius: 4px;">
+                  <div style="display: flex; justify-content: space-between;">
+                    <strong>#${i + 1} ${escapeHtml(r.title)}</strong>
+                    <span style="font-weight: 700; color: #FF6B00;">Skor: ${r.score}</span>
+                  </div>
+                  <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">Cocok: [${r.matchedTerms.join(', ')}]</div>
+                  <div style="font-size: 12px; color: #374151; margin-top: 4px;">"${escapeHtml(r.snippet)}"</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+    } catch (e) {
+      if (feedback) feedback.innerHTML = `<span style="color: #EF4444;">Gagal menguji query RAG: ${e.message}</span>`;
+    }
+  }
+
+  function openAddRagModal() {
+    const modal = document.getElementById('modalAddRagBackdrop');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeAddRagModal() {
+    const modal = document.getElementById('modalAddRagBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function submitAddRagDocument() {
+    const title = document.getElementById('inputRagTitle')?.value.trim();
+    const category = document.getElementById('selectRagCategory')?.value;
+    const tags = document.getElementById('inputRagTags')?.value.trim();
+    const content = document.getElementById('textareaRagContent')?.value.trim();
+
+    if (!title || !content) {
+      showAdminToast('error', 'Judul dan konten dokumen wajib diisi.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/rag/documents?merchant=${encodeURIComponent(adminState.activeMerchantId)}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ title, category, tags, content })
+      });
+
+      if (res.ok) {
+        showAdminToast('success', 'Dokumen berhasil ditambahkan ke Basis Pengetahuan RAG!');
+        addAuditLog('RAG_DOC_ADDED', `Dokumen RAG "${title}" ditambahkan ke outlet.`);
+        closeAddRagModal();
+        if (document.getElementById('inputRagTitle')) document.getElementById('inputRagTitle').value = '';
+        if (document.getElementById('inputRagTags')) document.getElementById('inputRagTags').value = '';
+        if (document.getElementById('textareaRagContent')) document.getElementById('textareaRagContent').value = '';
+        renderRagDocumentsTable();
+      } else {
+        showAdminToast('error', 'Gagal menambahkan dokumen RAG.');
+      }
+    } catch (e) {
+      showAdminToast('error', 'Kesalahan jaringan saat menambahkan dokumen RAG.');
+    }
+  }
+
+  window.deleteRagDocument = async function(id) {
+    if (!confirm('Hapus dokumen pengetahuan ini dari RAG Knowledge Base?')) return;
+    try {
+      const res = await fetch(`/api/admin/rag/documents/${encodeURIComponent(id)}?merchant=${encodeURIComponent(adminState.activeMerchantId)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        showAdminToast('success', 'Dokumen RAG berhasil dihapus.');
+        addAuditLog('RAG_DOC_DELETED', `Dokumen RAG ${id} dihapus dari outlet.`);
+        renderRagDocumentsTable();
+      }
+    } catch (e) {
+      showAdminToast('error', 'Gagal menghapus dokumen RAG.');
+    }
+  };
 
   async function saveGeminiConfig() {
     const model = document.getElementById('geminiModelSelect')?.value;
@@ -1205,6 +1385,7 @@
 
   // --- 17. MODULE 9: API & INTEGRASI ---
   function renderApiIntegrationsTab() {
+    renderCorsWhitelistTable();
     fetch('/api/admin/api-keys', { headers: getAuthHeaders() })
       .then(r => r.json())
       .then(d => {
@@ -1214,6 +1395,87 @@
       })
       .catch(() => {});
   }
+
+  async function renderCorsWhitelistTable() {
+    const tbody = document.getElementById('corsWhitelistTableBody');
+    if (!tbody) return;
+
+    try {
+      const res = await fetch('/api/admin/cors', { headers: getAuthHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        const origins = d.allAllowedOrigins || [];
+        adminState.corsOrigins = origins;
+
+        if (origins.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--admin-text-muted); padding: 24px;">Belum ada origin custom di whitelist.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = origins.map(orig => {
+          let cat = 'Custom Domain';
+          if (orig.includes('localhost') || orig.includes('127.0.0.1')) cat = 'Local Development';
+          else if (orig.includes('capacitor://') || orig.includes('ionic://')) cat = 'Mobile App / WebView';
+          else if (orig.includes('coffeenity') || orig.includes('senopati')) cat = 'Official Production';
+
+          return `
+            <tr>
+              <td><code style="font-family: monospace; font-size: 12px; color: var(--brand-espresso);">${escapeHtml(orig)}</code></td>
+              <td><span class="status-badge" style="background: rgba(59,130,246,0.1); color: #3B82F6;">${cat}</span></td>
+              <td><span class="status-badge badge-success">Allowed (204 OK)</span></td>
+              <td>
+                <button class="admin-btn secondary btn-sm" onclick="window.deleteCorsOrigin('${encodeURIComponent(orig)}')" style="color: #EF4444; border-color: rgba(239, 68, 68, 0.3);">Hapus</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    } catch (e) {
+      console.debug('Error loading CORS whitelist:', e);
+    }
+  }
+
+  async function addCorsOrigin() {
+    const input = document.getElementById('inputNewCorsOrigin');
+    const origin = input?.value.trim();
+    if (!origin) {
+      showAdminToast('error', 'Masukkan URL origin domain terlebih dahulu.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/cors', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ origin })
+      });
+      if (res.ok) {
+        showAdminToast('success', `Origin ${origin} berhasil ditambahkan.`);
+        addAuditLog('CORS_ORIGIN_ADDED', `Origin ${origin} ditambahkan ke whitelist.`);
+        if (input) input.value = '';
+        renderCorsWhitelistTable();
+      }
+    } catch (e) {
+      showAdminToast('error', 'Gagal menambahkan origin domain.');
+    }
+  }
+
+  window.deleteCorsOrigin = async function(encodedOrigin) {
+    if (!confirm('Hapus origin domain ini dari whitelist CORS?')) return;
+    try {
+      const res = await fetch(`/api/admin/cors/${encodedOrigin}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        showAdminToast('success', 'Origin domain berhasil dihapus.');
+        addAuditLog('CORS_ORIGIN_DELETED', `Origin ${decodeURIComponent(encodedOrigin)} dihapus dari whitelist.`);
+        renderCorsWhitelistTable();
+      }
+    } catch (e) {
+      showAdminToast('error', 'Gagal menghapus origin domain.');
+    }
+  };
 
   async function generateNewApiKey() {
     try {
@@ -1670,6 +1932,26 @@
         showAdminToast('info', 'Parameter AI dikembalikan ke nilai default.');
       });
     }
+
+    // RAG Knowledge Base Controls
+    const btnOpenRag = document.getElementById('btnOpenAddRagModal');
+    if (btnOpenRag) btnOpenRag.addEventListener('click', openAddRagModal);
+
+    const btnCloseRag = document.getElementById('btnCloseAddRagModal');
+    if (btnCloseRag) btnCloseRag.addEventListener('click', closeAddRagModal);
+
+    const btnCancelRag = document.getElementById('btnCancelAddRag');
+    if (btnCancelRag) btnCancelRag.addEventListener('click', closeAddRagModal);
+
+    const btnSubmitRag = document.getElementById('btnSubmitAddRag');
+    if (btnSubmitRag) btnSubmitRag.addEventListener('click', submitAddRagDocument);
+
+    const btnExecRag = document.getElementById('btnExecuteRagTest');
+    if (btnExecRag) btnExecRag.addEventListener('click', executeRagQueryTest);
+
+    // CORS Controls
+    const btnAddCors = document.getElementById('btnAddCorsOrigin');
+    if (btnAddCors) btnAddCors.addEventListener('click', addCorsOrigin);
 
     // Credit & Billing Buttons
     const btnRefill = document.getElementById('btnRefillCredits');
