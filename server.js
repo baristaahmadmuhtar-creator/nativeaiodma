@@ -1932,9 +1932,14 @@ app.post('/api/admin/config', requireAdminAuth, (req, res) => {
   });
 });
 
-// --- ROBUST GEMINI MODEL CALL HELPER (Exclusively Gemini 3.7 Flash) ---
+// --- ROBUST GEMINI MODEL CALL HELPER WITH INTELLIGENT MODEL CASCADE ---
 async function callGeminiWithFallback(apiKey, payload, requestedModel = 'gemini-3.7-flash') {
-  const modelsToTry = ['gemini-3.7-flash'];
+  const candidateModels = [
+    requestedModel,
+    'gemini-3.7-flash',
+    'gemini-3.6-flash'
+  ];
+  const modelsToTry = [...new Set(candidateModels.filter(Boolean))];
   let lastError = 'Unknown error';
   let lastStatus = 500;
 
@@ -1943,15 +1948,22 @@ async function callGeminiWithFallback(apiKey, payload, requestedModel = 'gemini-
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
       const clonedPayload = JSON.parse(JSON.stringify(payload));
       
-      const budget = (db && db.aiConfig && db.aiConfig.thinkingBudget) ? db.aiConfig.thinkingBudget : 512;
-      clonedPayload.generationConfig = clonedPayload.generationConfig || {};
-      clonedPayload.generationConfig.thinking_config = { thinking_budget: budget };
+      // Dynamic thinking configuration: only for supported thinking models
+      if (m.includes('3.7') || m.includes('3.6') || m.includes('2.5')) {
+        const budget = (db && db.aiConfig && db.aiConfig.thinkingBudget) ? db.aiConfig.thinkingBudget : 512;
+        clonedPayload.generationConfig = clonedPayload.generationConfig || {};
+        clonedPayload.generationConfig.thinking_config = { thinking_budget: budget };
+      } else {
+        if (clonedPayload.generationConfig && clonedPayload.generationConfig.thinking_config) {
+          delete clonedPayload.generationConfig.thinking_config;
+        }
+      }
 
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(clonedPayload),
-        signal: AbortSignal.timeout(3500)
+        signal: AbortSignal.timeout(8000)
       });
 
       if (res.ok) {
@@ -1962,7 +1974,14 @@ async function callGeminiWithFallback(apiKey, payload, requestedModel = 'gemini-
       const errText = await res.text();
       lastStatus = res.status;
       lastError = errText;
-      break;
+
+      // If API key itself is completely invalid (400 API_KEY_INVALID), stop trying
+      if (lastStatus === 400 && errText.includes('API_KEY_INVALID')) {
+        break;
+      }
+
+      // If 429 (quota exceeded on this specific model) or 404, cascade to next candidate
+      console.warn(`[GEMINI CASCADE] Model ${m} returned HTTP ${res.status}. Cascading to next supported model...`);
     } catch (e) {
       lastError = e.message;
     }
@@ -1972,7 +1991,7 @@ async function callGeminiWithFallback(apiKey, payload, requestedModel = 'gemini-
 }
 
 // POST /api/ai/chat - Server-side Gemini AI Barista Proxy (Multi-Tenant Aware)
-app.post('/api/ai/chat', createRateLimiter(60000, 30, 'Terlalu banyak permintaan chat. Harap tunggu beberapa detik.'), async (req, res) => {
+app.post('/api/ai/chat', createRateLimiter(60000, 120, 'Terlalu banyak permintaan chat. Harap tunggu beberapa detik.'), async (req, res) => {
   try {
     const merchant = resolveMerchant(req);
     const { message, history = [], clientApiKey, model: clientModel, table = 'Meja 5', cart = [], customerProfile, language = 'id' } = req.body;
@@ -2538,34 +2557,55 @@ Instruksi:
 // POST /api/ai/ping - Test Gemini API connection & latency
 app.post('/api/ai/ping', async (req, res) => {
   try {
-    const { clientApiKey, model: clientModel } = req.body;
-    const apiKey = (clientApiKey || db.aiConfig.apiKey || '').trim();
+    const { clientApiKey, apiKey: bodyApiKey, model: clientModel } = req.body;
+    const apiKey = (bodyApiKey || clientApiKey || db.aiConfig.apiKey || '').trim();
     const model = clientModel || db.aiConfig.model || 'gemini-3.7-flash';
 
     if (!apiKey) {
       return res.json({
         success: true,
+        noKey: true,
         modelUsed: model,
-        message: `Koneksi AI Engine (${model}) aktif dalam mode offline/dev fallback!`,
-        latencyMs: 15,
+        message: 'Belum ada API Key. AI berjalan dalam mode Local Rule Sommelier (Bebas Kuota).',
+        latencyMs: 10,
         isDevFallback: true
       });
     }
 
     const startTime = Date.now();
     const payload = {
-      contents: [{ role: 'user', parts: [{ text: 'Ping test' }] }],
-      generationConfig: { maxOutputTokens: 5 }
+      contents: [{ role: 'user', parts: [{ text: 'Halo, konfirmasi koneksi AIODMA Barista.' }] }],
+      generationConfig: { maxOutputTokens: 10 }
     };
 
     const result = await callGeminiWithFallback(apiKey, payload, model);
     const latencyMs = Date.now() - startTime;
 
     if (!result.success) {
+      let friendlyError = result.error;
+      try {
+        const parsed = JSON.parse(result.error);
+        if (parsed.error && parsed.error.message) {
+          friendlyError = parsed.error.message;
+        }
+      } catch (_) {}
+
+      let guidance = '';
+      if (result.status === 400 || friendlyError.includes('API_KEY_INVALID') || friendlyError.includes('not valid')) {
+        guidance = 'API Key tidak valid. Pastikan menyalin seluruh string kunci dari Google AI Studio (berawalan AIzaSy...).';
+      } else if (result.status === 429 || friendlyError.includes('Quota exceeded') || friendlyError.includes('RESOURCE_EXHAUSTED')) {
+        guidance = 'Batas kuota gratis Google untuk API Key ini telah tercapai (429 Quota Exceeded). Coba buat API Key baru di Google AI Studio atau gunakan akun lain.';
+      } else {
+        guidance = `Gagal terhubung ke Google (${result.status}): ${friendlyError}`;
+      }
+
       return res.status(result.status || 500).json({
         success: false,
-        error: `Gemini API Error: ${result.error}`,
-        latencyMs
+        status: result.status || 500,
+        error: friendlyError,
+        guidance,
+        latencyMs,
+        modelTested: model
       });
     }
 

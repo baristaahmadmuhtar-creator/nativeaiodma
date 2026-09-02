@@ -1022,12 +1022,35 @@
           const tempSlider = document.getElementById('geminiTempSlider');
           const tempLabel = document.getElementById('tempValueLabel');
           const keyInput = document.getElementById('geminiApiKeyInput');
+          const statusBadge = document.getElementById('geminiApiKeyStatusBadge');
 
           if (modSel) modSel.value = d.config.model || 'gemini-3.7-flash';
           if (toneSel) toneSel.value = d.config.tone || 'warm';
           if (tempSlider) tempSlider.value = d.config.temperature || 0.7;
           if (tempLabel) tempLabel.textContent = d.config.temperature || 0.7;
-          if (keyInput && d.config.apiKeyMasked) keyInput.placeholder = d.config.apiKeyMasked;
+
+          if (statusBadge) {
+            statusBadge.style.display = 'inline-block';
+            if (d.config.hasServerApiKey) {
+              statusBadge.className = 'badge success';
+              statusBadge.textContent = '✓ Kunci Aktif di Server';
+              statusBadge.style.background = '#ECFDF5';
+              statusBadge.style.color = '#065F46';
+            } else {
+              statusBadge.className = 'badge warning';
+              statusBadge.textContent = '⚠️ Belum Ada Kunci';
+              statusBadge.style.background = '#FEF3C7';
+              statusBadge.style.color = '#92400E';
+            }
+          }
+
+          if (keyInput) {
+            if (d.config.apiKeyMasked) {
+              keyInput.placeholder = d.config.apiKeyMasked + ' (Tersimpan di Server)';
+            } else {
+              keyInput.placeholder = 'AIzaSy... (Masukkan API Key Google Gemini)';
+            }
+          }
         }
       })
       .catch(() => {});
@@ -1182,23 +1205,53 @@
   };
 
   async function saveGeminiConfig() {
-    const model = document.getElementById('geminiModelSelect')?.value;
-    const tone = document.getElementById('geminiToneSelect')?.value;
+    const model = document.getElementById('geminiModelSelect')?.value || 'gemini-3.7-flash';
+    const tone = document.getElementById('geminiToneSelect')?.value || 'warm';
     const temperature = parseFloat(document.getElementById('geminiTempSlider')?.value || 0.7);
-    const apiKey = document.getElementById('geminiApiKeyInput')?.value;
+    const keyInput = document.getElementById('geminiApiKeyInput');
+    const apiKey = keyInput?.value?.trim() || '';
 
     try {
+      const payload = { model, tone, temperature };
+      if (apiKey) {
+        payload.apiKey = apiKey;
+      }
       const res = await fetch('/api/admin/config', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ model, tone, temperature, apiKey })
+        body: JSON.stringify(payload)
       });
 
-      if (res.ok) {
+      const d = await res.json();
+      if (res.ok && d.success) {
+        if (apiKey) {
+          localStorage.setItem('aiodma_gemini_api_key', apiKey);
+          keyInput.value = '';
+          if (d.config && d.config.apiKeyMasked) {
+            keyInput.placeholder = d.config.apiKeyMasked + ' (Tersimpan di Server)';
+          }
+        }
+        localStorage.setItem('aiodma_gemini_model', model);
+        localStorage.setItem('aiodma_gemini_temperature', temperature);
+
+        const statusBadge = document.getElementById('geminiApiKeyStatusBadge');
+        if (statusBadge && d.config?.hasServerApiKey) {
+          statusBadge.style.display = 'inline-block';
+          statusBadge.className = 'badge success';
+          statusBadge.textContent = '✓ Kunci Aktif di Server';
+          statusBadge.style.background = '#ECFDF5';
+          statusBadge.style.color = '#065F46';
+        }
+
         addAuditLog('AI_CONFIG_SAVED', `Konfigurasi AI diperbarui: Model ${model}, Tone ${tone}, Temp ${temperature}.`);
-        showAdminToast('success', 'Pengaturan AI Gemini berhasil disimpan secara aman.');
+        showAdminToast('success', 'Pengaturan AI Gemini berhasil disimpan secara aman!');
+
+        // Run auto-test if new key was provided
+        if (apiKey) {
+          testGeminiPing();
+        }
       } else {
-        showAdminToast('error', 'Gagal menyimpan konfigurasi AI.');
+        showAdminToast('error', d.error || 'Gagal menyimpan konfigurasi AI.');
       }
     } catch (e) {
       showAdminToast('error', 'Kesalahan jaringan saat menyimpan konfigurasi AI.');
@@ -1207,34 +1260,63 @@
 
   async function testGeminiPing() {
     const feedback = document.getElementById('geminiConnectionFeedback');
+    const keyInput = document.getElementById('geminiApiKeyInput');
+    const model = document.getElementById('geminiModelSelect')?.value || 'gemini-3.7-flash';
+    const inputApiKey = keyInput?.value?.trim() || '';
+
     if (feedback) {
       feedback.style.display = 'block';
       feedback.style.background = '#EFF6FF';
       feedback.style.color = '#1D4ED8';
-      feedback.textContent = 'Menguji koneksi ke Google Gemini Live REST Engine...';
+      feedback.innerHTML = '⏳ Menguji koneksi ke Google Gemini Live REST Engine...';
     }
 
     try {
       const res = await fetch('/api/ai/ping', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gemini-3.7-flash' })
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          apiKey: inputApiKey, // Pass input key if entered, or server tests saved key
+          model: model
+        })
       });
 
-      if (res.ok || res.status === 200 || res.status === 500) {
-        if (feedback) {
+      const data = await res.json();
+
+      if (feedback) {
+        if (res.ok && data.success && !data.isDevFallback) {
           feedback.style.background = '#ECFDF5';
           feedback.style.color = '#065F46';
-          feedback.textContent = '✔ Server AI Engine Siap (Gemini 3.7 Flash & Fallback Offline Siap Melayani).';
+          feedback.innerHTML = `<strong>✔ Koneksi Google Gemini Aktif!</strong><br>Model Terhubung: <code>${data.model || model}</code> &bull; Latensi: <strong>${data.latencyMs || 0}ms</strong>`;
+          showAdminToast('success', `Koneksi Google Gemini (${data.model || model}) Berhasil!`);
+
+          const statusBadge = document.getElementById('geminiApiKeyStatusBadge');
+          if (statusBadge) {
+            statusBadge.style.display = 'inline-block';
+            statusBadge.textContent = '✓ Terverifikasi Google';
+            statusBadge.style.background = '#ECFDF5';
+            statusBadge.style.color = '#065F46';
+          }
+        } else if (data.noKey || data.isDevFallback) {
+          feedback.style.background = '#FFFBEB';
+          feedback.style.color = '#B45309';
+          feedback.innerHTML = `<strong>⚠️ Belum ada API Key:</strong> Masukkan API Key Google Gemini (berawalan <code>AIzaSy...</code>) untuk mengaktifkan AI secara live. Saat ini AI menggunakan mesin offline.`;
+          showAdminToast('info', 'Belum ada API Key Google Gemini.');
+        } else {
+          feedback.style.background = '#FEF2F2';
+          feedback.style.color = '#991B1B';
+          const errMsg = data.guidance || data.error || 'Koneksi ke Google Gemini gagal';
+          feedback.innerHTML = `<strong>✖ Uji Koneksi Gagal (HTTP ${data.status || res.status}):</strong><br>${errMsg}`;
+          showAdminToast('error', data.guidance || 'Gagal terhubung ke Google Gemini.');
         }
-        showAdminToast('success', 'Koneksi AI Engine Aktif!');
       }
     } catch (e) {
       if (feedback) {
         feedback.style.background = '#FEF2F2';
         feedback.style.color = '#991B1B';
-        feedback.textContent = 'Koneksi lokal aktif dengan proteksi offline.';
+        feedback.innerHTML = `<strong>✖ Kesalahan Jaringan:</strong> ${e.message}`;
       }
+      showAdminToast('error', 'Gagal menghubungi server.');
     }
   }
 
