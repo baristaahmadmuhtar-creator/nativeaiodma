@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIODMA — Admin Portal & Operations Hub (PRD v1.1)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111111'/><path d='M70 36h6a10 10 0 0 1 0 20h-6M20 36h52v24a18 18 0 0 1-18 18H38a18 18 0 0 1-18-18V36z' stroke='%23D97706' stroke-width='6' fill='none'/></svg>">
+  <link rel="stylesheet" href="css/styles.css?v=2.0">
+  <link rel="stylesheet" href="css/admin.css?v=2.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+  <!-- Top Global Navigation Bar (PRD Spec Section 2) -->
+  <header class="admin-topbar" role="banner">
+    <div class="admin-brand">
+      <div class="admin-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+      </div>
+      <div>
+        <div class="brand-title">AIODMA <span class="brand-badge">ADMIN OPS v2.0</span></div>
+        <div class="brand-subtitle" id="topbarMerchantSubtitle">The Coffeenity Yard • Doughboy Pizza Kayu Api</div>
+      </div>
+    </div>
+
+    <!-- Active System Status Indicators -->
+    <div class="topbar-status-group" role="status" aria-live="polite">
+      <div class="status-pill status-live" title="Gemini Live REST Engine Active">
+        <span class="pulse-dot"></span>
+        <span id="topAiStatusText">AI Engine: Online (Gemini 3.7 Flash)</span>
+      </div>
+
+      <div class="status-pill status-credits" id="topCreditPill" title="Token Wallet Sisa">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 6 12 12 16 14"></polygon></svg>
+        <span id="topCreditText">Credits: 48,155 / 50k</span>
+      </div>
+    </div>
+
+    <!-- Multi-Tenant & RBAC Role Switcher & Header Actions -->
+    <div class="topbar-actions">
+      <!-- Live Multi-Tenant Merchant Selector -->
+      <select id="adminMerchantSelector" class="admin-select-box" style="font-weight: 700; border-color: #D97706;" aria-label="Pilih Outlet Tenant">
+        <option value="coffeenity" selected>Outlet: The Coffeenity Yard (BND $)</option>
+        <option value="senopati_cafe">Outlet: Senopati Artisan Cafe (IDR Rp)</option>
+      </select>
+
+      <!-- Live RBAC Role Switcher -->
+      <select id="adminRoleSelector" class="admin-select-box" style="font-weight: 700; border-color: #3B82F6;" aria-label="Pilih Role RBAC">
+        <option value="owner" selected>Role: Owner (Super Admin)</option>
+        <option value="manager">Role: Manager</option>
+        <option value="kasir">Role: Kasir (Akses Terbatas)</option>
+      </select>
+
+      <!-- Launch Onboarding Wizard -->
+      <button class="topbar-btn primary-action" id="btnLaunchWizard" title="Buka Wizard Setup Outlet Baru" aria-label="Buka Wizard Setup Outlet">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        <span>Wizard Setup</span>
+      </button>
+
+      <a href="index.html" class="topbar-btn" id="linkCustomerApp" target="_blank" title="Buka Customer Web App Meja 5" aria-label="Buka Customer Web App Meja 5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="4"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+        <span>Customer App</span>
+      </a>
+
+      <div class="admin-user-profile" role="region" aria-label="Profil Pengguna">
+        <div class="user-avatar" id="adminUserAvatar">AD</div>
+        <div>
+          <div style="font-size: 12px; font-weight: 700;" id="adminUserName">Ahmad Owner</div>
+          <div style="font-size: 10px; color: var(--admin-text-muted);" id="adminUserRoleLabel">Super Admin (MFA Active)</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="adminLiveAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="admin-layout-container">
+    <!-- Sidebar Navigation with 4 Strict Groups (PRD Spec Section 2) -->
+    <aside class="admin-sidebar" role="navigation" aria-label="Menu Navigasi Admin">
+      <nav class="sidebar-nav-menu">
+        
+        <!-- GROUP 1: RINGKASAN -->
+        <div class="nav-group-label">RINGKASAN</div>
+        <button class="nav-item-btn active" data-tab="tabAnalytics" data-rbac="kasir,manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Dashboard Analytics</span>
+        </button>
+
+        <!-- GROUP 2: OPERASIONAL HARIAN -->
+        <div class="nav-group-label">OPERASIONAL HARIAN</div>
+        <button class="nav-item-btn" data-tab="tabKDS" data-rbac="kasir,manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+          <span>Kitchen POS Display</span>
+          <span class="nav-badge" id="sidebarKdsBadge">3</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabTableQR" data-rbac="kasir,manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Order & Meja (QR)</span>
+          <span class="nav-badge warning" id="sidebarTableBadge">8</span>
+        </button>
+
+        <!-- GROUP 3: KONTEN & PENJUALAN -->
+        <div class="nav-group-label">KONTEN & PENJUALAN</div>
+        <button class="nav-item-btn" data-tab="tabMenuStock" data-rbac="kasir,manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>Menu Catalog & 86</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabPromoPricing" data-rbac="manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <span>Promo & Pricing</span>
+          <span class="nav-lock-badge" data-rbac-lock="kasir">Manager</span>
+        </button>
+
+        <!-- GROUP 4: PENGATURAN -->
+        <div class="nav-group-label">PENGATURAN</div>
+        <button class="nav-item-btn" data-tab="tabAiGuardrails" data-rbac="manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>AI Configuration</span>
+          <span class="nav-lock-badge" data-rbac-lock="kasir">Manager</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabCreditBilling" data-rbac="owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          <span>Credit & Billing</span>
+          <span class="nav-lock-badge" data-rbac-lock="kasir,manager">Owner</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabAdminSecurity" data-rbac="owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Tim & Keamanan</span>
+          <span class="nav-lock-badge" data-rbac-lock="kasir,manager">Owner</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabApiIntegrations" data-rbac="owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>API & Integrasi</span>
+          <span class="nav-lock-badge" data-rbac-lock="kasir,manager">Owner</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabAuditLog" data-rbac="owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          <span>Audit Log System</span>
+          <span class="nav-lock-badge" data-rbac-lock="kasir,manager">Owner</span>
+        </button>
+
+        <button class="nav-item-btn" data-tab="tabAdminDocs" data-rbac="kasir,manager,owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <span>Bantuan & Panduan</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-bottom-info">
+        <div><strong>AIODMA OS v2.0-PROD</strong></div>
+        <div>HMAC-SHA256 Signed Security</div>
+        <div>Zero Emoji • Desktop-First Architecture</div>
+      </div>
+    </aside>
+
+    <!-- Main Viewport Area -->
+    <main class="admin-main-viewport">
+
+      <!-- ============================================================
+           MODULE 1: DASHBOARD (REAL-TIME ANALYTICS) - DEFAULT LANDING
+           ============================================================ -->
+      <section id="tabAnalytics" class="admin-tab-pane active">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Real-Time Business & AI Analytics</h1>
+            <p class="pane-desc">Pemantauan omzet penjualan, efektivitas rekomendasi AI (Upsell Lift), dan efisiensi biaya token.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn secondary" id="btnRefreshAnalytics">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Refresh Data
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Core Metric KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Gross Revenue (Hari Ini)</div>
+            <div class="kpi-value" id="kpiGrossRev">Rp 4.820.000</div>
+            <div class="kpi-trend positive">+14.2% vs kemarin</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Total Pesanan Selesai</div>
+            <div class="kpi-value" id="kpiTotalOrders">128 Pesanan</div>
+            <div class="kpi-trend positive">100% Akurasi Meja (0 Error)</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Average Order Value (AOV)</div>
+            <div class="kpi-value" id="kpiAov">Rp 37.650</div>
+            <div class="kpi-trend positive">+22.8% AI Upsell Lift</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">AI Token & Cost Metering</div>
+            <div class="kpi-value" id="kpiCostPerOrder">Rp 12 / Order</div>
+            <div class="kpi-trend neutral" id="kpiTierDist">Tier 0 (38%) • Tier 1 (46%) • Tier 2 (16%)</div>
+          </div>
+        </div>
+
+        <!-- Charts & Top Upsell Items -->
+        <div class="analytics-two-col">
+          <div class="admin-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 class="type-heading" style="margin: 0;">Hourly Sales Heatmap (Hari Ini)</h3>
+              <span class="type-caption">WIB (GMT+7)</span>
+            </div>
+            <div class="chart-bars-wrap">
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 25%;"></div><span>09:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 40%;"></div><span>10:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 65%;"></div><span>11:00</span></div>
+              <div class="chart-bar-item active"><div class="bar-fill" style="height: 95%;"></div><span>12:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 85%;"></div><span>13:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 50%;"></div><span>14:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 45%;"></div><span>15:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 70%;"></div><span>16:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 90%;"></div><span>17:00</span></div>
+              <div class="chart-bar-item"><div class="bar-fill" style="height: 80%;"></div><span>18:00</span></div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 class="type-heading" style="margin: 0;">Top Menu Konversi AI Concierge</h3>
+              <span class="type-caption">Attach Rate: 24.5%</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #F9FAFB; border: 1px solid rgba(0,0,0,0.05); border-radius: 10px;">
+                <div>
+                  <div class="type-data-emphasis">Kopi Milk Aren + Extra Shot</div>
+                  <div class="type-caption">64 pesanan via rekomendasi AI</div>
+                </div>
+                <div class="type-data-emphasis" style="color: #059669; font-weight: 700;">Rp 1.984.000</div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #F9FAFB; border: 1px solid rgba(0,0,0,0.05); border-radius: 10px;">
+                <div>
+                  <div class="type-data-emphasis">Beef Pepperoni Pizza + Truffle Fries</div>
+                  <div class="type-caption">42 pesanan via pairing AI</div>
+                </div>
+                <div class="type-data-emphasis" style="color: #059669; font-weight: 700;">Rp 1.512.000</div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #F9FAFB; border: 1px solid rgba(0,0,0,0.05); border-radius: 10px;">
+                <div>
+                  <div class="type-data-emphasis">Iced Peach Tea + Burnt Cheesecake</div>
+                  <div class="type-caption">38 pesanan via up-sell manis</div>
+                </div>
+                <div class="type-data-emphasis" style="color: #059669; font-weight: 700;">Rp 1.482.000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 2: KITCHEN POS DISPLAY (KDS LIVE)
+           ============================================================ -->
+      <section id="tabKDS" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Kitchen POS Display (KDS Live)</h1>
+            <p class="pane-desc">Alur pesanan real-time dari meja pelanggan ke dapur. Setiap tiket terhubung langsung dengan nomor meja QR.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn secondary" id="btnTestThermalPrinter">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Test Thermal Printer
+            </button>
+            <button class="admin-btn primary" id="btnAdminKdsNewTestOrder">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Simulasi Order Masuk
+            </button>
+          </div>
+        </div>
+
+        <div class="kds-admin-grid">
+          <!-- Column 1: Received -->
+          <div class="kds-admin-col col-received">
+            <div class="kds-col-bar">
+              <span>1. DITERIMA / BARU MASUK</span>
+              <span id="kdsAdminCountRec">1</span>
+            </div>
+            <div class="kds-cards-stream" id="kdsAdminRecList"></div>
+          </div>
+
+          <!-- Column 2: Preparing -->
+          <div class="kds-admin-col col-preparing">
+            <div class="kds-col-bar">
+              <span>2. SEDANG DIRACIK (PREPARING)</span>
+              <span id="kdsAdminCountPrep">1</span>
+            </div>
+            <div class="kds-cards-stream" id="kdsAdminPrepList"></div>
+          </div>
+
+          <!-- Column 3: Ready to Serve -->
+          <div class="kds-admin-col col-ready">
+            <div class="kds-col-bar">
+              <span>3. SIAP SAJI / ANTAR</span>
+              <span id="kdsAdminCountRdy">1</span>
+            </div>
+            <div class="kds-cards-stream" id="kdsAdminRdyList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 3: ORDER & MEJA (TABLE & QR MANAGEMENT)
+           ============================================================ -->
+      <section id="tabTableQR" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Order & Meja (Table & QR Standee Tokens)</h1>
+            <p class="pane-desc">Setiap meja memiliki token kriptografis bertanda tangan HMAC. Pelanggan memindai 1 QR standee untuk langsung terhubung ke sesi meja.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn primary" id="btnPrintAllQRs">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Cetak Standee QR (Meja 1-8)
+            </button>
+          </div>
+        </div>
+
+        <div class="tables-cards-grid" id="adminTablesGrid">
+          <!-- Dynamically populated tables 1 to 8 -->
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 4: MENU CATALOG & 86 STOCK MANAGER (36 ITEMS)
+           ============================================================ -->
+      <section id="tabMenuStock" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Menu Catalog & Manajemen Stok (86)</h1>
+            <p class="pane-desc">Kelola 36 menu resmi. Toggle 86 (Habis) langsung tersinkron seketika ke AI Agent dan katalog visual pelanggan.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn secondary" id="btnExportCsvMenu">Ekspor CSV</button>
+            <button class="admin-btn secondary" id="btnImportCsvMenu">Impor CSV</button>
+            <button class="admin-btn primary" id="btnOpenAddMenuDrawer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              + Tambah Menu Baru
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <!-- Table Toolbar (PRD Spec Section 4.1) -->
+          <div class="table-toolbar">
+            <div class="table-search-wrap">
+              <input type="text" id="adminMenuSearch" class="admin-search-input" placeholder="Cari nama menu, kategori, atau deskripsi..." />
+              <select id="adminCategoryFilter" class="admin-select-box">
+                <option value="all">Semua Kategori (36 Menu)</option>
+                <option value="kopi">Kopi (8 Menu)</option>
+                <option value="non-kopi">Non-Kopi (6 Menu)</option>
+                <option value="pizza">Pizza (6 Menu)</option>
+                <option value="makanan">Makanan (6 Menu)</option>
+                <option value="pastry">Cake & Pastry (6 Menu)</option>
+                <option value="cemilan">Cemilan (4 Menu)</option>
+              </select>
+            </div>
+
+            <!-- Bulk Actions Bar -->
+            <div class="bulk-actions-bar" id="menuBulkActionsBar">
+              <span id="bulkSelectedCount">0 item terpilih</span>
+              <button class="admin-btn secondary" id="btnBulkMarkAvailable" style="padding: 4px 10px; font-size: 11px;">Set Tersedia</button>
+              <button class="admin-btn secondary" id="btnBulkMark86" style="padding: 4px 10px; font-size: 11px;">Set 86 (Habis)</button>
+            </div>
+          </div>
+
+          <!-- Reusable Data Table (PRD Spec Section 4.1) -->
+          <div class="admin-table-wrap">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;"><input type="checkbox" id="chkSelectAllMenu" /></th>
+                  <th style="width: 60px;">Foto</th>
+                  <th class="sortable" data-sort="name">Nama Menu ▲▼</th>
+                  <th class="sortable" data-sort="category">Kategori ▲▼</th>
+                  <th class="sortable" data-sort="price">Harga Satuan ▲▼</th>
+                  <th>Badge</th>
+                  <th>Status Stok (86)</th>
+                  <th style="text-align: right;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="adminMenuTableBody">
+                <!-- Dynamically injected 36 menu items -->
+              </tbody>
+            </table>
+
+            <!-- Table Pagination Footer (PRD Spec Section 4.1) -->
+            <div class="table-pagination-footer">
+              <div id="tablePaginationInfo">Menampilkan 1–10 dari 36 menu</div>
+              <div class="pagination-controls">
+                <button class="admin-btn secondary" id="btnPrevPage" style="padding: 4px 10px; font-size: 11px;" disabled>Sebelumnya</button>
+                <span id="paginationPageNum" style="font-weight: 700;">Halaman 1 / 4</span>
+                <button class="admin-btn secondary" id="btnNextPage" style="padding: 4px 10px; font-size: 11px;">Berikutnya</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 5: PROMO & PRICING ENGINE
+           ============================================================ -->
+      <section id="tabPromoPricing" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Promo & Pricing Engine</h1>
+            <p class="pane-desc">Atur voucher, diskon otomatis berbasis keranjang, dan kuota promo yang divalidasi real-time oleh AI Concierge.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn primary" id="btnOpenAddPromoDrawer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              + Buat Promo Baru
+            </button>
+          </div>
+        </div>
+
+        <div class="analytics-two-col">
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 16px 0;">Daftar Promo Aktif</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="padding: 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div class="type-data-emphasis">Diskon Sore Kopi (20%)</div>
+                  <div class="type-caption">Khusus Kopi Milk Aren & Latte • 14:00 - 17:00 • Min. Rp 50.000</div>
+                </div>
+                <span class="status-badge badge-success">Aktif</span>
+              </div>
+              <div style="padding: 14px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div class="type-data-emphasis">Combo Peach Tea + Burnt Cheesecake</div>
+                  <div class="type-caption">Hemat Rp 6.000 • Otomatis ditawarkan AI saat pilih Peach Tea</div>
+                </div>
+                <span class="status-badge badge-success">Aktif</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 16px 0;">Aturan Validasi Promo Real-Time</h3>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
+                <input type="checkbox" checked disabled />
+                <span>Otomatis terapkan promo paling menguntungkan pelanggan</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
+                <input type="checkbox" checked disabled />
+                <span>Kadaluarsa ketat (AI tidak pernah menawarkan promo yang habis kuota)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
+                <input type="checkbox" checked disabled />
+                <span>Cegah penumpukan diskon ganda (No Promo Stacking Abuse)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 6: AI CONFIGURATION & GUARDRAILS (GEMINI LIVE REST ENGINE)
+           ============================================================ -->
+      <section id="tabAiGuardrails" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">AI Configuration & Guardrails (Gemini Live REST Engine)</h1>
+            <p class="pane-desc">Konfigurasi endpoint REST API Gemini, model, nada bicara AI Concierge, dan pengamanan Table Anti-Bypass.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn secondary" id="btnResetAiGuardrails">Reset Default</button>
+            <button class="admin-btn primary" id="btnSaveGeminiConfig">Simpan Pengaturan AI</button>
+          </div>
+        </div>
+
+        <div class="analytics-two-col">
+          <!-- Gemini Live Engine Settings Card -->
+          <div class="admin-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 class="type-heading" style="margin: 0;">Gemini Live Engine Configuration</h3>
+              <span class="status-badge" id="geminiLiveStatusBadge" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">Online (Live REST)</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div class="form-field-group">
+                <label class="form-label">Model Gemini Active</label>
+                <select id="geminiModelSelect" class="form-select">
+                  <option value="gemini-3.7-flash" selected>gemini-3.7-flash (Default Balanced Cafe • Biaya & Kecerdasan Optimal)</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultra Cepat & Paling Hemat Kuota)</option>
+                  <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Penalaran Kompleks / Deep Reasoning Pro)</option>
+                  <option value="gemini-2.5-pro">gemini-2.5-pro (Pro Generasi v2.5 • Penalaran Sommelier)</option>
+                  <option value="gemini-2.5-flash">gemini-2.5-flash (Flash Generasi v2.5 • Responsif)</option>
+                </select>
+              </div>
+
+              <div class="form-field-group">
+                <label class="form-label">Gemini API Key (Tersimpan Aman di Browser)</label>
+                <div style="display: flex; gap: 8px;">
+                  <input type="password" id="geminiApiKeyInput" class="form-input" placeholder="AIzaSy..." style="flex: 1;" />
+                  <button class="admin-btn secondary" id="btnToggleApiKeyShow" type="button">Lihat</button>
+                  <button class="admin-btn secondary" id="btnTestGeminiConnection" type="button" style="border-color: #10B981; color: #10B981; font-weight: 700;">Test Koneksi</button>
+                </div>
+                <div id="geminiConnectionFeedback" style="display: none; margin-top: 8px; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;"></div>
+                <div class="type-caption">Kunci API Google Gemini untuk mengaktifkan AI Concierge Live secara instan.</div>
+              </div>
+
+              <div class="form-field-group">
+                <label class="form-label">Nada Bicara & Persona AI Concierge</label>
+                <select id="geminiToneSelect" class="form-select">
+                  <option value="warm" selected>Ramah, Hangat & Sopan (Artisan Barista Cafe - Rekomendasi)</option>
+                  <option value="fast">Cepat, Efisien & Ringkas (To the point)</option>
+                  <option value="formal">Formal & Baku (Fine Dining)</option>
+                </select>
+              </div>
+
+              <div class="form-field-group">
+                <div style="display: flex; justify-content: space-between;">
+                  <label class="form-label">Temperature: <span id="tempValueLabel">0.7</span></label>
+                </div>
+                <input type="range" id="geminiTempSlider" min="0.0" max="1.0" step="0.1" value="0.7" style="accent-color: #10B981;" />
+                <div class="type-caption">Preset Balanced Cafe: 0.7 (Keseimbangan sempurna antara deskripsi gastronomi yang menggugah selera dan presisi menu anti-halusinasi).</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strict Guardrails Checklist -->
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 16px 0;">Strict Security Guardrails Active</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="padding: 12px 14px; background: #ECFDF5; border: 1px solid rgba(16, 185, 129, 0.2); border-left: 4px solid #10B981; border-radius: 10px;">
+                <div class="type-data-emphasis" style="color: #065F46;">Zero-Emoji Policy Enforced</div>
+                <div class="type-caption" style="color: #047857;">Dilarang keras menyertakan emoji di seluruh respon pelanggan.</div>
+              </div>
+              <div style="padding: 12px 14px; background: #ECFDF5; border: 1px solid rgba(16, 185, 129, 0.2); border-left: 4px solid #10B981; border-radius: 10px;">
+                <div class="type-data-emphasis" style="color: #065F46;">Table Anti-Bypass Enforced</div>
+                <div class="type-caption" style="color: #047857;">Pesanan hanya diantar ke Meja 5 sesuai QR sesi asli.</div>
+              </div>
+              <div style="padding: 12px 14px; background: #ECFDF5; border: 1px solid rgba(16, 185, 129, 0.2); border-left: 4px solid #10B981; border-radius: 10px;">
+                <div class="type-data-emphasis" style="color: #065F46;">Anti-Halusinasi Menu & Harga</div>
+                <div class="type-caption" style="color: #047857;">Hanya 36 menu terdaftar yang dapat ditawarkan dan dipesan.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 7: CREDIT & BILLING (TOKEN WALLET)
+           ============================================================ -->
+      <section id="tabCreditBilling" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Credit & Token Billing</h1>
+            <p class="pane-desc">Saldo token AI untuk outlet Anda. 1 pesanan rata-rata mengonsumsi 15–20 token (~Rp 12).</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn primary" id="btnRefillCredits">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Isi Ulang Saldo Token
+            </button>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Sisa Saldo Kredit Token</div>
+            <div class="kpi-value" id="billingRemainingCredits">48.155 Token</div>
+            <div class="kpi-trend positive">Estimasi: ~2.400 Pesanan lagi</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total Pemakaian Hari Ini</div>
+            <div class="kpi-value">1.845 Token</div>
+            <div class="kpi-trend neutral">Biaya: $0.042 (Rp 680)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Auto-Topup Threshold</div>
+            <div class="kpi-value">5.000 Token</div>
+            <div class="kpi-trend positive">Status: Aktif</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Efisiensi Biaya per Pesanan</div>
+            <div class="kpi-value">99.2%</div>
+            <div class="kpi-trend positive">Sangat Optimal (Tier 1 Default)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 8: TIM & KEAMANAN (RBAC & SESSIONS)
+           ============================================================ -->
+      <section id="tabAdminSecurity" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Tim & Keamanan (RBAC & Sesi Aktif)</h1>
+            <p class="pane-desc">Kelola hak akses staf kasir, manajer, dan pemilik outlet. Dilengkapi verifikasi MFA.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn primary" id="btnOpenAddStaffDrawer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Tambah Anggota Tim
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <div class="admin-table-wrap">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Nama Anggota</th>
+                  <th>Role Akses</th>
+                  <th>Status MFA</th>
+                  <th>Terakhir Aktif</th>
+                  <th style="text-align: right;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="adminStaffTableBody">
+                <tr>
+                  <td>
+                    <div class="type-data-emphasis">Ahmad Owner</div>
+                    <div class="type-caption">ahmad@aiodma.cafe</div>
+                  </td>
+                  <td><span class="status-badge badge-success">Owner (Super Admin)</span></td>
+                  <td><span class="status-badge badge-success">Aktif (Authenticator)</span></td>
+                  <td class="type-caption">Sedang Aktif (IP: 192.168.100.26)</td>
+                  <td style="text-align: right;"><button class="admin-btn secondary" style="padding: 4px 8px; font-size: 11px;">Kelola</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="type-data-emphasis">Budi Manager</div>
+                    <div class="type-caption">budi.ops@aiodma.cafe</div>
+                  </td>
+                  <td><span class="status-badge badge-neutral">Manager</span></td>
+                  <td><span class="status-badge badge-success">Aktif (SMS OTP)</span></td>
+                  <td class="type-caption">10 menit lalu</td>
+                  <td style="text-align: right;"><button class="admin-btn secondary" style="padding: 4px 8px; font-size: 11px;">Kelola</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="type-data-emphasis">Siti Kasir</div>
+                    <div class="type-caption">kasir01@aiodma.cafe</div>
+                  </td>
+                  <td><span class="status-badge badge-warning">Kasir (Akses Terbatas)</span></td>
+                  <td><span class="status-badge badge-neutral">PIN Standar</span></td>
+                  <td class="type-caption">Hari ini 08:30 WIB</td>
+                  <td style="text-align: right;"><button class="admin-btn secondary" style="padding: 4px 8px; font-size: 11px;">Kelola</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 9: API & INTEGRASI WEBHOOK
+           ============================================================ -->
+      <section id="tabApiIntegrations" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">API & Integrasi Webhook</h1>
+            <p class="pane-desc">Koneksikan AIODMA dengan POS legacy Moka/Pawoon, ERP akuntansi, dan webhook status order dapur.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn primary" id="btnOpenGenerateApiKey">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Generate API Key Baru
+            </button>
+          </div>
+        </div>
+
+        <div class="analytics-two-col">
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 16px 0;">Active Production API Keys</h3>
+            <div style="padding: 14px; background: #F9FAFB; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 10px;">
+              <div class="type-data-emphasis">Production POS Live Key</div>
+              <div class="type-caption" style="font-family: -apple-system, monospace; margin-top: 4px; color: var(--brand-espresso);">aiodma_live_98a76bc3d4e5f6...</div>
+              <div style="margin-top: 8px;"><span class="status-badge badge-success">Aktif • Rate Limit: 120 req/min</span></div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 16px 0;">Webhook Dispatcher Endpoint</h3>
+            <div class="form-field-group">
+              <label class="form-label">Order Received & Paid Webhook URL</label>
+              <input type="text" id="inputWebhookUrl" class="form-input" value="https://api.pos-outlet.com/v1/webhooks/aiodma" />
+              <button class="admin-btn secondary" id="btnTestWebhook" style="align-self: flex-start; margin-top: 8px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Kirim Test Ping Webhook
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 10: REAL-TIME AUDIT LOG SYSTEM (READ-ONLY FOR OWNER)
+           ============================================================ -->
+      <section id="tabAuditLog" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Audit Log System (Aktivitas Keamanan & Operasional)</h1>
+            <p class="pane-desc">Rekam jejak seluruh perubahan harga menu, aktivasi 86 stok, konfigurasi AI, dan transaksi kasir secara immutable.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn secondary" id="btnClearAuditLogs">Bersihkan Filter</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <div class="table-toolbar">
+            <input type="text" id="adminAuditSearch" class="admin-search-input" placeholder="Filter berdasarkan aksi, aktor, atau kata kunci..." />
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Waktu (WIB)</th>
+                  <th>Tipe Aksi</th>
+                  <th>Aktor</th>
+                  <th>Rincian Aktivitas</th>
+                </tr>
+              </thead>
+              <tbody id="adminAuditLogTableBody">
+                <!-- Dynamically populated audit log entries -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           MODULE 11: BANTUAN & PANDUAN (HELP CENTER & ONBOARDING WIZARD)
+           ============================================================ -->
+      <section id="tabAdminDocs" class="admin-tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Bantuan, Panduan & Wizard Setup Outlet</h1>
+            <p class="pane-desc">Panduan operasional harian untuk staf outlet, barista, kasir, dan pengelola kafe.</p>
+          </div>
+          <div class="header-actions">
+            <button class="admin-btn primary" id="btnStartWizardFromDocs">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+              Mulai Wizard Setup Outlet
+            </button>
+          </div>
+        </div>
+
+        <div class="analytics-two-col">
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 14px 0;">Pertanyaan Umum (FAQ Staf)</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="padding: 12px 14px; background: #F9FAFB; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 10px;">
+                <div class="type-data-emphasis">Bagaimana jika bahan baku kopi/pizza habis?</div>
+                <div class="type-caption" style="margin-top: 4px;">Buka tab <strong>Menu Catalog & 86</strong>, cari menu tersebut, dan klik saklar toggle menjadi <strong>HABIS (86)</strong>. AI tidak akan lagi menawarkannya ke pelanggan.</div>
+              </div>
+              <div style="padding: 12px 14px; background: #F9FAFB; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 10px;">
+                <div class="type-data-emphasis">Apakah pelanggan bisa menipu nomor meja?</div>
+                <div class="type-caption" style="margin-top: 4px;">Tidak bisa. Setiap QR meja memiliki token HMAC kriptografis. AI Engine memiliki aturan ketat (Table Anti-Bypass) yang mengunci pesanan hanya ke meja QR asli.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <h3 class="type-heading" style="margin: 0 0 14px 0;">Status Kesiapan Produksi (Definition of Done)</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+              <div style="display: flex; align-items: center; gap: 8px; color: #059669; font-weight: 600;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Real Gemini Live Engine & Tool Calling terintegrasi
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; color: #059669; font-weight: 600;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                36 Menu Terkurasi & Modifiers Dinamis Spesifik Kategori
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; color: #059669; font-weight: 600;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Zero Emoji & Anti-Halusinasi Guardrails Aktif
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; color: #059669; font-weight: 600;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Native Apple SwiftUI Light Pro UX Harmonisasi 100%
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; color: #059669; font-weight: 600;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                RBAC UI Enforcement (Owner, Manager, Kasir)
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================================
+       REUSABLE SIDE DRAWER / FORM PANEL (PRD Spec Section 4.2)
+       ============================================================ -->
+  <div class="drawer-backdrop" id="adminFormDrawer" style="display: none;">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3 class="type-heading" id="drawerTitle" style="margin: 0;">Tambah Menu Baru</h3>
+        <button class="row-actions-btn" id="btnCloseDrawer" style="font-size: 16px;">✕</button>
+      </div>
+
+      <div class="drawer-body" id="drawerBody">
+        <!-- Injected form fields based on active context -->
+      </div>
+
+      <div class="drawer-footer">
+        <button class="admin-btn secondary" id="btnCancelDrawer">Batal</button>
+        <button class="admin-btn primary" id="btnSaveDrawer" disabled>Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       REUSABLE DESTRUCTIVE CONFIRMATION MODAL (PRD Spec Section 4.3)
+       ============================================================ -->
+  <div class="confirm-modal-backdrop" id="adminConfirmModal" style="display: none;">
+    <div class="confirm-modal-card">
+      <div class="confirm-header-row">
+        <div class="confirm-icon-danger">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <div>
+          <h3 class="confirm-title" id="confirmModalTitle">Konfirmasi Tindakan</h3>
+          <div class="confirm-body-text" id="confirmModalDesc">Apakah Anda yakin ingin melanjutkan tindakan ini?</div>
+        </div>
+      </div>
+
+      <!-- Type-to-confirm input for high risk actions -->
+      <div id="typeToConfirmWrap" style="display: none; margin-top: 8px;">
+        <label class="form-label" id="typeToConfirmPrompt">Ketik <strong>HAPUS</strong> untuk mengonfirmasi:</label>
+        <input type="text" id="typeToConfirmInput" class="form-input" placeholder="" />
+      </div>
+
+      <div class="confirm-actions-row">
+        <button class="admin-btn secondary" id="btnCancelConfirm">Batal</button>
+        <button class="admin-btn danger" id="btnExecuteConfirm">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       ONBOARDING WIZARD MODAL (PRD Spec Section 8)
+       ============================================================ -->
+  <div class="confirm-modal-backdrop" id="adminWizardModal" style="display: none;">
+    <div class="confirm-modal-card" style="width: 520px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--admin-border); padding-bottom: 12px;">
+        <h3 class="type-heading" style="margin: 0;">Wizard Setup Outlet Baru</h3>
+        <button class="row-actions-btn" id="btnCloseWizard">✕</button>
+      </div>
+
+      <!-- Wizard Step Indicator -->
+      <div style="display: flex; gap: 8px; margin: 12px 0;">
+        <div class="status-pill status-live" id="wizStepPill1" style="flex: 1; justify-content: center; font-size: 11px;">1. Menu Awal</div>
+        <div class="status-pill" id="wizStepPill2" style="flex: 1; justify-content: center; font-size: 11px; background: rgba(255,255,255,0.05); color: #94A3B8;">2. Standee QR</div>
+        <div class="status-pill" id="wizStepPill3" style="flex: 1; justify-content: center; font-size: 11px; background: rgba(255,255,255,0.05); color: #94A3B8;">3. Pembayaran</div>
+      </div>
+
+      <div id="wizardStepContent" style="min-height: 180px; font-size: 13px; color: var(--admin-text-muted);">
+        <!-- Step 1 by default -->
+        <p><strong>Langkah 1: Inisialisasi 36 Menu Standar</strong></p>
+        <p>Sistem akan memuat 36 menu terkurasi (8 Kopi, 6 Non-Kopi, 6 Pizza, 6 Makanan, 6 Cake, 4 Cemilan) lengkap dengan foto HD dan modifier dinamis.</p>
+        <div style="padding: 10px; background: rgba(16,185,129,0.08); border-radius: 8px; color: #10B981;">
+          Semua 36 menu siap disajikan dan langsung aktif.
+        </div>
+      </div>
+
+      <div class="confirm-actions-row">
+        <button class="admin-btn secondary" id="btnWizardPrev" style="display: none;">Sebelumnya</button>
+        <button class="admin-btn primary" id="btnWizardNext">Lanjut ke Langkah 2</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Toast Notification Container (PRD Spec Section 4.4) -->
+  <div class="toast-container" id="adminToastContainer"></div>
+
+  <!-- Unified Admin Logic -->
+  <script src="js/admin.js?v=2.0"></script>
+</body>
+</html>

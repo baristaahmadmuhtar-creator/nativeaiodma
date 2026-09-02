@@ -1,0 +1,23 @@
+{
+  "name": "AIODMA Cafe & Digital Cashier",
+  "short_name": "AIODMA",
+  "description": "AI Conversational Ordering & Digital Menu Assistant",
+  "start_url": "/?table=5",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "fullscreen",
+    "window-controls-overlay"
+  ],
+  "background_color": "#F6F8FC",
+  "theme_color": "#F6F8FC",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111111'/><text y='.75em' x='50%' text-anchor='middle' font-size='56'>☕</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

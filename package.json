@@ -1,0 +1,32 @@
+{
+  "name": "aiodma",
+  "version": "15.0.0",
+  "description": "AIODMA: Enterprise Multi-Tenant AI Ordering, Dining & KDS Architecture with Gemini 3.7 Flash Sommelier",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/run_all_tests.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "aiodma",
+    "multi-tenant",
+    "restaurant-pos",
+    "kds",
+    "ai-sommelier",
+    "gemini",
+    "apple-hig",
+    "pwa"
+  ],
+  "author": "AIODMA Core Engineering",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^2.3.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.8.0",
+    "qrcode": "^1.5.4"
+  }
+}

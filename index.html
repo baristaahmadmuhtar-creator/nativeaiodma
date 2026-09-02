@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AIODMA — AI Conversational Ordering & Digital Menu Assistant</title>
+  <meta name="description" content="iOS-Grade Digital Cashier and Smart Menu Assistant with Instant App Clip Launch and Real-Time KDS Integration.">
+  <meta name="theme-color" content="#F6F8FC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AIODMA">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111111'/><path d='M70 36h6a10 10 0 0 1 0 20h-6M20 36h52v24a18 18 0 0 1-18 18H38a18 18 0 0 1-18-18V36z' stroke='%23D97706' stroke-width='6' fill='none'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111111'/><path d='M70 36h6a10 10 0 0 1 0 20h-6M20 36h52v24a18 18 0 0 1-18 18H38a18 18 0 0 1-18-18V36z' stroke='%23D97706' stroke-width='6' fill='none'/></svg>">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div class="app-host-container">
+
+    <!-- Mobile QR Code Modal (Pure Centered Modal Overlay) -->
+    <div id="mobileQrBackdrop" class="mobile-qr-backdrop-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mobileQrTitle">
+      <div class="mobile-qr-card-modal">
+        <h3 id="mobileQrTitle" style="font-size: 18px; font-weight: 800; color: #111; margin-bottom: 6px;">Buka AIODMA di HP</h3>
+        <p style="font-size: 13px; color: #64748B; margin-bottom: 16px; line-height: 1.4;">Pastikan HP Anda terhubung ke Wi-Fi yang sama, lalu scan QR atau buka link berikut:</p>
+        
+        <div style="background: #FFFFFF; padding: 14px; border-radius: 20px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 14px; border: 1px solid rgba(0,0,0,0.06);">
+          <img id="mobileQrImg" src="/qrcode_table5.png" alt="Kode QR untuk membuka AIODMA di Meja 5" width="200" height="200" style="display: block; border-radius: 10px; margin: auto;" />
+        </div>
+
+        <div style="background: #F1F5F9; border-radius: 12px; padding: 10px 14px; font-family: -apple-system, monospace; font-size: 13px; font-weight: 700; color: #0F172A; margin-bottom: 16px; word-break: break-all;">
+          http://192.168.100.26:8080/?table=5
+        </div>
+
+        <button id="btnCloseMobileQr" class="pill-primary-btn" style="height: 46px; font-size: 14px; font-weight: 700; width: 100%;" aria-label="Tutup modal QR Code">Tutup</button>
+      </div>
+    </div>
+
+    <!-- Customer App Viewport Wrapper (Full Screen & Responsive) -->
+    <div id="phoneViewport" class="phone-viewport-wrapper">
+
+      <!-- Universal Live Activity Order Tracking Banner (Active for all other phones/devices) -->
+      <div id="liveOrderActivityBanner" class="live-activity-banner" role="status" aria-live="polite" style="display: none;">
+        <div class="activity-banner-inner" id="btnOpenOrderTrackerFromBanner" role="button" tabindex="0" aria-label="Buka pelacak pesanan langsung Meja 5">
+          <div class="activity-left">
+            <span class="activity-cafe-icon" id="activityBannerIcon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+            </span>
+            <div class="activity-meta">
+              <div class="activity-title" id="activityBannerTitle">Meja 5 &bull; Order #5K0IZ</div>
+              <div class="activity-sub" id="activityBannerSub">Sedang diracik oleh Barista di dapur</div>
+            </div>
+          </div>
+          <div class="activity-right">
+            <span id="activityBannerBadge" class="activity-status-pill">Diracik</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Navigation Header (Top across app - Clean iOS 3 Elements) -->
+      <header id="mainHeaderBar" class="main-header-bar hidden" style="display: none;" role="banner">
+        <button id="btnHeaderBack" class="header-btn-circle" aria-label="Kembali ke layar sebelumnya">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+
+        <!-- Mode Dropdown Pill Trigger -->
+        <div class="mode-dropdown-wrapper">
+          <button id="btnModeTrigger" class="mode-pill-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Pilih Mode Tampilan">
+            <span>MODE</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <!-- Mode Dropdown Menu -->
+          <div id="modeDropdownMenu" class="mode-dropdown-menu" role="menu" aria-label="Menu Pilihan Mode">
+            <div id="optModeChat" class="mode-option-row" role="menuitem" tabindex="0" aria-label="Mode Chat Percakapan">
+              <span class="mode-option-check"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+              <span>Chat</span>
+            </div>
+            <div id="optModeMenu" class="mode-option-row" role="menuitem" tabindex="0" aria-label="Mode Katalog Menu Visual">
+              <span class="mode-option-check" style="opacity: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+              <span>Menu</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Header Action Group: Theme Toggle + Ellipsis Options -->
+        <div style="display: flex; align-items: center; gap: 8px; position: relative;">
+          <button id="btnHeaderThemeToggle" class="header-btn-circle" aria-label="Ganti Tema Mode Gelap / Terang" title="Ganti Tema">
+            <svg id="headerThemeIconDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            <svg id="headerThemeIconLight" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          </button>
+          <button id="btnHeaderOptions" class="header-btn-circle" aria-haspopup="true" aria-expanded="false" aria-label="Menu Opsi Tambahan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+          </button>
+
+          <!-- Ellipsis Popup Menu -->
+          <div id="actionPopupMenu" class="action-popup-menu" role="menu" aria-label="Menu Aksi Tambahan">
+            <div id="menuItemOpenTracker" class="action-item-row" role="menuitem" tabindex="0" style="display: none;" aria-label="Lacak Pesanan Saya">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" aria-hidden="true"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+              <span>Lacak Pesanan Saya (Live KDS)</span>
+            </div>
+            <div id="menuItemToggleTheme" class="action-item-row" role="menuitem" tabindex="0" aria-label="Ganti Mode Tampilan">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+              <span id="themeMenuLabel">Mode Gelap</span>
+            </div>
+            <div id="menuItemTableStatus" class="action-item-row" role="menuitem" tabindex="0" aria-label="Lihat Status Verifikasi Meja">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Meja 5 [QR Terverifikasi]</span>
+            </div>
+            <div id="menuItemCallWaiter" class="action-item-row" role="menuitem" tabindex="0" aria-label="Panggil Pelayan ke Meja">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span>Panggil Pelayan</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- App Screen Stack -->
+      <main class="screen-stack" id="mainScreenStack" role="main">
+        
+        <!-- SCREEN 1: SELECT LANGUAGE (Home.JPG) -->
+        <section id="screenSelectLanguage" class="screen screen-select-language active" aria-labelledby="langHeroTitle">
+          <!-- Top Navigation Row consistent with Main App Header -->
+          <div class="lang-top-bar-row">
+            <button id="btnLangBack" class="header-btn-circle" aria-label="Kembali ke layar sebelumnya">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button id="btnLangThemeToggle" class="header-btn-circle" aria-label="Ganti Tema Mode Gelap / Terang" title="Ganti Tema">
+                <svg id="langThemeIconDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <svg id="langThemeIconLight" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+              </button>
+              <div class="lang-table-badge-pill" aria-label="Nomor Meja Pelanggan: Meja 5">
+                <span>MEJA 5</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lang-center-cluster">
+            <div class="lang-hero-header">
+              <h1 id="langHeroTitle" class="lang-hero-title">PILIH BAHASA<br>SELECT LANGUAGE</h1>
+            </div>
+
+            <div class="lang-list" role="group" aria-label="Pilihan Bahasa">
+              <!-- Brunei -->
+              <div class="lang-card-pill" role="button" tabindex="0" data-lang="ms-BN" style="animation-delay: 80ms;" aria-label="Pilih Bahasa Melayu Brunei">
+                <div class="lang-left">
+                  <svg class="lang-flag-svg" width="28" height="20" viewBox="0 0 28 20" fill="none" style="width: 28px; height: 20px; flex-shrink: 0;" aria-hidden="true">
+                    <rect width="28" height="20" rx="3" fill="#F7E017"/>
+                    <polygon points="0,0 28,14 28,20 0,6" fill="#FFFFFF"/>
+                    <polygon points="0,6 28,20 28,20 0,10" fill="#000000"/>
+                    <circle cx="14" cy="10" r="3.5" fill="#DC2626"/>
+                  </svg>
+                  <span class="lang-name-text">BRUNEI</span>
+                </div>
+                <svg class="lang-arrow-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </div>
+
+              <!-- English -->
+              <div class="lang-card-pill" role="button" tabindex="0" data-lang="en-US" style="animation-delay: 140ms;" aria-label="Select English Language">
+                <div class="lang-left">
+                  <svg class="lang-flag-svg" width="28" height="20" viewBox="0 0 28 20" fill="none" style="width: 28px; height: 20px; flex-shrink: 0;" aria-hidden="true">
+                    <rect width="28" height="20" rx="3" fill="#012169"/>
+                    <path d="M0,0 L28,20 M28,0 L0,20" stroke="#FFFFFF" stroke-width="3"/>
+                    <path d="M0,0 L28,20 M28,0 L0,20" stroke="#C8102E" stroke-width="1.5"/>
+                    <path d="M14,0 V20 M0,10 H28" stroke="#FFFFFF" stroke-width="4.5"/>
+                    <path d="M14,0 V20 M0,10 H28" stroke="#C8102E" stroke-width="2.5"/>
+                  </svg>
+                  <span class="lang-name-text">ENGLISH</span>
+                </div>
+                <svg class="lang-arrow-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </div>
+
+              <!-- Indonesia -->
+              <div class="lang-card-pill" role="button" tabindex="0" data-lang="id-ID" style="animation-delay: 200ms;" aria-label="Pilih Bahasa Indonesia">
+                <div class="lang-left">
+                  <svg class="lang-flag-svg" width="28" height="20" viewBox="0 0 28 20" fill="none" style="width: 28px; height: 20px; flex-shrink: 0; border-radius: 4px; overflow: hidden;" aria-hidden="true">
+                    <rect width="28" height="10" fill="#E11D48"/>
+                    <rect y="10" width="28" height="10" fill="#FFFFFF"/>
+                    <rect width="28" height="20" rx="3" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+                  </svg>
+                  <span class="lang-name-text">INDONESIA</span>
+                </div>
+                <svg class="lang-arrow-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCREEN 2: CHAT CASHIER AGENT (Home 3-7, 10.JPG) -->
+        <section id="screenChatCashier" class="screen screen-chat-cashier" aria-labelledby="chatHeroTitle">
+          
+          <!-- Scrollable Chat Content Area -->
+          <div class="chat-scroll-area" id="chatScrollArea">
+            <!-- Empty State (Home 5.JPG) -->
+            <div id="chatEmptyState" class="chat-empty-state-container">
+              <div class="chat-hero-header">
+                <h1 id="chatHeroTitle" class="chat-hero-title">TANYA MENU<br>& ORDER DI SINI</h1>
+              </div>
+
+              <div class="chat-quick-prompt-cards" role="group" aria-label="Rekomendasi Cepat">
+                <!-- Prompt 1 -->
+                <div class="quick-prompt-pill" role="button" tabindex="0" data-prompt="Rekomendasikan kopi terbaik untuk saya" aria-label="Pilih rekomendasi menu kopi terbaik">
+                  <div class="quick-prompt-left">
+                    <div class="qp-icon-circle" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                    </div>
+                    <span class="qp-text">Rekomendasi Menu Favorit</span>
+                  </div>
+                  <svg class="qp-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+
+                <!-- Prompt 2 -->
+                <div class="quick-prompt-pill" role="button" tabindex="0" data-prompt="Ada cemilan atau makanan yang enak untuk santai?" aria-label="Pilih rekomendasi cemilan dan minuman segar">
+                  <div class="quick-prompt-left">
+                    <div class="qp-icon-circle" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </div>
+                    <span class="qp-text">Cemilan & Minuman Segar</span>
+                  </div>
+                  <svg class="qp-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+
+                <!-- Prompt 3: Buka Katalog Menu -->
+                <div class="quick-prompt-pill" id="qpLihatSemuaMenu" role="button" tabindex="0" data-prompt="Buka katalog menu" aria-label="Buka katalog menu lengkap">
+                  <div class="quick-prompt-left">
+                    <div class="qp-icon-circle" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                    </div>
+                    <span class="qp-text">Lihat Semua Menu</span>
+                  </div>
+                  <svg class="qp-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Chat Message Thread -->
+            <div id="chatMessageThread" class="chat-thread-container" style="display: none;" role="log" aria-live="polite" aria-label="Riwayat Percakapan dengan Barista"></div>
+          </div>
+
+          <!-- Chat Floating Bottom Input Bar (Home 3-7.JPG) -->
+          <div class="floating-bottom-bar-wrapper">
+            <div class="floating-bottom-bar">
+              <button id="btnChatNotes" class="bottom-input-left-btn" aria-label="Kirim Foto Makanan atau Minuman untuk Tanya Menu" title="Kirim Foto / Tanya Menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              </button>
+
+              <input id="chatInputText" type="text" class="chat-text-input" placeholder="Silahkan order" autocomplete="off" aria-label="Tulis pesanan atau pertanyaan ke Barista" />
+
+              <div class="bottom-action-btn-wrap">
+                <!-- Floating Cart Icon Button with Counter Badge -->
+                <button id="btnFloatingCart" class="floating-cart-icon-btn" aria-label="Buka Keranjang Pesanan">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                  <span id="chatCartBadge" class="floating-cart-badge">0</span>
+                </button>
+
+                <!-- Floating Paperplane Send Button -->
+                <button id="btnChatSend" class="floating-send-btn" style="display: none;" aria-label="Kirim pesan sekarang">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCREEN 3: 2-COLUMN VISUAL MENU CATALOG (Home 2.JPG) -->
+        <section id="screenMenuCatalog" class="screen screen-menu-catalog" aria-label="Katalog Menu">
+          
+          <!-- 2-Column Product Grid Scroll Area -->
+          <div class="catalog-scroll-area" id="catalogScrollArea">
+            <!-- Category Filter Tabs -->
+            <div class="category-filter-scroll" role="tablist" aria-label="Kategori Menu">
+              <button class="cat-pill-btn active" role="tab" aria-selected="true" data-cat="all">Semua</button>
+              <button class="cat-pill-btn" role="tab" aria-selected="false" data-cat="kopi">Kopi</button>
+              <button class="cat-pill-btn" role="tab" aria-selected="false" data-cat="non-kopi">Non-Kopi</button>
+              <button class="cat-pill-btn" role="tab" aria-selected="false" data-cat="pizza">Pizza</button>
+              <button class="cat-pill-btn" role="tab" aria-selected="false" data-cat="makanan">Makanan</button>
+              <button class="cat-pill-btn" role="tab" aria-selected="false" data-cat="pastry">Cake & Pastry</button>
+              <button class="cat-pill-btn" role="tab" aria-selected="false" data-cat="cemilan">Cemilan</button>
+            </div>
+
+            <div id="menuGridContainer" class="menu-product-grid" role="region" aria-label="Daftar Produk Menu">
+              <!-- Product Cards injected dynamically via JS -->
+            </div>
+          </div>
+
+          <!-- Bottom Floating Bar (Search + Cart Pill) -->
+          <div class="menu-bottom-floating-bar-wrapper">
+            <div class="menu-bottom-floating-bar">
+              <div class="catalog-search-trigger" style="flex: 1; padding: 0 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input id="catalogSearchInput" type="text" placeholder="Silahkan cari" aria-label="Cari menu makanan dan minuman" style="border: none !important; background: transparent !important; font-size: 14px; font-weight: 500; color: #111; outline: none !important; box-shadow: none !important; width: 100%; margin-left: 6px; -webkit-appearance: none;" />
+                <button id="btnClearSearch" aria-label="Hapus teks pencarian" style="background: none; border: none; font-size: 12px; color: #9CA3AF; cursor: pointer; display: none;">✕</button>
+              </div>
+
+              <div class="catalog-bar-divider" aria-hidden="true"></div>
+
+              <button id="btnCatalogCartPill" class="catalog-cart-pill-btn" aria-label="Lihat keranjang pesanan">
+                <div id="catalogCartBadge" class="catalog-cart-badge-circle">0</div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                <span id="catalogCartTotal">Rp 0</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCREEN 4: ORDER SUCCESS (Home 14.JPG) -->
+        <section id="screenOrderSuccess" class="screen screen-order-success" aria-labelledby="orderSuccessTitle">
+          <div class="success-top-content">
+            <div class="success-circle-checkmark" aria-hidden="true">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline class="checkmark-draw-path" points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <h2 id="orderSuccessTitle" class="success-title">Pesanan Berhasil</h2>
+            <p id="successSubtitle" class="success-sub">Pesanan #1K04 sedang diproses. Mohon tunggu.</p>
+          </div>
+
+          <div class="success-actions-bottom">
+            <div class="success-actions-row">
+              <button id="btnTrackLiveOrder" class="btn-track-order" aria-label="Lacak status pesanan live di dapur">Lacak Pesanan</button>
+              <button id="btnSaveReceipt" class="btn-save-receipt" aria-label="Simpan dan lihat struk digital">Simpan Struk</button>
+            </div>
+            <button id="btnBackToChat" class="btn-back-chat" aria-label="Kembali ke layar percakapan">Kembali ke Chat</button>
+          </div>
+        </section>
+
+        <!-- SCREEN 5: THERMAL DIGITAL RECEIPT (Home 15.JPG) -->
+        <section id="screenThermalReceipt" class="screen screen-thermal-receipt" aria-labelledby="receiptBrandName">
+          <!-- Printer Slot Top Bar -->
+          <div class="printer-slot-slit" aria-hidden="true"></div>
+
+          <!-- Authentic Thermal Paper Card -->
+          <div class="thermal-paper-card" role="region" aria-label="Struk Belanja Digital">
+            <div class="receipt-brand-header">
+              <!-- Coffee Bean Icon -->
+              <svg class="receipt-coffee-icon" viewBox="0 0 32 32" fill="#382115" aria-hidden="true">
+                <path d="M16 3C10.5 3 6 8.5 6 16C6 23.5 10.5 29 16 29C21.5 29 26 23.5 26 16C26 8.5 21.5 3 16 3ZM16 26.5C12 26.5 8.5 22 8.5 16C8.5 14 9 12 10 10.5C11 14 13.5 17.5 16 19C18.5 20.5 20 23.5 20 25.5C18.8 26.1 17.4 26.5 16 26.5ZM22 21.5C21 18 18.5 14.5 16 13C13.5 11.5 12 8.5 12 6.5C13.2 5.9 14.6 5.5 16 5.5C20 5.5 23.5 10 23.5 16C23.5 18 23 20 22 21.5Z"/>
+              </svg>
+              <h3 id="receiptBrandName" class="receipt-brand-name">AIODMA</h3>
+              <span class="receipt-brand-sub">— COFFEE —</span>
+            </div>
+
+            <!-- Success Pill Tag -->
+            <div class="receipt-success-badge-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#10B981" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="receipt-success-text">PEMBAYARAN BERHASIL</span>
+            </div>
+            <p class="receipt-order-subtext">Pesanan Anda telah diterima</p>
+
+            <div class="receipt-dashed-divider" aria-hidden="true"></div>
+
+            <!-- Order Meta -->
+            <div class="receipt-order-meta">
+              <div>
+                <div style="font-size: 11px; color: #6B7280; font-weight: 600;">Order</div>
+                <div id="receiptOrderId" class="receipt-order-id">#A8F29K</div>
+              </div>
+              <div id="receiptDateTime" class="receipt-order-datetime">13 Agu 2026<br>12:42</div>
+            </div>
+
+            <div style="border-top: 1px solid #E5E7EB;" aria-hidden="true"></div>
+
+            <!-- Items List -->
+            <div id="receiptItemsContainer" class="receipt-items-list" role="list" aria-label="Daftar item struk">
+              <!-- Dynamically rendered items -->
+            </div>
+
+            <div class="receipt-dashed-divider" aria-hidden="true"></div>
+
+            <!-- Calculations -->
+            <div class="cart-calc-box" style="border-top: none;">
+              <div class="calc-row">
+                <span>Subtotal</span>
+                <span id="receiptSubtotal">Rp 54.000</span>
+              </div>
+              <div class="calc-row">
+                <span>Pajak (10%)</span>
+                <span id="receiptTax">Rp 5.400</span>
+              </div>
+              <div class="calc-row total-row">
+                <span style="font-size: 15px; font-weight: 900; letter-spacing: 0.05em;">TOTAL</span>
+                <span id="receiptTotal" style="font-size: 16px; font-weight: 900;">Rp 59.400</span>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid #E5E7EB;" aria-hidden="true"></div>
+
+            <!-- Payment Method & Status -->
+            <div class="receipt-payment-row">
+              <div>
+                <div style="font-size: 11px; color: #6B7280; font-weight: 600; margin-bottom: 4px;">Pembayaran</div>
+                <div class="receipt-pm-left">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  <span id="receiptPaymentName">BIBD</span>
+                </div>
+              </div>
+              <div class="receipt-pm-status-pill">Pembayaran berhasil</div>
+            </div>
+
+            <div class="receipt-dashed-divider" aria-hidden="true"></div>
+
+            <!-- Footer Thanks -->
+            <div class="receipt-footer-thanks">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+              <div style="font-size: 13px; font-weight: 800; color: #111;">Terima kasih!</div>
+              <div style="font-size: 11px; color: #6B7280;">Sampai jumpa kembali</div>
+            </div>
+
+            <!-- Serrated Tear Shape Bottom -->
+            <div class="receipt-tear-edge" aria-hidden="true"></div>
+          </div>
+
+          <div style="width: 100%; margin-top: 24px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+            <button id="btnPrintReceipt" class="pill-primary-btn" style="width: 100%; height: 50px; font-size: 14px;" aria-label="Cetak struk via AirPrint atau Simpan PDF">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              AirPrint / Simpan PDF
+            </button>
+            <button id="btnReceiptBackToHome" class="pill-secondary-btn" style="width: 100%; height: 50px; font-size: 14px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 9999px; font-weight: 700; color: #111; cursor: pointer;" aria-label="Kembali ke menu utama">
+              Kembali ke Menu Utama
+            </button>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ============================================================
+           MODALS & BOTTOM SHEETS
+           ============================================================ -->
+
+      <!-- PHOTO ATTACHMENT / TANYA MENU BOTTOM SHEET -->
+      <div id="notesBackdrop" class="bottom-sheet-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="notesSheetTitle">
+        <div class="bottom-sheet-card">
+          <div class="sheet-drag-handle" aria-hidden="true"></div>
+          <div style="margin-bottom: 4px;">
+            <h3 id="notesSheetTitle" style="font-size: 18px; font-weight: 800; color: #111; margin: 0 0 4px 0;">Tanya Menu via Foto</h3>
+            <p style="font-size: 13px; color: #6B7280; margin: 0;">Ambil foto makanan atau minuman untuk mengenali menu.</p>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <label class="image-upload-zone" for="chatImageFileInput" id="imageUploadDropzone" style="margin-top: 6px;" aria-label="Upload atau ambil foto menu">
+            <input type="file" id="chatImageFileInput" accept="image/*" style="display: none;" aria-label="Pilih file gambar menu" />
+            <div id="uploadPlaceholderWrap" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 14px; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: #F4F5F8; display: flex; align-items: center; justify-content: center; color: #111;" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              </div>
+              <div>
+                <div style="font-size: 14px; font-weight: 700; color: #111;">Ambil Foto / Pilih dari Galeri</div>
+                <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px;">Format JPG, PNG, WEBP didukung</div>
+              </div>
+            </div>
+
+            <!-- Selected Image Preview Container -->
+            <div id="uploadSelectedPreview" style="display: none; width: 100%; position: relative; padding: 6px;">
+              <img id="uploadPreviewImg" src="" alt="Foto menu yang dipilih" style="width: 100%; height: 160px; object-fit: cover; border-radius: 16px;" />
+              <button id="btnClearSelectedImage" type="button" aria-label="Hapus foto yang dipilih" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.65); color: #fff; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
+            </div>
+          </label>
+
+          <!-- Quick Sample Photos -->
+          <div style="margin-top: 4px;">
+            <div style="font-size: 11px; font-weight: 700; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Atau Pilih Contoh Foto Menu:</div>
+            <div class="sample-photos-carousel" role="group" aria-label="Contoh Foto Menu Kafe">
+              <div class="sample-photo-card" role="button" tabindex="0" data-src="assets/products/kopi_milk_aren.jpg" data-name="Kopi Milk Aren" aria-label="Pilih contoh Kopi Milk Aren">
+                <img src="assets/products/kopi_milk_aren.jpg" alt="Kopi Milk Aren" />
+                <span>Kopi Milk Aren</span>
+              </div>
+              <div class="sample-photo-card" role="button" tabindex="0" data-src="assets/products/pizza_truffle_mushroom.jpg" data-name="Truffle Mushroom Pizza" aria-label="Pilih contoh Truffle Mushroom Pizza">
+                <img src="assets/products/pizza_truffle_mushroom.jpg" alt="Truffle Pizza" />
+                <span>Truffle Pizza</span>
+              </div>
+              <div class="sample-photo-card" role="button" tabindex="0" data-src="assets/products/burnt_cheesecake.jpg" data-name="Basque Burnt Cheesecake" aria-label="Pilih contoh Basque Burnt Cheesecake">
+                <img src="assets/products/burnt_cheesecake.jpg" alt="Cheesecake" />
+                <span>Cheesecake</span>
+              </div>
+              <div class="sample-photo-card" role="button" tabindex="0" data-src="assets/products/chicken_katsu_curry.jpg" data-name="Crispy Chicken Katsu Curry" aria-label="Pilih contoh Crispy Chicken Katsu Curry">
+                <img src="assets/products/chicken_katsu_curry.jpg" alt="Katsu Curry" />
+                <span>Katsu Curry</span>
+              </div>
+              <div class="sample-photo-card" role="button" tabindex="0" data-src="assets/products/peach_tea.jpg" data-name="Sparkling Peach Tea" aria-label="Pilih contoh Sparkling Peach Tea">
+                <img src="assets/products/peach_tea.jpg" alt="Peach Tea" />
+                <span>Peach Tea</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Action Button -->
+          <button id="btnSendImageToChat" class="pill-primary-btn" disabled style="margin-top: 4px;" aria-label="Tanya Barista tentang menu dalam foto ini">
+            Tanya tentang Menu Ini
+          </button>
+        </div>
+      </div>
+
+      <!-- CART BOTTOM SHEET (Home 11.JPG) -->
+      <div id="cartBackdrop" class="bottom-sheet-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="cartSheetTitle">
+        <div class="bottom-sheet-card">
+          <div class="sheet-drag-handle" aria-hidden="true"></div>
+          <h3 id="cartSheetTitle" class="sr-only" style="font-size: 18px; font-weight: 800; color: #111; margin: 0 0 12px 0;">Keranjang Pesanan Meja 5</h3>
+
+          <div id="cartSheetItemsList" class="cart-items-list" role="list" aria-label="Daftar item dalam keranjang">
+            <!-- Dynamically populated cart items -->
+          </div>
+
+          <div class="cart-calc-box">
+            <div class="calc-row">
+              <span>Subtotal</span>
+              <span id="cartSheetSubtotal">Rp 0</span>
+            </div>
+            <div class="calc-row">
+              <span>Taxes (+)</span>
+              <span id="cartSheetTax">Rp 0</span>
+            </div>
+            <div class="calc-row total-row">
+              <span>Total</span>
+              <span id="cartSheetTotal">Rp 0</span>
+            </div>
+          </div>
+
+          <button id="btnProceedToPayment" class="pill-primary-btn" aria-label="Lanjut ke Pembayaran Pesanan">Lanjut ke Pembayaran</button>
+        </div>
+      </div>
+
+      <!-- PAYMENT METHOD SHEET (Home 12.JPG) -->
+      <div id="paymentBackdrop" class="bottom-sheet-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="paySheetTitle">
+        <div class="bottom-sheet-card">
+          <div class="sheet-drag-handle" aria-hidden="true"></div>
+
+          <!-- Order Summary Card Inside Payment -->
+          <div class="payment-order-summary-card">
+            <div id="paymentItemsPreviewList" style="display: flex; flex-direction: column; gap: 12px;" role="list" aria-label="Ringkasan item pembayaran">
+              <!-- Dynamically populated preview -->
+            </div>
+
+            <div style="border-top: 1px solid #F0F1F5; margin: 4px 0;" aria-hidden="true"></div>
+
+            <div class="cart-calc-box" style="border-top: none;">
+              <div class="calc-row">
+                <span>Subtotal</span>
+                <span id="paySheetSubtotal">Rp 0</span>
+              </div>
+              <div class="calc-row">
+                <span>Pajak (10%)</span>
+                <span id="paySheetTax">Rp 0</span>
+              </div>
+              <div class="calc-row total-row">
+                <span>Total</span>
+                <span id="paySheetTotal">Rp 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Methods Selection -->
+          <div class="payment-methods-section">
+            <h3 id="paySheetTitle" class="pm-header-title">Pilih Pembayaran</h3>
+            <p class="pm-header-sub">[orderan akan diproses setalah pembayaran selesai]</p>
+
+            <div class="payment-methods-grid" role="radiogroup" aria-label="Metode Pembayaran">
+              <!-- BIBD -->
+              <div class="payment-method-card selected" role="radio" aria-checked="true" tabindex="0" data-pm="BIBD" aria-label="Metode Pembayaran BIBD">
+                <div class="pm-icon-wrap" aria-hidden="true">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </div>
+                <span class="pm-name">BIBD</span>
+              </div>
+
+              <!-- BAIDURI -->
+              <div class="payment-method-card" role="radio" aria-checked="false" tabindex="0" data-pm="BAIDURI" aria-label="Metode Pembayaran Baiduri">
+                <div class="pm-icon-wrap" aria-hidden="true">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4" fill="#7C3AED"></circle></svg>
+                </div>
+                <span class="pm-name">BAIDURI</span>
+              </div>
+
+              <!-- POCKET -->
+              <div class="payment-method-card" role="radio" aria-checked="false" tabindex="0" data-pm="POCKET" aria-label="Metode Pembayaran Pocket">
+                <div class="pm-icon-wrap" aria-hidden="true">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="4" fill="#0284C7"></rect><rect x="6" y="8" width="12" height="4" rx="2" fill="#FFFFFF"></rect></svg>
+                </div>
+                <span class="pm-name">POCKET</span>
+              </div>
+
+              <!-- CASH -->
+              <div class="payment-method-card" role="radio" aria-checked="false" tabindex="0" data-pm="CASH" aria-label="Metode Pembayaran Tunai Kasir">
+                <div class="pm-icon-wrap" aria-hidden="true">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle><line x1="6" y1="12" x2="6.01" y2="12"></line><line x1="18" y1="12" x2="18.01" y2="12"></line></svg>
+                </div>
+                <span class="pm-name">CASH</span>
+              </div>
+            </div>
+          </div>
+
+          <button id="btnProcessPayment" class="pill-primary-btn" aria-label="Konfirmasi dan Proses Pembayaran">Proses Pembayaran</button>
+        </div>
+      </div>
+
+      <!-- PAYMENT PROCESSING LOADING MODAL (Home 13.JPG) -->
+      <div id="processingModal" class="payment-processing-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="procModalTitle" aria-live="assertive">
+        <div class="sheet-drag-handle" aria-hidden="true"></div>
+        <div class="ios-spinner-dots" aria-hidden="true">
+          <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+        </div>
+        <h3 id="procModalTitle" class="proc-title">Memproses Pembayaran...</h3>
+        <p class="proc-sub">Mohon tunggu sebentar<br>jangan tutup aplikasi ini.</p>
+      </div>
+
+      <!-- PRODUCT MODIFIER / CUSTOMIZER BOTTOM SHEET -->
+      <div id="modifierModalBackdrop" class="bottom-sheet-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modProductTitle">
+        <div class="bottom-sheet-card modifier-sheet-card">
+          <div class="sheet-drag-handle" aria-hidden="true"></div>
+
+          <!-- Product Header Preview -->
+          <div class="mod-header-row">
+            <img id="modProductImg" src="assets/products/kopi_milk_aren.jpg" alt="Foto Produk" class="mod-product-thumb" />
+            <div class="mod-header-info">
+              <h3 id="modProductTitle" class="mod-product-title">Kopi Milk Aren</h3>
+              <p id="modProductDesc" class="mod-product-desc">Espresso, susu segar, gula aren premium</p>
+              <div id="modProductBasePrice" class="mod-product-base-price">Rp 28.000</div>
+            </div>
+          </div>
+
+          <!-- Modifiers Scrollable Body (Dynamically populated per category) -->
+          <div class="mod-options-body" id="modOptionsBody">
+            <div id="modDynamicGroups" style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Dynamically populated modifier groups -->
+            </div>
+
+            <!-- Special Note -->
+            <div class="modifier-group" style="margin-top: 4px;">
+              <label for="modSpecialNote" class="mod-group-title">Catatan Tambahan</label>
+              <input id="modSpecialNote" type="text" class="mod-note-input" placeholder="Contoh: jangan terlalu manis, saus pisah" aria-label="Catatan tambahan untuk barista / dapur" />
+            </div>
+          </div>
+
+          <!-- Quantity Stepper & Add Button Footer -->
+          <div class="mod-footer-bar">
+            <div class="mod-qty-stepper" role="group" aria-label="Pengatur Kuantitas">
+              <button id="btnModMinus" class="mod-stepper-btn" aria-label="Kurangi jumlah item">-</button>
+              <span id="modQtyNumber" class="mod-qty-text" aria-live="polite" aria-label="Kuantitas saat ini: 1">1</span>
+              <button id="btnModPlus" class="mod-stepper-btn" aria-label="Tambah jumlah item">+</button>
+            </div>
+            <button id="btnAddCustomizedToCart" class="pill-primary-btn" style="flex: 1; height: 50px;" aria-label="Tambahkan produk ke keranjang">
+              <span id="modBtnAddText">Tambahkan — Rp 28.000</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE VERIFICATION INFO MODAL -->
+      <div id="tableInfoBackdrop" class="bottom-sheet-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tableInfoTitle">
+        <div class="bottom-sheet-card">
+          <div class="sheet-drag-handle" aria-hidden="true"></div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <h3 id="tableInfoTitle" style="font-size: 18px; font-weight: 800;">Sesi Meja Terverifikasi</h3>
+          </div>
+          <div style="background: #F4F5F8; border-radius: 16px; padding: 14px; font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>Table ID:</strong> 5 (Indoor Area A)</div>
+            <div><strong>HMAC Token:</strong> <code>a8f29k.sec.hmac256.v2</code></div>
+            <div><strong>Anti-Bypass Protection:</strong> <span style="color:#10B981; font-weight:700;">ACTIVE (Enforced)</span></div>
+            <div><strong>Price Shield:</strong> Verified via Backend Validator</div>
+          </div>
+          <button id="btnCloseTableInfo" class="pill-primary-btn" style="margin-top: 12px;" aria-label="Tutup info verifikasi meja">Mengerti</button>
+        </div>
+      </div>
+
+      <!-- LIVE ORDER TRACKER BOTTOM SHEET (Native iOS Sheet for all phones) -->
+      <div id="orderTrackerBackdrop" class="bottom-sheet-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="trackerTitle">
+        <div class="bottom-sheet-card order-tracker-sheet">
+          <div class="sheet-drag-handle" aria-hidden="true"></div>
+          <div class="tracker-header-row">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="tracker-header-icon" id="trackerHeaderIcon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+              </div>
+              <div>
+                <h3 id="trackerTitle" style="font-size: 16px; font-weight: 800; color: #0F172A; margin: 0;">Lacak Pesanan Live</h3>
+                <div id="trackerOrderNumberLabel" style="font-size: 12px; color: #64748B;">Order #5K9DU &bull; Meja 5</div>
+              </div>
+            </div>
+            <span id="trackerStatusBadge" class="tracker-status-pill preparing" aria-live="polite">Sedang Diracik</span>
+          </div>
+
+          <!-- 4-Step Interactive Timeline Tracker -->
+          <div class="tracker-steps-timeline" role="progressbar" aria-label="Progres Penyajian Pesanan" aria-valuemin="1" aria-valuemax="4" aria-valuenow="2">
+            <div class="tracker-step-item active" id="trackerStepReceived">
+              <div class="step-icon-circle" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="step-content">
+                <div class="step-title">1. Pesanan Diterima</div>
+                <div class="step-desc">Masuk ke antrean dapur</div>
+              </div>
+            </div>
+            <div class="tracker-step-item" id="trackerStepPreparing">
+              <div class="step-icon-circle" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              </div>
+              <div class="step-content">
+                <div class="step-title">2. Sedang Diracik</div>
+                <div class="step-desc">Barista & chef sedang menyiapkan</div>
+              </div>
+            </div>
+            <div class="tracker-step-item" id="trackerStepReady">
+              <div class="step-icon-circle" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <div class="step-content">
+                <div class="step-title">3. Siap Disajikan</div>
+                <div class="step-desc">Diantar ke Meja / Ambil di Bar</div>
+              </div>
+            </div>
+            <div class="tracker-step-item" id="trackerStepCompleted">
+              <div class="step-icon-circle" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              </div>
+              <div class="step-content">
+                <div class="step-title">4. Selesai</div>
+                <div class="step-desc">Selesai dinikmati</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items in this Order -->
+          <div class="tracker-items-section">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px;">
+              <span>Rincian Menu Pesanan</span>
+              <span id="trackerPaymentStatusLabel" class="tracker-pay-tag">LUNAS &bull; BIBD</span>
+            </div>
+            <div id="trackerItemsList" class="tracker-items-list" role="list" aria-label="Item dalam pesanan ini">
+              <!-- Items injected dynamically -->
+            </div>
+            <div class="tracker-total-row">
+              <span>Total Pesanan</span>
+              <strong id="trackerOrderTotalVal" style="color: #0F172A; font-size: 14px;">Rp 0</strong>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons Footer -->
+          <div class="tracker-footer-actions">
+            <button id="btnTrackerCallWaiter" class="tracker-btn-outline" aria-label="Panggil pelayan ke meja">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              Panggil Pelayan
+            </button>
+            <button id="btnTrackerOrderMore" class="tracker-btn-outline" aria-label="Pesan menu tambahan">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Pesan Tambahan
+            </button>
+          </div>
+
+          <button id="btnCloseTrackerSheet" class="pill-primary-btn" style="margin-top: 8px; height: 46px;" aria-label="Tutup lembar pelacak pesanan">Tutup Pelacak</button>
+        </div>
+      </div>
+
+    </div> <!-- End phone-viewport-wrapper -->
+
+  </div> <!-- End app-host-container -->
+
+  <!-- App Core JavaScript Logic -->
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.debug('ServiceWorker registration skipped in dev mode:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
