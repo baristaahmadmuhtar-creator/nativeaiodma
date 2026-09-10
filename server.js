@@ -1962,7 +1962,7 @@ async function callGeminiWithFallback(apiKey, payload, requestedModel = 'gemini-
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(clonedPayload),
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(3500)
       });
 
       if (res.ok) {

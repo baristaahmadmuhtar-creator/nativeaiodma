@@ -1685,6 +1685,211 @@
       ],
       "orders": [
         {
+          "id": "ORD_COFF_1789046750125_Z1Z",
+          "orderNumber": "#5KZ1Z",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_pepperoni",
+              "name": "Pepperoni Pizza",
+              "price": 8,
+              "basePrice": 8,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "",
+              "image": "assets/products/pizza_pepperoni.jpg"
+            },
+            {
+              "itemId": "sig_garden_mojito",
+              "name": "Garden Mojito (Virgin)",
+              "price": 5,
+              "basePrice": 5,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/berry_lemonade.jpg"
+            }
+          ],
+          "subtotal": 21,
+          "tax": 0,
+          "total": 21,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_COFF_1789046750125_Z1Z",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:50.125Z",
+          "updatedAt": "2026-09-10T13:25:50.126Z"
+        },
+        {
+          "id": "ORD_COFF_1789046740773_OLT",
+          "orderNumber": "#5KOLT",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_margherita",
+              "name": "Margherita Pizza",
+              "price": 10,
+              "basePrice": 10,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/pizza_margherita.jpg"
+            }
+          ],
+          "subtotal": 10,
+          "tax": 0,
+          "total": 10,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "preparing",
+          "idempotencyKey": "TEST_KDS_1789046740771",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:40.773Z",
+          "updatedAt": "2026-09-10T13:25:40.788Z"
+        },
+        {
+          "id": "ORD_COFF_1789046720414_8XF",
+          "orderNumber": "#5K8XF",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_pepperoni",
+              "name": "Pepperoni Pizza",
+              "price": 14,
+              "basePrice": 8,
+              "addonPrice": 6,
+              "qty": 1,
+              "subtext": "Large (12\")",
+              "image": "assets/products/pizza_pepperoni.jpg"
+            },
+            {
+              "itemId": "indomee_custom_bar",
+              "name": "Indomee Custom Bar",
+              "price": 5,
+              "basePrice": 2,
+              "addonPrice": 3,
+              "qty": 1,
+              "subtext": "Telur Mata Sapi, Kerang Dara",
+              "image": "assets/products/nasi_goreng.jpg"
+            },
+            {
+              "itemId": "coffee_americano",
+              "name": "Americano",
+              "price": 4,
+              "basePrice": 3.5,
+              "addonPrice": 0.5,
+              "qty": 1,
+              "subtext": "Iced",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 23,
+          "tax": 0,
+          "total": 23,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_COFF_1789046720414_8XF",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:20.414Z",
+          "updatedAt": "2026-09-10T13:25:20.414Z"
+        },
+        {
+          "id": "ORD_COFF_1789046691497_N0K",
+          "orderNumber": "#5KN0K",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_margherita",
+              "name": "Margherita Pizza",
+              "price": 10,
+              "basePrice": 10,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/pizza_margherita.jpg"
+            }
+          ],
+          "subtotal": 10,
+          "tax": 0,
+          "total": 10,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "preparing",
+          "idempotencyKey": "TEST_KDS_1789046691495",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:51.497Z",
+          "updatedAt": "2026-09-10T13:24:51.510Z"
+        },
+        {
+          "id": "ORD_COFF_1789046656520_PYB",
+          "orderNumber": "#5KPYB",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_pepperoni",
+              "name": "Pepperoni Pizza",
+              "price": 14,
+              "basePrice": 8,
+              "addonPrice": 6,
+              "qty": 1,
+              "subtext": "Large (12\")",
+              "image": "assets/products/pizza_pepperoni.jpg"
+            },
+            {
+              "itemId": "indomee_custom_bar",
+              "name": "Indomee Custom Bar",
+              "price": 5,
+              "basePrice": 2,
+              "addonPrice": 3,
+              "qty": 1,
+              "subtext": "Telur Mata Sapi, Kerang Dara",
+              "image": "assets/products/nasi_goreng.jpg"
+            },
+            {
+              "itemId": "coffee_americano",
+              "name": "Americano",
+              "price": 4,
+              "basePrice": 3.5,
+              "addonPrice": 0.5,
+              "qty": 1,
+              "subtext": "Iced",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 23,
+          "tax": 0,
+          "total": 23,
+          "currency": "BND",
+          "currencySymbol": "$",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_COFF_1789046656520_PYB",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:16.520Z",
+          "updatedAt": "2026-09-10T13:24:16.521Z"
+        },
+        {
           "id": "ORD_COFF_1788368369395_TVJ",
           "orderNumber": "#5KTVJ",
           "merchantId": "coffeenity",
@@ -1719,11 +1924,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788368369395_TVJ",
           "notes": "",
           "createdAt": "2026-09-02T16:59:29.395Z",
-          "updatedAt": "2026-09-02T16:59:29.395Z"
+          "updatedAt": "2026-09-10T13:10:12.845Z"
         },
         {
           "id": "ORD_COFF_1788368366839_PSG",
@@ -1750,11 +1955,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "TEST_KDS_1788368366835",
           "notes": "",
           "createdAt": "2026-09-02T16:59:26.839Z",
-          "updatedAt": "2026-09-02T16:59:26.884Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788368364623_E16",
@@ -1801,11 +2006,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788368364623_E16",
           "notes": "",
           "createdAt": "2026-09-02T16:59:24.623Z",
-          "updatedAt": "2026-09-02T16:59:24.623Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788368035128_433",
@@ -1842,11 +2047,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788368035128_433",
           "notes": "",
           "createdAt": "2026-09-02T16:53:55.128Z",
-          "updatedAt": "2026-09-02T16:53:55.128Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788368011917_PAU",
@@ -1893,11 +2098,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788368011917_PAU",
           "notes": "",
           "createdAt": "2026-09-02T16:53:31.917Z",
-          "updatedAt": "2026-09-02T16:53:31.917Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367900264_AT0",
@@ -1944,11 +2149,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367900264_AT0",
           "notes": "",
           "createdAt": "2026-09-02T16:51:40.264Z",
-          "updatedAt": "2026-09-02T16:51:40.264Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367832884_LW3",
@@ -1985,11 +2190,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367832884_LW3",
           "notes": "",
           "createdAt": "2026-09-02T16:50:32.884Z",
-          "updatedAt": "2026-09-02T16:50:32.884Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367801523_4N0",
@@ -2036,11 +2241,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367801523_4N0",
           "notes": "",
           "createdAt": "2026-09-02T16:50:01.523Z",
-          "updatedAt": "2026-09-02T16:50:01.523Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367129635_I62",
@@ -2077,11 +2282,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367129635_I62",
           "notes": "",
           "createdAt": "2026-09-02T16:38:49.635Z",
-          "updatedAt": "2026-09-02T16:38:49.635Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367125878_TJL",
@@ -2128,11 +2333,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367125878_TJL",
           "notes": "",
           "createdAt": "2026-09-02T16:38:45.878Z",
-          "updatedAt": "2026-09-02T16:38:45.878Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367062828_89B",
@@ -2169,11 +2374,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367062828_89B",
           "notes": "",
           "createdAt": "2026-09-02T16:37:42.828Z",
-          "updatedAt": "2026-09-02T16:37:42.828Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367059289_U6J",
@@ -2220,11 +2425,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367059289_U6J",
           "notes": "",
           "createdAt": "2026-09-02T16:37:39.289Z",
-          "updatedAt": "2026-09-02T16:37:39.289Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367044887_465",
@@ -2261,11 +2466,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367044887_465",
           "notes": "",
           "createdAt": "2026-09-02T16:37:24.887Z",
-          "updatedAt": "2026-09-02T16:37:24.887Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788367020642_YJC",
@@ -2302,11 +2507,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788367020642_YJC",
           "notes": "",
           "createdAt": "2026-09-02T16:37:00.642Z",
-          "updatedAt": "2026-09-02T16:37:00.642Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788366107708_VYT",
@@ -2353,11 +2558,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788366107708_VYT",
           "notes": "",
           "createdAt": "2026-09-02T16:21:47.708Z",
-          "updatedAt": "2026-09-02T16:21:47.708Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788362991728_1IA",
@@ -2404,11 +2609,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788362991728_1IA",
           "notes": "",
           "createdAt": "2026-09-02T15:29:51.728Z",
-          "updatedAt": "2026-09-02T15:29:51.728Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788362970028_VSC",
@@ -2455,11 +2660,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788362970028_VSC",
           "notes": "",
           "createdAt": "2026-09-02T15:29:30.028Z",
-          "updatedAt": "2026-09-02T15:29:30.028Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788362911465_O4B",
@@ -2506,11 +2711,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788362911465_O4B",
           "notes": "",
           "createdAt": "2026-09-02T15:28:31.465Z",
-          "updatedAt": "2026-09-02T15:28:31.465Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788362826725_555",
@@ -2557,11 +2762,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788362826725_555",
           "notes": "",
           "createdAt": "2026-09-02T15:27:06.725Z",
-          "updatedAt": "2026-09-02T15:27:06.725Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788362498867_5ZQ",
@@ -2608,11 +2813,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788362498867_5ZQ",
           "notes": "",
           "createdAt": "2026-09-02T15:21:38.867Z",
-          "updatedAt": "2026-09-02T15:21:38.867Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788362296229_0RU",
@@ -2659,11 +2864,11 @@
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_COFF_1788362296229_0RU",
           "notes": "",
           "createdAt": "2026-09-02T15:18:16.229Z",
-          "updatedAt": "2026-09-02T15:18:16.229Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_COFF_1788148979416_Z4E",
@@ -2775,29 +2980,29 @@
           "tableNum": 5,
           "items": [
             {
-              "itemId": "item_1",
+              "itemId": "coff_pizza_margherita",
               "name": "Pizza Margherita Classic",
-              "price": 58000,
-              "basePrice": 58000,
+              "price": 12,
+              "basePrice": 12,
               "addonPrice": 0,
               "qty": 2,
               "subtext": "Reguler 6-Slice",
               "image": ""
             },
             {
-              "itemId": "item_2",
+              "itemId": "coff_kopi_aren",
               "name": "Kopi Milk Aren (Es)",
-              "price": 22001,
-              "basePrice": 22000,
-              "addonPrice": 1,
+              "price": 5.5,
+              "basePrice": 5,
+              "addonPrice": 0.5,
               "qty": 1,
-              "subtext": "Less Sugar (50%), Oat Milk (+Rp 6rb)",
+              "subtext": "Less Sugar (50%), Oat Milk (+BND 0.50)",
               "image": ""
             }
           ],
-          "subtotal": 138001,
+          "subtotal": 29.5,
           "tax": 0,
-          "total": 138001,
+          "total": 29.5,
           "currency": "BND",
           "currencySymbol": "$",
           "paymentMethod": "BIBD",
@@ -3041,6 +3246,56 @@
         }
       ],
       "waiterCalls": [
+        {
+          "id": "CALL_COFF_1789046740567",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan dan tisu",
+          "status": "pending",
+          "timestamp": "2026-09-10T13:25:40.567Z",
+          "createdAt": "2026-09-10T13:25:40.567Z"
+        },
+        {
+          "id": "CALL_COFF_1789046720285",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan",
+          "status": "pending",
+          "timestamp": "2026-09-10T13:25:20.285Z",
+          "createdAt": "2026-09-10T13:25:20.285Z"
+        },
+        {
+          "id": "CALL_COFF_1789046720088",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Tolong tambah sendok & garpu",
+          "status": "pending",
+          "timestamp": "2026-09-10T13:25:20.088Z",
+          "createdAt": "2026-09-10T13:25:20.088Z"
+        },
+        {
+          "id": "CALL_COFF_1789046656220",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Minta sendok tambahan",
+          "status": "pending",
+          "timestamp": "2026-09-10T13:24:16.220Z",
+          "createdAt": "2026-09-10T13:24:16.220Z"
+        },
+        {
+          "id": "CALL_COFF_1789046655898",
+          "merchantId": "coffeenity",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "reason": "Tolong tambah sendok & garpu",
+          "status": "pending",
+          "timestamp": "2026-09-10T13:24:15.898Z",
+          "createdAt": "2026-09-10T13:24:15.898Z"
+        },
         {
           "id": "CALL_COFF_1788368366534",
           "merchantId": "coffeenity",
@@ -3384,6 +3639,55 @@
       ],
       "auditLogs": [
         {
+          "id": "log_1789046750186",
+          "timestamp": "21:25:50",
+          "action": "ORDER_DISPATCHED",
+          "actor": "Ahmad Owner",
+          "detail": "Order #5KZ1Z diterima di dapur ($ 21.00 via BIBD)."
+        },
+        {
+          "id": "log_1789046744723",
+          "timestamp": "21:25:44",
+          "action": "SECURITY_PIN_ROTATION",
+          "actor": "Ahmad Owner",
+          "detail": "Master admin PIN verified."
+        },
+        {
+          "id": "log_1789046740786",
+          "timestamp": "21:25:40",
+          "action": "ORDER_DISPATCHED",
+          "actor": "Ahmad Owner",
+          "detail": "Order #5KOLT diterima di dapur ($ 10.00 via BIBD)."
+        },
+        {
+          "id": "log_1789046720510",
+          "timestamp": "21:25:20",
+          "action": "ORDER_DISPATCHED",
+          "actor": "Ahmad Owner",
+          "detail": "Order #5K8XF diterima di dapur ($ 23.00 via BIBD)."
+        },
+        {
+          "id": "log_1789046698830",
+          "timestamp": "21:24:58",
+          "action": "SECURITY_PIN_ROTATION",
+          "actor": "Ahmad Owner",
+          "detail": "Master admin PIN verified."
+        },
+        {
+          "id": "log_1789046691523",
+          "timestamp": "21:24:51",
+          "action": "ORDER_DISPATCHED",
+          "actor": "Ahmad Owner",
+          "detail": "Order #5KN0K diterima di dapur ($ 10.00 via BIBD)."
+        },
+        {
+          "id": "log_1789046656704",
+          "timestamp": "21:24:16",
+          "action": "ORDER_DISPATCHED",
+          "actor": "Ahmad Owner",
+          "detail": "Order #5KPYB diterima di dapur ($ 23.00 via BIBD)."
+        },
+        {
           "id": "log_1788368369438",
           "timestamp": "00:59:29",
           "action": "ORDER_DISPATCHED",
@@ -3671,9 +3975,9 @@
         }
       ],
       "stats": {
-        "grossRevenue": 138623,
-        "totalOrdersToday": 29,
-        "averageTicket": 4780.1
+        "grossRevenue": 738.5,
+        "totalOrdersToday": 34,
+        "averageTicket": 21.72
       },
       "staff": [],
       "apiKeys": [
@@ -3812,6 +4116,22 @@
           "status": "active",
           "rateLimit": "120 req/min",
           "createdAt": "2026-09-02T16:59:27.247Z"
+        },
+        {
+          "id": "key_1789046698822",
+          "name": "POS Moka Integration",
+          "key": "aiodma_live_01c5f9e41f092329c7a77b4f",
+          "status": "active",
+          "rateLimit": "120 req/min",
+          "createdAt": "2026-09-10T13:24:58.824Z"
+        },
+        {
+          "id": "key_1789046744714",
+          "name": "POS Moka Integration",
+          "key": "aiodma_live_ec88a9b0b6aa053d7bbf1975",
+          "status": "active",
+          "rateLimit": "120 req/min",
+          "createdAt": "2026-09-10T13:25:44.715Z"
         }
       ],
       "knowledgeBase": [
@@ -5749,6 +6069,469 @@
       ],
       "orders": [
         {
+          "id": "ORD_SENO_1789046750136_IP4",
+          "orderNumber": "#5KIP4",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 3",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 56000,
+          "tax": 5600,
+          "total": 61600,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "QRIS",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046750136_IP4",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:50.136Z",
+          "updatedAt": "2026-09-10T13:25:50.136Z"
+        },
+        {
+          "id": "ORD_SENO_1789046744842_P6R",
+          "orderNumber": "#5KP6R",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 38000,
+              "basePrice": 28000,
+              "addonPrice": 10000,
+              "qty": 1,
+              "subtext": "Less Sugar 50%, Ganti Oat Milk, Extra Shot",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 83000,
+              "basePrice": 58000,
+              "addonPrice": 25000,
+              "qty": 1,
+              "subtext": "Stuffed Cheese Crust, Ekstra Mozzarella",
+              "image": "assets/products/pizza_margherita.jpg"
+            }
+          ],
+          "subtotal": 121000,
+          "tax": 12100,
+          "total": 133100,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046744842_P6R",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:44.842Z",
+          "updatedAt": "2026-09-10T13:25:44.842Z"
+        },
+        {
+          "id": "ORD_SENO_1789046738618_60J",
+          "orderNumber": "#5K60J",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 58000,
+              "basePrice": 58000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "Reguler 6-Slice",
+              "image": "assets/products/pizza_margherita.jpg"
+            },
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 34000,
+              "basePrice": 28000,
+              "addonPrice": 6000,
+              "qty": 1,
+              "subtext": "Less Sugar (50%), Oat Milk (+Rp 6rb)",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 150000,
+          "tax": 15000,
+          "total": 165000,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "ready",
+          "idempotencyKey": "sim_idemp_1789046738617_jtsrl",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:38.618Z",
+          "updatedAt": "2026-09-10T13:25:38.676Z"
+        },
+        {
+          "id": "ORD_SENO_1789046720272_OYM",
+          "orderNumber": "#3KOYM",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 3",
+          "tableNum": 3,
+          "items": [
+            {
+              "itemId": "americano",
+              "name": "Iced Americano",
+              "price": 22000,
+              "basePrice": 22000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 22000,
+          "tax": 2200,
+          "total": 24200,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046720272_OYM",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:20.272Z",
+          "updatedAt": "2026-09-10T13:25:20.277Z"
+        },
+        {
+          "id": "ORD_SENO_1789046720268_BO8",
+          "orderNumber": "#5KBO8",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "iced_latte",
+              "name": "Iced Caffe Latte",
+              "price": 26000,
+              "basePrice": 26000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/iced_latte.jpg"
+            }
+          ],
+          "subtotal": 26000,
+          "tax": 2600,
+          "total": 28600,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046720268_BO8",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:20.268Z",
+          "updatedAt": "2026-09-10T13:25:20.268Z"
+        },
+        {
+          "id": "ORD_SENO_1789046720265_Q5I",
+          "orderNumber": "#5KQ5I",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 28000,
+          "tax": 2800,
+          "total": 30800,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PENDING_CASHIER",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046720265_Q5I",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:20.265Z",
+          "updatedAt": "2026-09-10T13:25:20.265Z"
+        },
+        {
+          "id": "ORD_SENO_1789046720069_DP1",
+          "orderNumber": "#5KDP1",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "almond_croissant",
+              "name": "Almond Pain au Chocolat",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/almond_croissant.jpg"
+            }
+          ],
+          "subtotal": 84000,
+          "tax": 8400,
+          "total": 92400,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "preparing",
+          "idempotencyKey": "IDEMP_1789046720066_pwg4g",
+          "notes": "",
+          "createdAt": "2026-09-10T13:25:20.069Z",
+          "updatedAt": "2026-09-10T13:25:20.083Z"
+        },
+        {
+          "id": "ORD_SENO_1789046698935_XVK",
+          "orderNumber": "#5KXVK",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 38000,
+              "basePrice": 28000,
+              "addonPrice": 10000,
+              "qty": 1,
+              "subtext": "Less Sugar 50%, Ganti Oat Milk, Extra Shot",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 83000,
+              "basePrice": 58000,
+              "addonPrice": 25000,
+              "qty": 1,
+              "subtext": "Stuffed Cheese Crust, Ekstra Mozzarella",
+              "image": "assets/products/pizza_margherita.jpg"
+            }
+          ],
+          "subtotal": 121000,
+          "tax": 12100,
+          "total": 133100,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046698935_XVK",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:58.935Z",
+          "updatedAt": "2026-09-10T13:24:58.935Z"
+        },
+        {
+          "id": "ORD_SENO_1789046689367_X10",
+          "orderNumber": "#5KX10",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "pizza_margherita",
+              "name": "Pizza Margherita Classic",
+              "price": 58000,
+              "basePrice": 58000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "Reguler 6-Slice",
+              "image": "assets/products/pizza_margherita.jpg"
+            },
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 34000,
+              "basePrice": 28000,
+              "addonPrice": 6000,
+              "qty": 1,
+              "subtext": "Less Sugar (50%), Oat Milk (+Rp 6rb)",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 150000,
+          "tax": 15000,
+          "total": 165000,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "ready",
+          "idempotencyKey": "sim_idemp_1789046689365_0od27",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:49.367Z",
+          "updatedAt": "2026-09-10T13:24:49.539Z"
+        },
+        {
+          "id": "ORD_SENO_1789046656187_9YY",
+          "orderNumber": "#3K9YY",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 3",
+          "tableNum": 3,
+          "items": [
+            {
+              "itemId": "americano",
+              "name": "Iced Americano",
+              "price": 22000,
+              "basePrice": 22000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/americano.jpg"
+            }
+          ],
+          "subtotal": 22000,
+          "tax": 2200,
+          "total": 24200,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046656187_9YY",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:16.187Z",
+          "updatedAt": "2026-09-10T13:24:16.196Z"
+        },
+        {
+          "id": "ORD_SENO_1789046656180_I3I",
+          "orderNumber": "#5KI3I",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "iced_latte",
+              "name": "Iced Caffe Latte",
+              "price": 26000,
+              "basePrice": 26000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/iced_latte.jpg"
+            }
+          ],
+          "subtotal": 26000,
+          "tax": 2600,
+          "total": 28600,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046656180_I3I",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:16.180Z",
+          "updatedAt": "2026-09-10T13:24:16.180Z"
+        },
+        {
+          "id": "ORD_SENO_1789046656173_GHI",
+          "orderNumber": "#5KGHI",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            }
+          ],
+          "subtotal": 28000,
+          "tax": 2800,
+          "total": 30800,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "CASH",
+          "paymentStatus": "PENDING_CASHIER",
+          "status": "received",
+          "idempotencyKey": "ORD_SENO_1789046656173_GHI",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:16.173Z",
+          "updatedAt": "2026-09-10T13:24:16.173Z"
+        },
+        {
+          "id": "ORD_SENO_1789046655851_5WZ",
+          "orderNumber": "#5K5WZ",
+          "merchantId": "senopati_cafe",
+          "table": "Meja 5",
+          "tableNum": 5,
+          "items": [
+            {
+              "itemId": "kopi_milk_aren",
+              "name": "Kopi Milk Aren (Es)",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 2,
+              "subtext": "",
+              "image": "assets/products/kopi_milk_aren.jpg"
+            },
+            {
+              "itemId": "almond_croissant",
+              "name": "Almond Pain au Chocolat",
+              "price": 28000,
+              "basePrice": 28000,
+              "addonPrice": 0,
+              "qty": 1,
+              "subtext": "",
+              "image": "assets/products/almond_croissant.jpg"
+            }
+          ],
+          "subtotal": 84000,
+          "tax": 8400,
+          "total": 92400,
+          "currency": "IDR",
+          "currencySymbol": "Rp",
+          "paymentMethod": "BIBD",
+          "paymentStatus": "PAID",
+          "status": "preparing",
+          "idempotencyKey": "IDEMP_1789046655848_ck09x",
+          "notes": "",
+          "createdAt": "2026-09-10T13:24:15.851Z",
+          "updatedAt": "2026-09-10T13:24:15.888Z"
+        },
+        {
           "id": "ORD_SENO_1788368369404_YTI",
           "orderNumber": "#5KYTI",
           "merchantId": "senopati_cafe",
@@ -5773,11 +6556,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "QRIS",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368369404_YTI",
           "notes": "",
           "createdAt": "2026-09-02T16:59:29.404Z",
-          "updatedAt": "2026-09-02T16:59:29.404Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368367400_LFP",
@@ -5814,11 +6597,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368367400_LFP",
           "notes": "",
           "createdAt": "2026-09-02T16:59:27.400Z",
-          "updatedAt": "2026-09-02T16:59:27.400Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368366182_AR2",
@@ -5855,11 +6638,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788368366177_c84kf",
           "notes": "",
           "createdAt": "2026-09-02T16:59:26.182Z",
-          "updatedAt": "2026-09-02T16:59:26.251Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368364422_6YR",
@@ -5886,11 +6669,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368364422_6YR",
           "notes": "",
           "createdAt": "2026-09-02T16:59:24.422Z",
-          "updatedAt": "2026-09-02T16:59:24.433Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368364415_Z1I",
@@ -5917,11 +6700,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368364415_Z1I",
           "notes": "",
           "createdAt": "2026-09-02T16:59:24.415Z",
-          "updatedAt": "2026-09-02T16:59:24.415Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368364409_0WZ",
@@ -5948,11 +6731,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368364409_0WZ",
           "notes": "",
           "createdAt": "2026-09-02T16:59:24.409Z",
-          "updatedAt": "2026-09-02T16:59:24.409Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368364139_FW8",
@@ -5989,11 +6772,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788368364135_nguae",
           "notes": "",
           "createdAt": "2026-09-02T16:59:24.139Z",
-          "updatedAt": "2026-09-02T16:59:24.156Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368035136_E4C",
@@ -6020,11 +6803,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "QRIS",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368035136_E4C",
           "notes": "",
           "createdAt": "2026-09-02T16:53:55.136Z",
-          "updatedAt": "2026-09-02T16:53:55.136Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368033086_5YE",
@@ -6061,11 +6844,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368033086_5YE",
           "notes": "",
           "createdAt": "2026-09-02T16:53:53.086Z",
-          "updatedAt": "2026-09-02T16:53:53.086Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368031845_L0O",
@@ -6102,11 +6885,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788368031842_a1akn",
           "notes": "",
           "createdAt": "2026-09-02T16:53:51.845Z",
-          "updatedAt": "2026-09-02T16:53:51.918Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368011671_GCP",
@@ -6133,11 +6916,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368011671_GCP",
           "notes": "",
           "createdAt": "2026-09-02T16:53:31.671Z",
-          "updatedAt": "2026-09-02T16:53:31.678Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368011659_MGS",
@@ -6164,11 +6947,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368011659_MGS",
           "notes": "",
           "createdAt": "2026-09-02T16:53:31.659Z",
-          "updatedAt": "2026-09-02T16:53:31.659Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368011654_XWM",
@@ -6195,11 +6978,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788368011654_XWM",
           "notes": "",
           "createdAt": "2026-09-02T16:53:31.654Z",
-          "updatedAt": "2026-09-02T16:53:31.654Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788368011387_QHZ",
@@ -6236,11 +7019,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788368011383_3t9vr",
           "notes": "",
           "createdAt": "2026-09-02T16:53:31.387Z",
-          "updatedAt": "2026-09-02T16:53:31.436Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367933948_PME",
@@ -6277,11 +7060,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367933948_PME",
           "notes": "",
           "createdAt": "2026-09-02T16:52:13.948Z",
-          "updatedAt": "2026-09-02T16:52:13.948Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367923250_BSE",
@@ -6318,11 +7101,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788367923248_lfchp",
           "notes": "",
           "createdAt": "2026-09-02T16:52:03.250Z",
-          "updatedAt": "2026-09-02T16:52:03.313Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367900061_QJ5",
@@ -6349,11 +7132,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367900061_QJ5",
           "notes": "",
           "createdAt": "2026-09-02T16:51:40.062Z",
-          "updatedAt": "2026-09-02T16:51:40.071Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367900058_EA7",
@@ -6380,11 +7163,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367900058_EA7",
           "notes": "",
           "createdAt": "2026-09-02T16:51:40.058Z",
-          "updatedAt": "2026-09-02T16:51:40.058Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367900054_NJO",
@@ -6411,11 +7194,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367900054_NJO",
           "notes": "",
           "createdAt": "2026-09-02T16:51:40.054Z",
-          "updatedAt": "2026-09-02T16:51:40.054Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367899827_KVO",
@@ -6452,11 +7235,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788367899825_gxz87",
           "notes": "",
           "createdAt": "2026-09-02T16:51:39.827Z",
-          "updatedAt": "2026-09-02T16:51:39.847Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367832892_UDK",
@@ -6483,11 +7266,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "QRIS",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367832892_UDK",
           "notes": "",
           "createdAt": "2026-09-02T16:50:32.892Z",
-          "updatedAt": "2026-09-02T16:50:32.892Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367829921_T5J",
@@ -6524,11 +7307,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367829921_T5J",
           "notes": "",
           "createdAt": "2026-09-02T16:50:29.921Z",
-          "updatedAt": "2026-09-02T16:50:29.921Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367819109_LZ8",
@@ -6565,11 +7348,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788367819106_tyo2z",
           "notes": "",
           "createdAt": "2026-09-02T16:50:19.109Z",
-          "updatedAt": "2026-09-02T16:50:19.182Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367801288_JW1",
@@ -6596,11 +7379,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367801288_JW1",
           "notes": "",
           "createdAt": "2026-09-02T16:50:01.288Z",
-          "updatedAt": "2026-09-02T16:50:01.299Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367801276_MN6",
@@ -6627,11 +7410,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367801276_MN6",
           "notes": "",
           "createdAt": "2026-09-02T16:50:01.276Z",
-          "updatedAt": "2026-09-02T16:50:01.276Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367801271_PL8",
@@ -6658,11 +7441,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367801271_PL8",
           "notes": "",
           "createdAt": "2026-09-02T16:50:01.271Z",
-          "updatedAt": "2026-09-02T16:50:01.271Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367801019_VXC",
@@ -6699,11 +7482,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788367801017_9h6i6",
           "notes": "",
           "createdAt": "2026-09-02T16:50:01.019Z",
-          "updatedAt": "2026-09-02T16:50:01.047Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367129645_PTP",
@@ -6730,11 +7513,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "QRIS",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367129645_PTP",
           "notes": "",
           "createdAt": "2026-09-02T16:38:49.645Z",
-          "updatedAt": "2026-09-02T16:38:49.645Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367128025_TON",
@@ -6771,11 +7554,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367128025_TON",
           "notes": "",
           "createdAt": "2026-09-02T16:38:48.025Z",
-          "updatedAt": "2026-09-02T16:38:48.025Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367127313_K0N",
@@ -6812,11 +7595,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788367127311_afffp",
           "notes": "",
           "createdAt": "2026-09-02T16:38:47.313Z",
-          "updatedAt": "2026-09-02T16:38:47.377Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367125696_Z53",
@@ -6843,11 +7626,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367125696_Z53",
           "notes": "",
           "createdAt": "2026-09-02T16:38:45.696Z",
-          "updatedAt": "2026-09-02T16:38:45.704Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367125692_24R",
@@ -6874,11 +7657,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367125692_24R",
           "notes": "",
           "createdAt": "2026-09-02T16:38:45.692Z",
-          "updatedAt": "2026-09-02T16:38:45.692Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367125687_81G",
@@ -6905,11 +7688,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367125687_81G",
           "notes": "",
           "createdAt": "2026-09-02T16:38:45.687Z",
-          "updatedAt": "2026-09-02T16:38:45.687Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367125462_O41",
@@ -6946,11 +7729,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788367125460_82nm1",
           "notes": "",
           "createdAt": "2026-09-02T16:38:45.462Z",
-          "updatedAt": "2026-09-02T16:38:45.478Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367062834_XHV",
@@ -6977,11 +7760,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "QRIS",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367062834_XHV",
           "notes": "",
           "createdAt": "2026-09-02T16:37:42.835Z",
-          "updatedAt": "2026-09-02T16:37:42.835Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367061237_HCV",
@@ -7018,11 +7801,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367061237_HCV",
           "notes": "",
           "createdAt": "2026-09-02T16:37:41.237Z",
-          "updatedAt": "2026-09-02T16:37:41.237Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367060220_4CS",
@@ -7059,11 +7842,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788367060218_e6v3i",
           "notes": "",
           "createdAt": "2026-09-02T16:37:40.220Z",
-          "updatedAt": "2026-09-02T16:37:40.292Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367059080_GY1",
@@ -7090,11 +7873,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367059080_GY1",
           "notes": "",
           "createdAt": "2026-09-02T16:37:39.080Z",
-          "updatedAt": "2026-09-02T16:37:39.085Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367059076_TOM",
@@ -7121,11 +7904,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367059076_TOM",
           "notes": "",
           "createdAt": "2026-09-02T16:37:39.076Z",
-          "updatedAt": "2026-09-02T16:37:39.076Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367059071_D9P",
@@ -7152,11 +7935,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367059071_D9P",
           "notes": "",
           "createdAt": "2026-09-02T16:37:39.071Z",
-          "updatedAt": "2026-09-02T16:37:39.071Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367058820_VAC",
@@ -7193,11 +7976,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788367058814_7z70v",
           "notes": "",
           "createdAt": "2026-09-02T16:37:38.820Z",
-          "updatedAt": "2026-09-02T16:37:38.847Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788367044896_4MZ",
@@ -7224,11 +8007,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "QRIS",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788367044896_4MZ",
           "notes": "",
           "createdAt": "2026-09-02T16:37:24.896Z",
-          "updatedAt": "2026-09-02T16:37:24.896Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788366109557_LG9",
@@ -7265,11 +8048,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788366109557_LG9",
           "notes": "",
           "createdAt": "2026-09-02T16:21:49.557Z",
-          "updatedAt": "2026-09-02T16:21:49.557Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788366108658_2CD",
@@ -7306,11 +8089,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788366108655_ck4p4",
           "notes": "",
           "createdAt": "2026-09-02T16:21:48.658Z",
-          "updatedAt": "2026-09-02T16:21:48.755Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788366107520_S23",
@@ -7337,11 +8120,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788366107520_S23",
           "notes": "",
           "createdAt": "2026-09-02T16:21:47.520Z",
-          "updatedAt": "2026-09-02T16:21:47.529Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788366107514_OJ5",
@@ -7368,11 +8151,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788366107514_OJ5",
           "notes": "",
           "createdAt": "2026-09-02T16:21:47.514Z",
-          "updatedAt": "2026-09-02T16:21:47.514Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788366107510_NMB",
@@ -7399,11 +8182,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788366107510_NMB",
           "notes": "",
           "createdAt": "2026-09-02T16:21:47.510Z",
-          "updatedAt": "2026-09-02T16:21:47.510Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788366107218_O8K",
@@ -7440,11 +8223,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788366107215_bdxdw",
           "notes": "",
           "createdAt": "2026-09-02T16:21:47.218Z",
-          "updatedAt": "2026-09-02T16:21:47.245Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362993512_WE1",
@@ -7481,11 +8264,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362993512_WE1",
           "notes": "",
           "createdAt": "2026-09-02T15:29:53.512Z",
-          "updatedAt": "2026-09-02T15:29:53.512Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362992597_W5W",
@@ -7522,11 +8305,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788362992592_m4gox",
           "notes": "",
           "createdAt": "2026-09-02T15:29:52.597Z",
-          "updatedAt": "2026-09-02T15:29:52.708Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362991528_Q9O",
@@ -7553,11 +8336,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362991528_Q9O",
           "notes": "",
           "createdAt": "2026-09-02T15:29:51.528Z",
-          "updatedAt": "2026-09-02T15:29:51.532Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362991523_CGJ",
@@ -7584,11 +8367,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362991523_CGJ",
           "notes": "",
           "createdAt": "2026-09-02T15:29:51.523Z",
-          "updatedAt": "2026-09-02T15:29:51.523Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362991519_467",
@@ -7615,11 +8398,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362991519_467",
           "notes": "",
           "createdAt": "2026-09-02T15:29:51.519Z",
-          "updatedAt": "2026-09-02T15:29:51.519Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362991320_RVW",
@@ -7656,11 +8439,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788362991318_70kyq",
           "notes": "",
           "createdAt": "2026-09-02T15:29:51.320Z",
-          "updatedAt": "2026-09-02T15:29:51.330Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362971955_YR2",
@@ -7697,11 +8480,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362971955_YR2",
           "notes": "",
           "createdAt": "2026-09-02T15:29:31.955Z",
-          "updatedAt": "2026-09-02T15:29:31.955Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362971098_3PK",
@@ -7738,11 +8521,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788362971097_9qv4f",
           "notes": "",
           "createdAt": "2026-09-02T15:29:31.098Z",
-          "updatedAt": "2026-09-02T15:29:31.152Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362969828_DTX",
@@ -7769,11 +8552,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362969828_DTX",
           "notes": "",
           "createdAt": "2026-09-02T15:29:29.828Z",
-          "updatedAt": "2026-09-02T15:29:29.834Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362969824_RGZ",
@@ -7800,11 +8583,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362969824_RGZ",
           "notes": "",
           "createdAt": "2026-09-02T15:29:29.824Z",
-          "updatedAt": "2026-09-02T15:29:29.824Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362969817_D5D",
@@ -7831,11 +8614,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362969817_D5D",
           "notes": "",
           "createdAt": "2026-09-02T15:29:29.817Z",
-          "updatedAt": "2026-09-02T15:29:29.817Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362969573_I40",
@@ -7872,11 +8655,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788362969571_6syhc",
           "notes": "",
           "createdAt": "2026-09-02T15:29:29.573Z",
-          "updatedAt": "2026-09-02T15:29:29.591Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362920306_RJK",
@@ -7913,11 +8696,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362920306_RJK",
           "notes": "",
           "createdAt": "2026-09-02T15:28:40.306Z",
-          "updatedAt": "2026-09-02T15:28:40.306Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362919342_4EG",
@@ -7954,11 +8737,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788362919340_6753d",
           "notes": "",
           "createdAt": "2026-09-02T15:28:39.342Z",
-          "updatedAt": "2026-09-02T15:28:39.396Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362911158_JC4",
@@ -7985,11 +8768,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362911158_JC4",
           "notes": "",
           "createdAt": "2026-09-02T15:28:31.158Z",
-          "updatedAt": "2026-09-02T15:28:31.163Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362911155_DJW",
@@ -8016,11 +8799,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362911155_DJW",
           "notes": "",
           "createdAt": "2026-09-02T15:28:31.155Z",
-          "updatedAt": "2026-09-02T15:28:31.155Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362911151_N8V",
@@ -8047,11 +8830,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362911151_N8V",
           "notes": "",
           "createdAt": "2026-09-02T15:28:31.151Z",
-          "updatedAt": "2026-09-02T15:28:31.151Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362910933_PVL",
@@ -8088,11 +8871,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788362910932_08rzz",
           "notes": "",
           "createdAt": "2026-09-02T15:28:30.933Z",
-          "updatedAt": "2026-09-02T15:28:30.949Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362846839_LE7",
@@ -8129,11 +8912,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362846839_LE7",
           "notes": "",
           "createdAt": "2026-09-02T15:27:26.839Z",
-          "updatedAt": "2026-09-02T15:27:26.839Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362841127_C3K",
@@ -8170,11 +8953,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788362841119_smz6j",
           "notes": "",
           "createdAt": "2026-09-02T15:27:21.127Z",
-          "updatedAt": "2026-09-02T15:27:21.205Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362826509_JFR",
@@ -8201,11 +8984,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362826509_JFR",
           "notes": "",
           "createdAt": "2026-09-02T15:27:06.509Z",
-          "updatedAt": "2026-09-02T15:27:06.525Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362826418_WNM",
@@ -8232,11 +9015,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362826418_WNM",
           "notes": "",
           "createdAt": "2026-09-02T15:27:06.418Z",
-          "updatedAt": "2026-09-02T15:27:06.418Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362826412_BAP",
@@ -8263,11 +9046,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362826412_BAP",
           "notes": "",
           "createdAt": "2026-09-02T15:27:06.412Z",
-          "updatedAt": "2026-09-02T15:27:06.412Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362826163_PJW",
@@ -8304,11 +9087,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788362826161_td0x8",
           "notes": "",
           "createdAt": "2026-09-02T15:27:06.163Z",
-          "updatedAt": "2026-09-02T15:27:06.201Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362811048_Z3D",
@@ -8335,11 +9118,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362811048_Z3D",
           "notes": "",
           "createdAt": "2026-09-02T15:26:51.048Z",
-          "updatedAt": "2026-09-02T15:26:51.054Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362811035_RDC",
@@ -8366,11 +9149,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362811035_RDC",
           "notes": "",
           "createdAt": "2026-09-02T15:26:51.035Z",
-          "updatedAt": "2026-09-02T15:26:51.035Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362811027_KPY",
@@ -8397,11 +9180,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PENDING_CASHIER",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362811027_KPY",
           "notes": "",
           "createdAt": "2026-09-02T15:26:51.027Z",
-          "updatedAt": "2026-09-02T15:26:51.027Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362499446_2H9",
@@ -8428,11 +9211,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362499446_2H9",
           "notes": "",
           "createdAt": "2026-09-02T15:21:39.446Z",
-          "updatedAt": "2026-09-02T15:21:39.446Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362499438_Y30",
@@ -8459,11 +9242,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362499438_Y30",
           "notes": "",
           "createdAt": "2026-09-02T15:21:39.438Z",
-          "updatedAt": "2026-09-02T15:21:39.438Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362499430_TD7",
@@ -8490,11 +9273,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362499430_TD7",
           "notes": "",
           "createdAt": "2026-09-02T15:21:39.430Z",
-          "updatedAt": "2026-09-02T15:21:39.430Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362498595_HQY",
@@ -8531,11 +9314,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362498595_HQY",
           "notes": "",
           "createdAt": "2026-09-02T15:21:38.595Z",
-          "updatedAt": "2026-09-02T15:21:38.595Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362486202_8TP",
@@ -8572,11 +9355,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788362486201_d4niv",
           "notes": "",
           "createdAt": "2026-09-02T15:21:26.202Z",
-          "updatedAt": "2026-09-02T15:21:26.271Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362475178_OF0",
@@ -8613,11 +9396,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788362475177_mw7hn",
           "notes": "",
           "createdAt": "2026-09-02T15:21:15.178Z",
-          "updatedAt": "2026-09-02T15:21:15.218Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362327189_TED",
@@ -8654,11 +9437,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362327189_TED",
           "notes": "",
           "createdAt": "2026-09-02T15:18:47.189Z",
-          "updatedAt": "2026-09-02T15:18:47.189Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362309581_QMH",
@@ -8685,11 +9468,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362309581_QMH",
           "notes": "",
           "createdAt": "2026-09-02T15:18:29.581Z",
-          "updatedAt": "2026-09-02T15:18:29.581Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362309574_JGR",
@@ -8716,11 +9499,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362309574_JGR",
           "notes": "",
           "createdAt": "2026-09-02T15:18:29.574Z",
-          "updatedAt": "2026-09-02T15:18:29.574Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362309558_1UQ",
@@ -8747,11 +9530,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "CASH",
           "paymentStatus": "PAID",
-          "status": "received",
+          "status": "completed",
           "idempotencyKey": "ORD_SENO_1788362309558_1UQ",
           "notes": "",
           "createdAt": "2026-09-02T15:18:29.558Z",
-          "updatedAt": "2026-09-02T15:18:29.558Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362289291_6RK",
@@ -8788,11 +9571,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "ready",
+          "status": "completed",
           "idempotencyKey": "sim_idemp_1788362289288_dejp8",
           "notes": "",
           "createdAt": "2026-09-02T15:18:09.291Z",
-          "updatedAt": "2026-09-02T15:18:09.347Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788362276094_MW4",
@@ -8829,11 +9612,11 @@
           "currencySymbol": "Rp",
           "paymentMethod": "BIBD",
           "paymentStatus": "PAID",
-          "status": "preparing",
+          "status": "completed",
           "idempotencyKey": "IDEMP_1788362276090_u075f",
           "notes": "",
           "createdAt": "2026-09-02T15:17:56.094Z",
-          "updatedAt": "2026-09-02T15:17:56.116Z"
+          "updatedAt": "2026-09-10T13:10:12.871Z"
         },
         {
           "id": "ORD_SENO_1788149019417_8JD",
@@ -12154,9 +12937,9 @@
         }
       ],
       "stats": {
-        "grossRevenue": 20935006.5,
-        "totalOrdersToday": 221,
-        "averageTicket": 94729
+        "grossRevenue": 21944806.5,
+        "totalOrdersToday": 234,
+        "averageTicket": 93781
       },
       "knowledgeBase": [
         {
@@ -12292,9 +13075,9 @@
     "temperature": 0.7,
     "thinkingBudget": 512,
     "maxOutputTokens": 600,
-    "remainingCredits": 800308,
-    "totalInputTokens": 148257,
-    "totalOutputTokens": 3890
+    "remainingCredits": 750792,
+    "totalInputTokens": 296726,
+    "totalOutputTokens": 4937
   },
   "menu": [
     {
@@ -14080,6 +14863,56 @@
   ],
   "waiterCalls": [
     {
+      "id": "CALL_COFF_1789046740567",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan dan tisu",
+      "status": "pending",
+      "timestamp": "2026-09-10T13:25:40.567Z",
+      "createdAt": "2026-09-10T13:25:40.567Z"
+    },
+    {
+      "id": "CALL_COFF_1789046720285",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan",
+      "status": "pending",
+      "timestamp": "2026-09-10T13:25:20.285Z",
+      "createdAt": "2026-09-10T13:25:20.285Z"
+    },
+    {
+      "id": "CALL_COFF_1789046720088",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Tolong tambah sendok & garpu",
+      "status": "pending",
+      "timestamp": "2026-09-10T13:25:20.088Z",
+      "createdAt": "2026-09-10T13:25:20.088Z"
+    },
+    {
+      "id": "CALL_COFF_1789046656220",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Minta sendok tambahan",
+      "status": "pending",
+      "timestamp": "2026-09-10T13:24:16.220Z",
+      "createdAt": "2026-09-10T13:24:16.220Z"
+    },
+    {
+      "id": "CALL_COFF_1789046655898",
+      "merchantId": "coffeenity",
+      "table": "Meja 5",
+      "tableNum": 5,
+      "reason": "Tolong tambah sendok & garpu",
+      "status": "pending",
+      "timestamp": "2026-09-10T13:24:15.898Z",
+      "createdAt": "2026-09-10T13:24:15.898Z"
+    },
+    {
       "id": "CALL_COFF_1788368366534",
       "merchantId": "coffeenity",
       "table": "Meja 5",
@@ -14579,6 +15412,72 @@
         "Iced Latte"
       ],
       "lastUpdated": "2026-09-02T16:59:28.841Z"
+    },
+    "cust_etr4vwj": {
+      "customerId": "cust_etr4vwj",
+      "visitCount": 1,
+      "preferences": {
+        "sweetnessLevel": "Normal",
+        "milkAlternative": "Standar Fresh Milk",
+        "temperature": "Iced"
+      },
+      "allergies": [],
+      "favoriteItems": [],
+      "lastUpdated": "2026-09-02T17:01:45.731Z"
+    },
+    "cust_t2sxbun": {
+      "customerId": "cust_t2sxbun",
+      "visitCount": 1,
+      "preferences": {
+        "sweetnessLevel": "Normal",
+        "milkAlternative": "Standar Fresh Milk",
+        "temperature": "Iced"
+      },
+      "allergies": [],
+      "favoriteItems": [],
+      "lastUpdated": "2026-09-02T17:01:46.955Z"
+    },
+    "cust_zbjvudr": {
+      "customerId": "cust_zbjvudr",
+      "visitCount": 1,
+      "preferences": {
+        "sweetnessLevel": "Normal",
+        "milkAlternative": "Standar Fresh Milk",
+        "temperature": "Iced"
+      },
+      "allergies": [],
+      "favoriteItems": [],
+      "lastUpdated": "2026-09-02T17:01:47.263Z"
+    },
+    "cust_jjj79hx": {
+      "customerId": "cust_jjj79hx",
+      "visitCount": 1,
+      "preferences": {
+        "sweetnessLevel": "Normal",
+        "milkAlternative": "Standar Fresh Milk",
+        "temperature": "Iced"
+      },
+      "allergies": [],
+      "favoriteItems": [],
+      "lastUpdated": "2026-09-02T17:01:47.468Z"
+    },
+    "cust_test_1789046748489": {
+      "customerId": "cust_test_1789046748489",
+      "visitCount": 1,
+      "preferences": {
+        "sweetnessLevel": "Less Sugar 50%",
+        "milkAlternative": "Oat Milk",
+        "temperature": "Iced"
+      },
+      "allergies": [
+        "lactose",
+        "kacang_tanah"
+      ],
+      "favoriteItems": [
+        "Pepperoni Pizza",
+        "Iced Latte"
+      ],
+      "lastUpdated": "2026-09-10T13:25:48.511Z"
     }
   }
 }

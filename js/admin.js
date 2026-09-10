@@ -253,13 +253,66 @@
   }
 
   // --- 7. NAVIGATION & TAB SWITCHER ---
-  function switchTab(tabId) {
+  // --- 7. NAVIGATION & TAB SWITCHER (TWO-WAY HASH ROUTING) ---
+  const TAB_TO_HASH = {
+    tabAnalytics: 'analytics',
+    tabKDS: 'kds',
+    tabTableQR: 'table-qr',
+    tabMenuStock: 'menu',
+    tabPromoPricing: 'promos',
+    tabAiGuardrails: 'ai-guardrails',
+    tabCreditBilling: 'billing',
+    tabAdminSecurity: 'security',
+    tabApiIntegrations: 'api',
+    tabAuditLog: 'audit',
+    tabAdminDocs: 'docs'
+  };
+
+  const HASH_TO_TAB = {
+    '#analytics': 'tabAnalytics',
+    '#kds': 'tabKDS',
+    '#table-qr': 'tabTableQR',
+    '#tables': 'tabTableQR',
+    '#menu': 'tabMenuStock',
+    '#menu-stock': 'tabMenuStock',
+    '#promos': 'tabPromoPricing',
+    '#promo-pricing': 'tabPromoPricing',
+    '#ai': 'tabAiGuardrails',
+    '#ai-guardrails': 'tabAiGuardrails',
+    '#billing': 'tabCreditBilling',
+    '#credits': 'tabCreditBilling',
+    '#security': 'tabAdminSecurity',
+    '#staff': 'tabAdminSecurity',
+    '#api': 'tabApiIntegrations',
+    '#integrations': 'tabApiIntegrations',
+    '#audit': 'tabAuditLog',
+    '#audit-log': 'tabAuditLog',
+    '#docs': 'tabAdminDocs'
+  };
+
+  function switchTab(tabId, updateHash = true) {
+    if (!tabId) return;
     adminState.activeTab = tabId;
+
+    if (updateHash && TAB_TO_HASH[tabId]) {
+      const newHash = '#' + TAB_TO_HASH[tabId];
+      if (window.location.hash !== newHash) {
+        try {
+          history.replaceState(null, '', newHash);
+        } catch (e) {
+          window.location.hash = newHash;
+        }
+      }
+    }
 
     document.querySelectorAll('.nav-item-btn').forEach(btn => {
       const isCurrent = btn.getAttribute('data-tab') === tabId;
       btn.classList.toggle('active', isCurrent);
       btn.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+    });
+
+    document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
     });
 
     document.querySelectorAll('.admin-tab-pane').forEach(pane => {
@@ -278,12 +331,28 @@
     else if (tabId === 'tabAdminSecurity') renderStaffTab();
     else if (tabId === 'tabApiIntegrations') renderApiIntegrationsTab();
     else if (tabId === 'tabAuditLog') renderAuditLogTable();
+    else if (tabId === 'tabAdminDocs') renderAdminDocsTab();
 
+    closeMobileSidebar();
     announceToScreenReader(`Berpindah ke tab ${tabId.replace('tab', '')}`);
   }
 
+  function closeMobileSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('adminMobileBackdrop');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (backdrop) backdrop.style.display = 'none';
+  }
+
+  function openMobileSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('adminMobileBackdrop');
+    if (sidebar) sidebar.classList.add('mobile-open');
+    if (backdrop) backdrop.style.display = 'block';
+  }
+
   // --- 8. MULTI-TENANT DATA SYNCHRONIZATION ---
-  async function loadTenantData(merchantId) {
+  async function loadTenantData(merchantId, isUserTriggered = false) {
     adminState.activeMerchantId = merchantId;
 
     try {
@@ -357,8 +426,10 @@
 
       // Update Badges & Active View
       updateSidebarBadges();
-      switchTab(adminState.activeTab);
-      showAdminToast('info', `Outlet beralih ke ${adminState.activeMerchant?.name || merchantId} (${getActiveCurrency()})`);
+      switchTab(adminState.activeTab, false);
+      if (isUserTriggered) {
+        showAdminToast('info', `Outlet beralih ke ${adminState.activeMerchant?.name || merchantId} (${getActiveCurrency()})`);
+      }
 
     } catch (err) {
       console.error('[ADMIN] Data load error:', err);
@@ -392,6 +463,35 @@
     if (aovEl) aovEl.textContent = formatCurrency(aov);
     if (costEl) {
       costEl.textContent = getActiveCurrency() === 'BND' ? '$ 0.001 / Token' : 'Rp 12 / Order';
+    }
+
+    const tzBadge = document.getElementById('analyticsTimezoneBadge');
+    if (tzBadge) {
+      tzBadge.textContent = adminState.activeMerchantId === 'coffeenity' ? 'BNT (GMT+8)' : 'WIB (GMT+7)';
+    }
+
+    const topUpsellList = document.getElementById('analyticsTopUpsellList');
+    if (topUpsellList) {
+      const isBnd = getActiveCurrency() === 'BND';
+      const items = isBnd ? [
+        { name: 'Iced Latte dengan Oatly (+BND 0.80)', sub: '64 pesanan via rekomendasi AI', amount: '$ 128.50' },
+        { name: 'Pepperoni Pizza Kayu Api (Reguler)', sub: '42 pesanan via pairing AI', amount: '$ 216.00' },
+        { name: 'Caramel Macchiato (Cold Brew)', sub: '38 pesanan via up-sell manis', amount: '$ 98.00' }
+      ] : [
+        { name: 'Kopi Milk Aren + Extra Shot', sub: '64 pesanan via rekomendasi AI', amount: 'Rp 1.984.000' },
+        { name: 'Beef Pepperoni Pizza + Truffle Fries', sub: '42 pesanan via pairing AI', amount: 'Rp 1.512.000' },
+        { name: 'Iced Peach Tea + Burnt Cheesecake', sub: '38 pesanan via up-sell manis', amount: 'Rp 1.482.000' }
+      ];
+
+      topUpsellList.innerHTML = items.map(it => `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #F9FAFB; border: 1px solid rgba(0,0,0,0.05); border-radius: 10px;">
+          <div>
+            <div class="type-data-emphasis" style="font-weight: 700; color: var(--admin-text-main); font-size: 13px;">${it.name}</div>
+            <div class="type-caption" style="color: var(--admin-text-muted); font-size: 11px;">${it.sub}</div>
+          </div>
+          <div class="type-data-emphasis" style="color: #059669; font-weight: 700; font-size: 13.5px;">${it.amount}</div>
+        </div>
+      `).join('');
     }
   }
 
@@ -2133,8 +2233,120 @@
       }
     });
 
-    // Initial Load & SSE
-    loadTenantData('coffeenity');
+    // Mobile Sidebar Drawer & Bottom Nav
+    const btnToggleMobile = document.getElementById('btnToggleMobileMenu');
+    if (btnToggleMobile) btnToggleMobile.addEventListener('click', openMobileSidebar);
+
+    const btnCloseMobile = document.getElementById('btnCloseMobileMenu');
+    if (btnCloseMobile) btnCloseMobile.addEventListener('click', closeMobileSidebar);
+
+    const mobileBackdrop = document.getElementById('adminMobileBackdrop');
+    if (mobileBackdrop) mobileBackdrop.addEventListener('click', closeMobileSidebar);
+
+    const btnBottomMore = document.getElementById('btnBottomMoreMenu');
+    if (btnBottomMore) btnBottomMore.addEventListener('click', openMobileSidebar);
+
+    document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.getAttribute('data-tab');
+        if (tabId) switchTab(tabId);
+      });
+    });
+
+    // Quick PIN Terminal Lock Modal Logic
+    const lockModal = document.getElementById('adminPinLockModal');
+    const pinInput = document.getElementById('adminPinInput');
+    const pinErr = document.getElementById('pinErrorMessage');
+    const btnLock = document.getElementById('btnLockAdminTerminal');
+    const btnUnlock = document.getElementById('btnUnlockTerminal');
+
+    function showPinLockModal() {
+      if (!lockModal) return;
+      lockModal.style.display = 'flex';
+      if (pinInput) {
+        pinInput.value = '';
+        pinInput.focus();
+      }
+      if (pinErr) pinErr.textContent = '';
+    }
+
+    function hidePinLockModal() {
+      if (lockModal) lockModal.style.display = 'none';
+      if (pinErr) pinErr.textContent = '';
+    }
+
+    async function attemptPinUnlock() {
+      const pin = pinInput?.value?.trim();
+      if (!pin) {
+        if (pinErr) pinErr.textContent = 'Silakan masukkan PIN Admin.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success && data.token) {
+          localStorage.setItem('aiodma_admin_token', data.token);
+          hidePinLockModal();
+          showAdminToast('success', 'Terminal berhasil dibuka. Sesi Admin Aktif.');
+          addAuditLog('TERMINAL_UNLOCKED', 'Terminal dibuka via verifikasi PIN admin.');
+        } else {
+          if (pinErr) pinErr.textContent = 'PIN tidak valid. Coba PIN default: 8888';
+          if (pinInput) {
+            pinInput.value = '';
+            pinInput.focus();
+          }
+        }
+      } catch (err) {
+        if (pinErr) pinErr.textContent = 'Gagal menghubungi server verifikasi.';
+      }
+    }
+
+    if (btnLock) btnLock.addEventListener('click', showPinLockModal);
+    if (btnUnlock) btnUnlock.addEventListener('click', attemptPinUnlock);
+
+    if (pinInput) {
+      pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          attemptPinUnlock();
+        }
+      });
+    }
+
+    document.querySelectorAll('.numpad-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!pinInput) return;
+        const val = btn.getAttribute('data-val');
+        if (val === 'clear') {
+          pinInput.value = '';
+        } else if (val === 'back') {
+          pinInput.value = pinInput.value.slice(0, -1);
+        } else if (val && pinInput.value.length < 8) {
+          pinInput.value += val;
+        }
+        if (pinErr) pinErr.textContent = '';
+      });
+    });
+
+    // Hash Change Event Listener
+    window.addEventListener('hashchange', () => {
+      const targetTab = HASH_TO_TAB[window.location.hash];
+      if (targetTab && targetTab !== adminState.activeTab) {
+        switchTab(targetTab, false);
+      }
+    });
+
+    // Initial Load & Hash Route Detection
+    const initialTab = HASH_TO_TAB[window.location.hash] || 'tabAnalytics';
+    adminState.activeTab = initialTab;
+
+    loadTenantData('coffeenity', false);
     initSseBroadcaster();
     enforceRbacRole('owner');
   });
