@@ -45,3 +45,6 @@ output/
 .npm-cache/
 test-results/
 playwright-report/
+.vercel/
+
+.vercel
