@@ -23,6 +23,7 @@ async function seed({connectionString,merchants,email,password,published=false})
       await client.query(`INSERT INTO tenants(id,name,currency,config,published) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING`,
         [merchant.id,merchant.name,merchant.currency,JSON.stringify({taxRate:Number(merchant.taxRate || 0)*100,serviceRate:0,
           timezone:merchant.currency==='BND'?'Asia/Brunei':'Asia/Jakarta',language:merchant.defaultLanguage || 'id'}),published]);
+      await client.query("SELECT set_config('app.tenant_id',$1,true)",[merchant.id]);
       await client.query("INSERT INTO memberships(tenant_id,user_id,role) VALUES($1,$2,'owner') ON CONFLICT DO NOTHING",[merchant.id,user.id]);
       for(let table=1;table<=Math.min(merchant.tablesCount || 5,99);table++)await client.query('INSERT INTO dining_tables(tenant_id,id) VALUES($1,$2) ON CONFLICT DO NOTHING',[merchant.id,table]);
       for(const item of merchant.menu) {
