@@ -16,3 +16,15 @@ test('production requires HTTPS and config errors do not disclose secret values'
   assert.equal(loadConfig({...env,NODE_ENV:'production',PUBLIC_BASE_URL:'https://cafe.example'}).NODE_ENV,'production');
   assert.throws(()=>loadConfig({...env,SESSION_SECRET:'private'}),error=>error.message.includes('SESSION_SECRET')&&!error.message.includes('private'));
 });
+test('production can derive a least-privilege runtime URL without exposing owner credentials',()=>{
+  const config=loadConfig({...env,NODE_ENV:'production',PUBLIC_BASE_URL:'https://cafe.example',
+    DATABASE_URL_UNPOOLED:'postgresql://owner:owner-secret@db.example/cafe?sslmode=require',
+    DB_RUNTIME_USER:'aiodma_runtime',DB_RUNTIME_PASSWORD:'r'.repeat(48)});
+  const url=new URL(config.DATABASE_URL);
+  assert.equal(url.username,'aiodma_runtime');
+  assert.equal(url.password,'r'.repeat(48));
+  assert.equal(url.hostname,'db.example');
+  assert.equal(url.pathname,'/cafe');
+  assert.throws(()=>loadConfig({...env,DB_RUNTIME_USER:'owner;drop',DB_RUNTIME_PASSWORD:'private'}),
+    error=>!error.message.includes('private'));
+});
