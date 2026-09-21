@@ -12,8 +12,8 @@ Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Working tree: uncommitted ca
 | G2 | PARTIAL | Canonical pricing/cart/quote/order, manual payment, durable idempotency and scoped SSE pass local tests. Stock concurrency, restart/expiry, refunds, compatibility/native acceptance incomplete. |
 | G3 | PARTIAL | Bounded provider/orchestrator, consented profile and explicit proposal confirmation implemented. Customer contract and real local API browser journeys pass; 240-case corpus/live provider evaluation remains missing. |
 | G4 | PARTIAL, DEPENDENCIES NOT PASSED | Admin browser journey passes locally. Complete onboarding, reporting, external integrations and production PWA acceptance remain. |
-| G5 | NOT_READY | Local automated suites pass and CI workflow exists; no HTTPS staging acceptance, soak, restore drill or reproducible container execution evidence. |
-| G6 | AUTHORIZED, BLOCKED | Owner authorized push and publication. Deployment requires a hosted PostgreSQL target, production secrets and successful provider build/runtime checks. |
+| G5 | PARTIAL | Local automated suites pass, CI exists, and Vercel production build applied Neon migrations and seed data. Soak, restore drill, load testing, live AI evaluation and complete public journey acceptance remain. |
+| G6 | DEPLOYED FOR TESTING | Vercel deployment `dpl_GQhX7MCCX8yXrET7RK8BwDFZ8YL7` is Ready at `https://nativeaiodma-v18.vercel.app`; this does not waive incomplete G5 evidence. |
 
 ## Task Coverage
 
@@ -35,6 +35,7 @@ T30-T35: incomplete. T36: outside current authorization.
 - `npm run test:customer`: passed at 390x844 and 1440x1000.
 - `npm run test:customer:live`: passed against the real local API with PostgreSQL persistence.
 - `node tests/e2e/admin-v18.cjs`: passed; evidence under `output/admin-v18/` (ignored local artifacts).
+- Vercel production build: migrations applied and two published test merchants seeded on Neon; deployment status Ready.
 - Integration scope: non-superuser application role, private-file boundary, QR/session/CSRF checks, tenant and same-table guest isolation, cart/order idempotency, exact manual settlement, scoped SSE/replay/revocation and transaction context reset.
 - Baseline evidence: `output/playwright/baseline-1789921303234/report.json` (local ignored artifacts). Legacy 12 tests passed but contain unsafe assumptions; not production evidence.
 - Browser contract suites now pass after fixing asynchronous Puppeteer executable resolution and deterministic capture handling.
