@@ -269,6 +269,25 @@
     if ($('btnChatSend')) { $('btnChatSend').disabled = blocked || state.chatBusy || !$('chatInputText').value.trim(); $('btnChatSend').style.display = $('chatInputText').value.trim() ? '' : 'none'; }
     set('modQtyNumber',state.qty); set('modBtnAddText',t('add')); set('btnProceedToPayment',t('review')); set('btnProcessPayment',t('confirm'));
   }
+  function updateTableLabels() {
+    if (!Number.isInteger(state.tableId) || state.tableId < 1) return;
+    const table = state.tableId;
+    set('labelMenuTable',`Table ${table}`);
+    set('cartSheetTitle',{
+      id:`Keranjang Pesanan Meja ${table}`,
+      en:`Table ${table} order cart`,
+      ms:`Troli Pesanan Meja ${table}`
+    }[state.language]);
+    const badge = document.querySelector('.lang-table-badge-pill');
+    if (badge) {
+      badge.querySelector('span').textContent = `TABLE ${table}`;
+      badge.setAttribute('aria-label',{
+        id:`Nomor Meja Pelanggan: Meja ${table}`,
+        en:`Customer table number: Table ${table}`,
+        ms:`Nombor meja pelanggan: Meja ${table}`
+      }[state.language]);
+    }
+  }
   function language(value) {
     state.language = value.startsWith('en') ? 'en' : value.startsWith('ms') ? 'ms' : 'id'; document.documentElement.lang = state.language;
     try {storage.put('aiodma:v18:language',state.language);} catch { /* Preferences are optional. */ }
@@ -276,6 +295,7 @@
     $('chatInputText').placeholder = {id:'Tulis pesanan atau pertanyaan',en:'Order or ask a question',ms:'Tulis pesanan atau soalan'}[state.language];
     all('.payment-method-card[data-pm]').forEach(el=>{el.querySelector('.pm-name').textContent=t(el.dataset.pm==='CASH'?'cash':'transfer');});
     set('labelCustomerMemory',{id:'Preferensi & memori',en:'Preferences & memory',ms:'Pilihan & memori'}[state.language]);
+    updateTableLabels();
     renderMenu(); renderCart(); if (state.order) updateOrder(state.order);
   }
   function theme() { const dark = document.documentElement.dataset.theme !== 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -321,11 +341,11 @@
       if (!query.get('token')) throw new Error(t('session'));
       session = await api('/session',{method:'POST',body:{merchantId:state.merchantId,tableId:state.tableId,token:query.get('token')}});
     }
-    state.session = session;
+    state.session = session; state.merchantId = session.tenantId; state.tableId = session.tableId;
     const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(session.csrfToken));
     state.namespace = `aiodma:v18:${state.merchantId}:${Array.from(new Uint8Array(digest)).map(n => n.toString(16).padStart(2,'0')).join('')}`;
     state.pending = storage.get(`${state.namespace}:pending`);
-    set('labelMenuTable',`Table ${session.tableId}`); document.querySelector('.lang-table-badge-pill span').textContent = `TABLE ${session.tableId}`;
+    updateTableLabels();
     const clean = new URL(location.href); clean.searchParams.delete('token'); history.replaceState(null,'',clean); query.delete('token');
     state.cart = await api('/cart'); renderCart(); await loadOrders(); connectEvents();
     if (state.pending) notice(t('pending'),true); else notice('');

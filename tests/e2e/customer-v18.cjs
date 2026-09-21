@@ -82,7 +82,13 @@ async function addCoffee(page){await page.locator('[data-menu-id="coffee"] .btn-
 async function contract(browser,width,height){
   const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});const model=await fixture(context),page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
   try {
-    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);
+    assert.equal(await page.locator('#cartSheetTitle').textContent(),'Keranjang Pesanan Meja 5');
+    assert.equal(await page.locator('.lang-table-badge-pill').getAttribute('aria-label'),'Nomor Meja Pelanggan: Meja 5');
+    await page.locator('[data-lang="en-US"]').click();
+    assert.equal(await page.locator('#cartSheetTitle').textContent(),'Table 5 order cart');
+    assert.equal(await page.locator('.lang-table-badge-pill').getAttribute('aria-label'),'Customer table number: Table 5');
+    await page.locator('#qpLihatSemuaMenu').click();
     await capture(page,`${width}-light-menu.png`);
     assert.equal(await page.locator('#menuGridContainer .product-card').count(),2);await page.locator('#catalogSearchInput').fill('tea');assert.equal(await page.locator('#menuGridContainer .product-card').count(),1);await page.locator('#btnClearSearch').click();
     await addCoffee(page);assert.deepEqual(model.cart.lines,[{menuId:'coffee',qty:1,optionIds:['oat']}]);
