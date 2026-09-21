@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Swift Package Manager & Xcode
 Swift/.build/
@@ -39,3 +38,10 @@ dist/
 build/
 coverage/
 .cache/
+
+# Local development databases, credentials, and generated browser evidence
+.local/
+output/
+.npm-cache/
+test-results/
+playwright-report/

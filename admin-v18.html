@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>AIODMA | Operasional</title>
+  <link rel="stylesheet" href="/css/admin-v18.css">
+  <script src="/js/admin-v18.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Langsung ke konten</a>
+  <header class="topbar">
+    <a class="brand" href="#orders" aria-label="AIODMA Operasional">
+      <span class="brand-mark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><path d="M6 1v3m4-3v3m4-3v3"></path></svg></span>
+      <span>AIODMA <small>Operasional</small></span>
+    </a>
+    <div class="account-bar">
+      <span id="connection" class="connection" role="status">Menghubungkan</span>
+      <button id="theme-toggle" class="icon-button" type="button" title="Ganti tema" aria-label="Ganti tema" aria-pressed="false">&#9680;</button>
+      <button id="logout" class="quiet" type="button" hidden>Keluar</button>
+    </div>
+  </header>
+
+  <main id="auth" class="auth-layout" hidden>
+    <div class="auth-heading"><span class="eyebrow">AKSES STAF</span><h1>Masuk ke outlet</h1><p id="auth-notice" class="muted">Gunakan akun staf yang terdaftar.</p></div>
+    <form id="login-form" class="form-stack">
+      <label>Email<input name="email" type="email" autocomplete="username" maxlength="200" required></label>
+      <label>Kata sandi<input name="password" type="password" autocomplete="current-password" maxlength="256" required></label>
+      <label>ID outlet<input name="merchantId" autocomplete="organization" pattern="[a-zA-Z0-9_-]{1,100}" maxlength="100" required></label>
+      <label>Verifikasi tambahan<select name="verification"><option value="none">Tanpa kode</option><option value="otp">Kode autentikator</option><option value="recoveryCode">Kode pemulihan</option></select></label>
+      <label id="verification-field" hidden><span id="verification-label">Kode autentikator</span><input name="verificationCode" autocomplete="one-time-code" maxlength="60"></label>
+      <div class="form-error" role="alert" hidden></div>
+      <button type="submit" class="primary">Masuk</button>
+    </form>
+  </main>
+
+  <main id="mfa-gate" class="auth-layout" hidden>
+    <span class="eyebrow">KEAMANAN AKUN</span><h1>Aktifkan autentikasi dua langkah</h1>
+    <p class="muted">Akses owner memerlukan verifikasi tambahan.</p>
+    <div id="mfa-content"></div>
+  </main>
+
+  <div id="app" class="app-layout" hidden>
+    <aside class="sidebar" aria-label="Navigasi operasional">
+      <div class="outlet"><span class="eyebrow">OUTLET AKTIF</span><strong id="outlet-name">&mdash;</strong><span id="account-role" class="muted"></span><button id="switch-outlet" type="button" class="text-button">Ganti outlet</button></div>
+      <nav id="navigation" aria-label="Modul admin"></nav>
+      <div class="sidebar-foot"><a href="/" target="_blank" rel="noopener">Tampilan pelanggan &#8599;</a><span id="session-time" class="muted"></span></div>
+    </aside>
+    <main id="workspace" tabindex="-1">
+      <div class="page-heading"><div><span class="eyebrow" id="page-group">OPERASI</span><h1 id="page-title">Pesanan</h1></div><div class="heading-actions"><span id="updated-at" class="muted"></span><button id="refresh" class="icon-button" type="button" title="Muat ulang" aria-label="Muat ulang">&#8635;</button><div id="page-actions"></div></div></div>
+      <div id="page-status" role="status" aria-live="polite"></div>
+      <div id="page-content"></div>
+    </main>
+  </div>
+
+  <div id="startup" class="startup" role="status"><span class="spinner" aria-hidden="true"></span> Memeriksa sesi...</div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="editor" aria-labelledby="dialog-title">
+    <header class="dialog-heading"><h2 id="dialog-title"></h2><button id="close-editor" class="icon-button" type="button" title="Tutup" aria-label="Tutup">&#215;</button></header>
+    <div id="dialog-body"></div>
+  </dialog>
+  <noscript><p class="notice">JavaScript diperlukan untuk membuka operasional outlet.</p></noscript>
+</body>
+</html>

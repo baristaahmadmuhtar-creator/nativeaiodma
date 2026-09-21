@@ -4,9 +4,19 @@
   "description": "AIODMA: Enterprise Multi-Tenant AI Ordering, Dining & KDS Architecture with Gemini 3.7 Flash Sommelier",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node src/server/start.js",
+    "start:legacy": "node server.js",
     "test": "node tests/run_all_tests.js",
-    "dev": "node --watch server.js"
+    "dev": "node scripts/dev-v18.cjs",
+    "dev:legacy": "node --watch server.js",
+    "start:v18": "node src/server/start.js",
+    "dev:v18": "node scripts/dev-v18.cjs",
+    "migrate": "node scripts/migrate.cjs",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.cjs",
+    "test:baseline": "node scripts/capture-baseline.cjs",
+    "test:customer": "node tests/e2e/customer-v18.cjs",
+    "test:customer:live": "node tests/e2e/customer-live-v18.cjs"
   },
   "keywords": [
     "aiodma",
@@ -22,11 +32,19 @@
   "license": "MIT",
   "dependencies": {
     "body-parser": "^2.3.0",
+    "cookie-parser": "1.4.7",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "decimal.js": "10.6.0",
+    "express": "^5.2.1",
+    "helmet": "8.3.0",
+    "otpauth": "9.5.2",
+    "pg": "8.23.0",
+    "qrcode": "1.5.4",
+    "zod": "4.6.5"
   },
   "devDependencies": {
-    "puppeteer": "^25.8.0",
-    "qrcode": "^1.5.4"
+    "@playwright/test": "1.63.0",
+    "embedded-postgres": "18.4.0-beta.17",
+    "puppeteer": "^25.8.0"
   }
 }
