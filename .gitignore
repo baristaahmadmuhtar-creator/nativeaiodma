@@ -46,6 +46,5 @@ output/
 test-results/
 playwright-report/
 .vercel/
-public/
 
 .vercel

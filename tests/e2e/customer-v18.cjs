@@ -65,8 +65,9 @@ async function fixture(context) {
       return fail(route,404,'NOT_FOUND');
     }
     if(p==='/sw.js')return route.fulfill({status:404,body:''});
-    let file=path.resolve(root,'.'+(p==='/'?'/index.html':p));
-    if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
+    const base=(p==='/'||p==='/index.html')?root:path.join(root,'public');
+    let file=path.resolve(base,'.'+(p==='/'?'/index.html':p));
+    if(!file.startsWith(base+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
     if(p==='/'||p==='/index.html')return route.fulfill({contentType:'text/html',body:fs.readFileSync(file,'utf8').replace('src="js/app.js"','src="js/customer-v18.js"').replace('</head>','<link rel="stylesheet" href="css/customer-v18.css"></head>')});
     const contentType=p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.jpg')?'image/jpeg':p.endsWith('.png')?'image/png':'application/octet-stream';return route.fulfill({contentType,body:fs.readFileSync(file)});
   });

@@ -85,7 +85,7 @@ async function runTests() {
   // 3. Test Customer Chat Guidance (Zero Emoji Policy & Buka Menu button)
   console.log('\n▶ STEP 3: VERIFY ZERO EMOJI POLICY & CLEAN BUKA MENU BUTTON');
   const appJs = fs.readFileSync(path.join(__dirname, '../js/app.js'), 'utf8');
-  const stylesCss = fs.readFileSync(path.join(__dirname, '../css/styles.css'), 'utf8');
+  const stylesCss = fs.readFileSync(path.join(__dirname, '../public/css/styles.css'), 'utf8');
   const indexHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 
   const hasCleanBukaMenu = appJs.includes("label: 'Buka Menu'");

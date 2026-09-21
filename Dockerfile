@@ -12,10 +12,8 @@ COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node src ./src
 COPY --chown=node:node db ./db
 COPY --chown=node:node scripts/migrate.cjs ./scripts/migrate.cjs
-COPY --chown=node:node assets ./assets
-COPY --chown=node:node css ./css
-COPY --chown=node:node js/customer-v18.js js/admin-v18.js js/sw-v18.js ./js/
-COPY --chown=node:node index.html admin-v18.html manifest.json ./
+COPY --chown=node:node public ./public
+COPY --chown=node:node index.html admin-v18.html ./
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

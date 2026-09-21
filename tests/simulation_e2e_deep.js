@@ -424,7 +424,7 @@ async function runEndToEndSimulation() {
   console.log('\n\x1b[36m▶ FLOW 9: FRONTEND ROUTING & SCREEN ISOLATION\x1b[0m');
 
   const appJsCode = fs.readFileSync(path.join(__dirname, '../js/app.js'), 'utf8');
-  const cssCode = fs.readFileSync(path.join(__dirname, '../css/styles.css'), 'utf8');
+  const cssCode = fs.readFileSync(path.join(__dirname, '../public/css/styles.css'), 'utf8');
 
   // Verify full bleed rules
   if (cssCode.includes('syncAppViewportHeight') || cssCode.includes('--app-height') || cssCode.includes('env(safe-area-inset-top)')) {

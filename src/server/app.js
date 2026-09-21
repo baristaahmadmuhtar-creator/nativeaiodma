@@ -24,6 +24,7 @@ const staffRoles = ['owner','manager','cashier','kitchen','waiter'];
 function createApp({ db, config, aiProvider }) {
   const app = express();
   const root=path.resolve(__dirname,'../..');
+  const publicRoot=path.join(root,'public');
   const customerHtml=fs.readFileSync(path.join(root,'index.html'),'utf8')
     .replace('src="js/app.js"','src="js/customer-v18.js"')
     .replace('</head>','<link rel="stylesheet" href="css/customer-v18.css"></head>');
@@ -326,12 +327,12 @@ function createApp({ db, config, aiProvider }) {
   registerAdminRoutes(api,{db,config,identity,wrap,valid,send,tx});
   app.use('/api/v1',api);
   app.use('/api',(_req,_res,next)=>next(new AppError('NOT_FOUND','Endpoint tidak tersedia.',404)));
-  for(const folder of ['assets','css'])app.use('/'+folder,express.static(path.join(root,folder),{dotfiles:'deny',index:false}));
-  for(const file of ['customer-v18.js','admin-v18.js'])app.get('/js/'+file,(_req,res)=>res.sendFile(path.join(root,'js',file)));
+  for(const folder of ['assets','css'])app.use('/'+folder,express.static(path.join(publicRoot,folder),{dotfiles:'deny',index:false}));
+  for(const file of ['customer-v18.js','admin-v18.js'])app.get('/js/'+file,(_req,res)=>res.sendFile(path.join(publicRoot,'js',file)));
   app.get(['/', '/index.html'],(_req,res)=>res.set('Cache-Control','no-store').type('html').send(customerHtml));
   app.get('/admin.html',(_req,res)=>res.set('Cache-Control','no-store').sendFile(path.join(root,'admin-v18.html')));
-  app.get('/manifest.json',(_req,res)=>res.sendFile(path.join(root,'manifest.json')));
-  app.get('/sw.js',(_req,res)=>res.set('Cache-Control','no-cache').sendFile(path.join(root,'js/sw-v18.js')));
+  app.get('/manifest.json',(_req,res)=>res.sendFile(path.join(publicRoot,'manifest.json')));
+  app.get('/sw.js',(_req,res)=>res.set('Cache-Control','no-cache').sendFile(path.join(publicRoot,'sw.js')));
   app.use((_req,_res,next)=>next(new AppError('NOT_FOUND','Halaman tidak ditemukan.',404)));
   app.use((error,req,res,_next)=>{
     if(res.headersSent)return res.end();

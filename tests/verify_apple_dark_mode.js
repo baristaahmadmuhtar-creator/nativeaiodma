@@ -25,7 +25,7 @@ console.log('\n===============================================================')
 console.log('🍏 AUDIT: APPLE HIG OLED DARK MODE & LIQUID GLASS REFINEMENT');
 console.log('===============================================================\n');
 
-const stylesCss = fs.readFileSync(path.join(__dirname, '../css/styles.css'), 'utf8');
+const stylesCss = fs.readFileSync(path.join(__dirname, '../public/css/styles.css'), 'utf8');
 const appJs = fs.readFileSync(path.join(__dirname, '../js/app.js'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 

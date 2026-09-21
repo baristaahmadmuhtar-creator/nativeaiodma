@@ -40,7 +40,7 @@ const adminJs = fs.readFileSync(path.join(__dirname, '../js/admin.js'), 'utf8');
 const adminHtml = fs.readFileSync(path.join(__dirname, '../admin.html'), 'utf8');
 const dbJson = fs.readFileSync(path.join(__dirname, '../data/db.json'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
-const stylesCss = fs.readFileSync(path.join(__dirname, '../css/styles.css'), 'utf8');
+const stylesCss = fs.readFileSync(path.join(__dirname, '../public/css/styles.css'), 'utf8');
 
 // 1. Check server.js
 assert(!serverJs.includes("'gemini-1.5-flash'") && !serverJs.includes('"gemini-1.5-flash"') && !serverJs.includes('gemini-2.0'), 

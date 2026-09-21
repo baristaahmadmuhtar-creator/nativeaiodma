@@ -5,13 +5,7 @@
 !db/**
 !scripts/
 !scripts/migrate.cjs
-!assets/**
-!css/**
-!js/
-!js/customer-v18.js
-!js/admin-v18.js
-!js/sw-v18.js
+!public/**
 !index.html
 !admin-v18.html
-!manifest.json
 !Dockerfile
