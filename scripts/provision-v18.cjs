@@ -6,7 +6,7 @@ const { migrate } = require('./migrate.cjs');
 const { seed } = require('./seed-v18.cjs');
 const { tableToken } = require('../src/modules/identity');
 
-async function main() {
+async function provision() {
   const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING;
   if (!connectionString) throw new Error('Unpooled production database URL is required');
   if (!process.env.SESSION_SECRET) throw new Error('SESSION_SECRET is required');
@@ -41,7 +41,10 @@ async function main() {
   console.log(`Provisioned ${merchants.length} merchants and ${customerLinks.length} table links`);
 }
 
-main().catch(error => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+module.exports = { provision };
+if (require.main === module) {
+  provision().catch(error => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}

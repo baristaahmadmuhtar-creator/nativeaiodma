@@ -8,7 +8,9 @@ const gateway = express();
 let initialization;
 
 async function initialize() {
+  let stage = 'configuration';
   const config = loadConfig();
+  stage = 'database_role';
   const db = createDatabase(config.DATABASE_URL);
   try {
     const role = (await db.pool.query(
@@ -17,8 +19,10 @@ async function initialize() {
     if (role.rolsuper || role.rolbypassrls) {
       throw new Error('Runtime database role must not bypass row security');
     }
+    stage = 'application';
     return createApp({ db, config });
   } catch (error) {
+    error.bootstrapStage = stage;
     await db.close();
     throw error;
   }
@@ -35,7 +39,8 @@ gateway.use(async (req, res) => {
     const app = await initialization;
     return app(req, res);
   } catch (error) {
-    console.error(JSON.stringify({ event: 'serverless_boot_failed', code: error.code || 'BOOT_FAILED' }));
+    console.error(JSON.stringify({ event: 'serverless_boot_failed', stage: error.bootstrapStage || 'configuration',
+      code: error.code || 'BOOT_FAILED' }));
     return res.status(503).json({
       success: false,
       error: { code: 'SERVICE_UNAVAILABLE', message: 'Layanan belum tersedia. Coba lagi nanti.', retryable: true }

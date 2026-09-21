@@ -3,7 +3,12 @@
   "framework": "express",
   "functions": {
     "app.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": [
+        "index.html",
+        "admin-v18.html",
+        "manifest.json"
+      ]
     }
   }
 }

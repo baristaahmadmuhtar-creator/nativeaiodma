@@ -9,7 +9,7 @@
     "test": "node tests/run_all_tests.js",
     "dev": "node scripts/dev-v18.cjs",
     "dev:legacy": "node --watch server.js",
-    "build": "node scripts/provision-v18.cjs",
+    "build": "node scripts/build-v18.cjs",
     "start:v18": "node src/server/start.js",
     "dev:v18": "node scripts/dev-v18.cjs",
     "migrate": "node scripts/migrate.cjs",
