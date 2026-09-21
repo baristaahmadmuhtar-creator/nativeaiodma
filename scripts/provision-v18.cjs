@@ -17,11 +17,11 @@ async function configureRuntimeRole(connectionString, role, password) {
   await client.connect();
   try {
     await client.query('BEGIN');
-    const exists = await client.query('SELECT 1 FROM pg_roles WHERE rolname=$1', [role]);
+    const exists = await client.query('SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname=$1', [role]);
     if (!exists.rowCount) {
       await client.query(`CREATE ROLE ${identifier} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD ${literal}`);
-    } else {
-      await client.query(`ALTER ROLE ${identifier} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD ${literal}`);
+    } else if (exists.rows[0].rolsuper || exists.rows[0].rolbypassrls) {
+      throw new Error('Existing runtime database role is privileged');
     }
     await client.query(`GRANT USAGE ON SCHEMA public TO ${identifier}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${identifier}`);
