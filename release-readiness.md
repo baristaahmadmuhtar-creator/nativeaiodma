@@ -1,18 +1,24 @@
 # Release Readiness
 
-Verdict: **SELF-SERVICE CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCTION ACCEPTED**. Updated 2026-10-05.
+Verdict: **CUSTOMER REFINEMENT AND CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCTION ACCEPTED**. Updated 2026-10-06.
 
-Current operations release `d09e83ba40293ad8bcc5c6f4b9c563731a2863d5` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_BmZ9NqTkMm67mpRDQixFUYV9mGX8` as Ready; immutable URL: `https://nativeaiodma-v18-qf2afx90b-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` are in use. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
+Current customer release `387fc645ab9d4f0c2ec91d3b78831b4ccd764dfd` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_DpH6XgZPPNo1j5cWpufMPyoVQMFc` as Ready; immutable URL: `https://nativeaiodma-v18-fnc2e4toj-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` remain in use. Existing owner credentials, catalog edits, publication and orders are preserved by conflict-safe provisioning. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
 
-## v21 Customer Refinement Local Verification
+## v21 Customer Refinement Verification
 
-The customer refinement is locally verified; the live deployment metadata above still describes v20 until v21 promotion is recorded. See `docs/PRD_v21_CUSTOMER_REFINEMENT.md`, `docs/UX_ACCEPTANCE_v21.md` and `docs/SECURITY_REVIEW_v21_CUSTOMER.md`.
+The customer refinement is verified locally, in Linux CI and on the public alias. See `docs/PRD_v21_CUSTOMER_REFINEMENT.md`, `docs/UX_ACCEPTANCE_v21.md` and `docs/SECURITY_REVIEW_v21_CUSTOMER.md`.
 
 - 63 unit and 43 real PostgreSQL integration tests passed. Customer contracts/refinements passed all eight viewport configurations, long scrolling, receipt PDF generation, reduced-motion/reduced-height checks and storage/catalog-event boundaries. Final fixture evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-xEiQJs/`.
 - Actual local customer API persisted exactly one unpaid order. Real admin evidence: `output/admin-v18/df51259e92d0/`; production-MFA distinct-role onboarding/order evidence: `output/playwright/onboarding-1791215292773/` (390/1440).
+- GitHub CI passed every suite on the deployed source: https://github.com/baristaahmadmuhtar-creator/nativeaiodma/actions/runs/37336924094.
+- Public disposable-outlet journey passed signup/MFA/publication/QR, guest unpaid receipt, cashier synthetic settlement, kitchen readiness, waiter service, owner completion, notification acknowledgement, AI pause and permission guards. The smoke outlet was returned to draft and guest sessions revoked. Evidence: `output/playwright/onboarding-1791216130884/`.
+- Original Coffeenity QR, guest session, 62 menu products, modal/back/cart/theme and responsive layout passed at 320/390/1440, without cart PUT, quotes, orders, waiter calls or payment submissions. Evidence: `output/playwright/coffeenity-customer-1791216743382/`. Table QR bearer links remain in private local access files, not tracked documentation.
+- Coffeenity stored password/default outlet is recognized, but the account now has enrolled MFA: login without a code correctly returns `MFA_INVALID`, and unauthenticated notifications remain denied. The user's authenticator was not reset or enrolled by automation. Full original-owner session was not exercised on v21; the public disposable owner did complete the full flow.
 - Local browser evidence is not real iOS/IME/operator acceptance or a vulnerability-free guarantee. Full production gates below remain open.
 
 ## v20 Operations Verification
+
+The records below describe the previous operations release `d09e83b`, deployment `dpl_BmZ9NqTkMm67mpRDQixFUYV9mGX8`. Account MFA state at that time is historical; current access is described in v21 above.
 
 - 63 unit and 43 restricted-runtime PostgreSQL integration tests passed. Existing customer contract tests passed at 320x740, 390x844, 844x390 and 1440x1000 plus long catalog/modifier scrolling.
 - Real admin browser tests passed current-order inbox links, persistent reads, AI policy save, owner/waiter/kitchen navigation and permissions, manual settlement and screenshots without mobile overflow or browser exceptions. Local evidence: `output/admin-v18/d3365111e199/`.

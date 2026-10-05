@@ -1,6 +1,6 @@
 # v21 Scoped Customer Security Review
 
-Date: 2026-10-05. Scope: customer adapter, served HTML/stylesheet and existing API protections exercised by automated regressions. This is a targeted review, not an independent penetration test or a complete dependency/supply-chain audit.
+Date: 2026-10-06. Scope: customer adapter, served HTML/stylesheet and existing API protections exercised by automated regressions. This is a targeted review, not an independent penetration test or a complete dependency/supply-chain audit.
 
 ## Fixed Findings
 1. Medium, defense in depth: local durable request data previously supplied an arbitrary replay path/method. `public/js/customer-v18.js:39` now allowlists only cart, order, waiter and proposal-confirmation paths and validates their bounded bodies/keys, including null cart lines. Existing server role/CSRF/tenant validation already prevented using a guest as an admin; no demonstrated privilege escalation is claimed.

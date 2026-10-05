@@ -20,3 +20,10 @@ Separate suites exercise actual local PostgreSQL customer submission (exactly on
 
 ## Unverified Gates
 Real iOS/Safari/IME/pinch gestures, physical cafe staff/customer acceptance, accessibility assistive-technology audit, load/soak/restore and external AI/email/payment/printing integrations remain separate acceptance gates. This is a supervised MVP pilot, not a zero-bug certification.
+
+## Cafe Pilot Check
+1. Owner logs in with their own MFA code; do not share owner credentials with customers.
+2. Use a currently valid table QR. Check item availability, required modifiers, totals and selected payment method against the actual cafe menu.
+3. Submit a small authorized test order, then verify cashier payment, kitchen accepted/preparing/ready, waiter served, owner completed and the matching customer receipt/status.
+4. Repeat on the cafe's actual Android/iOS devices with keyboard open, portrait/landscape, slow Wi-Fi and an interrupted request. Confirm recovery produces one order, not two.
+5. Verify notification/permission behavior with actual staff accounts. Pause/unpublish if a blocking discrepancy appears; record the device, exact step and request ID without credentials.

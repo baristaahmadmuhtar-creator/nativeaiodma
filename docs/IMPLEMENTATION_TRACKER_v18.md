@@ -1,7 +1,7 @@
 # AIODMA v18 Implementation Tracker
 
-Updated: 2026-10-05. Scope authorized through publication; production promotion remains gate-controlled.
-Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed operations code: `d09e83ba40293ad8bcc5c6f4b9c563731a2863d5`.
+Updated: 2026-10-06. Scope authorized through publication; production promotion remains gate-controlled.
+Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed customer refinement code: `387fc645ab9d4f0c2ec91d3b78831b4ccd764dfd`, preserving v20 operations.
 
 ## Gate Status
 
@@ -13,14 +13,14 @@ Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed operations code: `d
 | G3 | PARTIAL | Bounded provider/orchestrator, consented profile and explicit proposal confirmation implemented. Customer contract and real local API browser journeys pass; 240-case corpus/live provider evaluation remains missing. |
 | G4 | PARTIAL, DEPENDENCIES NOT PASSED | Admin browser journey passes locally. Self-service signup/MFA/outlet publication passed locally and publicly. Email verification, reporting, external integrations and complete production PWA acceptance remain. |
 | G5 | PARTIAL | Local automated suites pass, CI exists, and Vercel production build applied Neon migrations and seed data. Soak, restore drill, load testing, live AI evaluation and complete public journey acceptance remain. |
-| G6 | SELF-SERVICE PILOT LIVE VERIFIED | Vercel deployment `dpl_BmZ9NqTkMm67mpRDQixFUYV9mGX8` is Ready at `https://nativeaiodma-v18.vercel.app`. Public signup/MFA/menu/publication/QR, distinct cashier/kitchen/waiter handoffs, owner completion, notifications, AI pause, unpublication and login passed. G5 remains partial. |
+| G6 | CUSTOMER AND SELF-SERVICE PILOT LIVE VERIFIED | Vercel deployment `dpl_DpH6XgZPPNo1j5cWpufMPyoVQMFc` is Ready at `https://nativeaiodma-v18.vercel.app`. Public disposable-outlet full role flow and original Coffeenity customer QR/menu/modals passed. Original owner requires their enrolled MFA code; no authenticator reset. G5 remains partial. |
 
 ## Task Coverage
 
 T00/T02: implemented, partial local verification. T01: partial baseline.
 T03-T11/T13: partial implementation and local tests, not full task acceptance.
 T12: gateway disabled; no live gateway claimed.
-T14: customer adapter in progress; OpenAPI/native review missing.
+T14: customer adapter and expanded browser regressions verified locally/CI/publicly; OpenAPI/native review missing.
 T15-T18/T20: partial implementation; live runtime and full intelligence acceptance missing.
 T19: not complete; 30 mocked AI unit tests do not replace the required evaluation corpus.
 T21: vision disabled.
@@ -32,11 +32,11 @@ T30-T35: incomplete. T36: automated public admin/order/KDS/receipt and distinct-
 
 - `npm run test:unit`: 63 passed, 0 failed.
 - `npm run test:integration`: 43 passed, 0 failed, actual local PostgreSQL.
-- `npm run test:customer`: passed at 320x740, 390x844, 844x390 and 1440x1000, plus long scrolling.
+- `npm run test:customer`: four journey contracts and four refinement configurations passed, plus long scrolling, PDF, storage failures and catalog burst coalescing. See v21 acceptance.
 - `npm run test:customer:live`: passed against the real local API with PostgreSQL persistence.
 - `node tests/e2e/admin-v18.cjs`: passed; notifications/policy/current-order links, waiter service-only transition and mobile screenshots at `output/admin-v18/d3365111e199/`.
 - `node tests/e2e/onboarding-v19.cjs`: passed mobile/desktop with production MFA; final public smoke passed with its test outlet returned to draft. See `release-readiness.md` and the v19 PRD.
-- GitHub CI `37321696500` passed every suite on deployed code `d09e83b`, including distinct-role onboarding/order smoke on Linux.
+- GitHub CI `37336924094` passed every suite on deployed code `387fc64`, including distinct-role onboarding/order smoke on Linux.
 - Vercel production build: migrations applied and two published test merchants seeded on Neon; least-privilege runtime database role verified; deployment status Ready.
 - Public customer smoke: QR exchange and session passed for Coffeenity Table 1; 62 products and production images loaded; cart persistence and BND 1.50 quote passed; no order was confirmed and browser console errors were empty.
 - Integration scope: non-superuser application role, private-file boundary, QR/session/CSRF checks, tenant and same-table guest isolation, cart/order idempotency, exact manual settlement, scoped SSE/replay/revocation and transaction context reset.
@@ -54,6 +54,14 @@ T30-T35: incomplete. T36: automated public admin/order/KDS/receipt and distinct-
 - Public distinct-role flow, notifications, AI pause and return-to-draft passed: `output/playwright/onboarding-1791209099079/`.
 - Coffeenity owner login/default outlet/MFA guard/logout verified publicly. Existing owner preserved; new credentials remain private and out of Git/deployment files. One-time provisioning environment entries were removed after verification.
 - Background push, live AI, email, gateway/vision, billing and operator/device/load/recovery acceptance remain unverified or unavailable. No zero-bug certification.
+
+## v21 Customer Evidence
+
+- Modal history/focus/layering, fixed CTA and scroll regions, short landscape shell clipping, visual viewport sizing, glass/contrast/reduced motion and bounded controls are verified by expanded customer tests.
+- Malformed preferences/replay requests, clicked chat drafts, late profile responses, expired quotes, pre-mutation storage failure, acknowledged cleanup failure and an 80-event catalog burst have regression coverage.
+- Final deterministic evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-xEiQJs/`.
+- Public full-role smoke: `output/playwright/onboarding-1791216130884/`; original Coffeenity 320/390/1440 read-only customer smoke: `output/playwright/coffeenity-customer-1791216743382/`.
+- Coffeenity password/default outlet recognized; enrolled MFA must be supplied by the user. Original-owner full session was not automated on this release. See `release-readiness.md` for precise scope.
 
 ## External and Environment Constraints
 
