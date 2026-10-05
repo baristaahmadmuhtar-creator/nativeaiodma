@@ -65,6 +65,8 @@ test('deleting memory during an in-flight provider run prevents resurrection and
   assert.equal(deleted.status,200);release();await rejection;
   const count=await db.transaction(tenant,c=>c.query('SELECT * FROM ai_messages WHERE session_id=$1',[p.id]));assert.equal(count.rowCount,0);
   assert.equal((await db.transaction(tenant,c=>c.query('SELECT * FROM ai_proposals WHERE session_id=$1',[p.id]))).rowCount,0);
+  assert.equal((await db.transaction(tenant,c=>c.query('SELECT * FROM ai_usage_runs WHERE session_id=$1 AND mode=\'mock\'',[p.id]))).rowCount,1);
+  await assert.rejects(service.chat(p,b),{code:'AI_MESSAGE_RETIRED'});
 });
 test('session revocation during provider work returns no executable proposals',async()=>{
   const p=await guest(),b=body();let release,entered;
@@ -73,4 +75,18 @@ test('session revocation during provider work returns no executable proposals',a
   const run=service.chat(p,b);await waiting;await db.pool.query('UPDATE sessions SET revoked=true WHERE id=$1',[p.id]);release();
   const result=await run;assert.deepEqual(result.proposals,[]);
   assert.equal((await db.transaction(tenant,c=>c.query('SELECT * FROM ai_proposals WHERE session_id=$1',[p.id]))).rowCount,0);
+});
+
+test('AI outlet pause and concurrent daily admission limit block provider work while keeping manual cart available',async()=>{
+  await db.transaction(tenant,c=>c.query('INSERT INTO ai_policies(tenant_id,enabled,daily_request_limit) VALUES($1,false,1)',[tenant]));
+  let count=0;
+  const service=createAiService(db,config,{provider:{configured:true,mode:'mock',async generate(){count++;return plan('respond',{kind:'clarify'});}}});
+  const paused=await service.chat(await guest(),body());assert.equal(paused.reason,'AI_DISABLED');assert.equal(count,0);assert.deepEqual(paused.proposals,[]);
+  const used=Number((await db.transaction(tenant,c=>c.query('SELECT count(*) AS n FROM ai_usage_runs WHERE tenant_id=$1',[tenant]))).rows[0].n);
+  await db.transaction(tenant,c=>c.query('UPDATE ai_policies SET enabled=true,daily_request_limit=$2 WHERE tenant_id=$1',[tenant,used+1]));
+  const a=await guest(),b=await guest(),message=body();
+  const results=await Promise.all([service.chat(a,message),service.chat(b,body())]);
+  assert.equal(results.filter(r=>r.reason==='AI_DAILY_LIMIT').length,1);assert.equal(count,1);
+  assert.deepEqual(await service.chat(a,message),results[0]);assert.equal(count,1);
+  assert.equal((await db.transaction(tenant,c=>createOrders(db).getCart(c,a))).version,1);
 });

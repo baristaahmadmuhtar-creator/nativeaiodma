@@ -14,6 +14,7 @@ const { audit, emit, idempotent } = require('../modules/transactions');
 const { createAiService } = require('../modules/ai-service');
 const { registerAdminRoutes } = require('./admin-routes');
 const { registerOnboarding, registerPublication } = require('./onboarding');
+const { registerNotifications } = require('../modules/notifications');
 const { decryptSecret,encryptSecret,generateEnrollment,verifyTotp,generateRecoveryCodes,hashRecoveryCode }=require('../modules/mfa');
 
 const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
@@ -237,7 +238,7 @@ function createApp({ db, config, aiProvider }) {
     const saved=await tx(req,c => c.query("SELECT response FROM idempotency_records WHERE tenant_id=$1 AND principal_id=$2 AND operation='order' AND key=$3",[req.principal.tenant_id,req.principal.id,req.params.key]));
     send(res,{found:!!saved.rowCount,order:saved.rows[0]?.response || null});
   }));
-  api.patch('/admin/orders/:id/status',identity.allow('owner','manager','kitchen','cashier'),wrap(async (req,res) => send(res,await orders.transition(req.principal,
+  api.patch('/admin/orders/:id/status',identity.allow('owner','manager','kitchen','cashier','waiter'),wrap(async (req,res) => send(res,await orders.transition(req.principal,
     valid(uuid,req.params.id),valid(z.object({status:z.enum(['accepted','preparing','ready','served','completed','cancelled','rejected']),expectedVersion:z.number().int().positive(),reason:z.string().max(300).optional()}).strict(),req.body),key(req)))));
   api.patch('/admin/orders/:id/payment',cashier,wrap(async (req,res) => send(res,await orders.payment(req.principal,
     valid(uuid,req.params.id),valid(z.object({expectedVersion:z.number().int().positive(),amountMinor:z.number().int().positive(),reference:z.string().min(3).max(200)}).strict(),req.body),key(req)))));
@@ -254,6 +255,10 @@ function createApp({ db, config, aiProvider }) {
     }));send(res,result,201);
   }));
   api.get('/admin/waiter-calls',admin,wrap(async (req,res) => send(res,(await tx(req,c => c.query('SELECT * FROM waiter_calls WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200',[req.principal.tenant_id]))).rows)));
+  api.get('/admin/waiter-calls/:id',admin,wrap(async(req,res)=>{
+    const call=(await tx(req,c=>c.query('SELECT * FROM waiter_calls WHERE tenant_id=$1 AND id=$2',[req.principal.tenant_id,valid(uuid,req.params.id)]))).rows[0];
+    requireValue(call,'NOT_FOUND','Panggilan tidak ditemukan.',404);send(res,call);
+  }));
   api.patch('/admin/waiter-calls/:id',admin,wrap(async (req,res) => {
     const b=valid(z.object({status:z.enum(['acknowledged','resolved']),expectedVersion:z.number().int().positive()}).strict(),req.body);
     const result=await tx(req,async c => {
@@ -334,6 +339,7 @@ function createApp({ db, config, aiProvider }) {
     const timer=setInterval(pump,1000);req.on('close',()=>{closed=true;clearInterval(timer);});await pump();
   }));
   registerAdminRoutes(api,{db,config,identity,wrap,valid,send,tx});
+  registerNotifications(api,{wrap,valid,send,tx});
   registerPublication(api,{db,identity,valid,wrap,send});
   app.use('/api/v1',api);
   app.use('/api',(_req,_res,next)=>next(new AppError('NOT_FOUND','Endpoint tidak tersedia.',404)));

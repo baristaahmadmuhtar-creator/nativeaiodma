@@ -6,6 +6,7 @@ const {catalog,createOrders}=require('./orders');
 const {hash}=require('./identity');
 const {audit,emit,idempotent}=require('./transactions');
 const {requireValue}=require('../shared/errors');
+const {reserve,policy}=require('./ai-governance');
 
 function createAiService(db,config,{provider}={}) {
   const engine=createOrchestrator({provider:provider || createGeminiProvider({env:config})});
@@ -24,6 +25,8 @@ function createAiService(db,config,{provider}={}) {
         requireValue(previous.result.status!=='running','AI_RUN_PENDING','Pesan masih diproses. Coba lagi sebentar.',409);
         return {cached:previous.result};
       }
+      const retired=await c.query('SELECT 1 FROM ai_usage_runs WHERE tenant_id=$1 AND session_id=$2 AND message_id=$3',[tenantId,principal.id,body.messageId]);
+      requireValue(!retired.rowCount,'AI_MESSAGE_RETIRED','Percakapan ini telah dihapus. Kirim pesan baru.',409);
       const active=await c.query("SELECT 1 FROM ai_messages WHERE tenant_id=$1 AND session_id=$2 AND result->>'status'='running' AND created_at>now()-interval '30 seconds'",[tenantId,principal.id]);
       requireValue(!active.rowCount,'AI_RUN_PENDING','Tunggu balasan sebelumnya.',409);
       const tenant=(await c.query('SELECT id,name,currency,config FROM tenants WHERE id=$1',[tenantId])).rows[0];
@@ -40,6 +43,15 @@ function createAiService(db,config,{provider}={}) {
         .flatMap(m=>[{role:'user',text:m.input.slice(0,1000)},{role:'assistant',text:String(m.result.text || '').slice(0,1000)}]);
       await c.query('INSERT INTO ai_messages(tenant_id,session_id,message_id,request_hash,input,result) VALUES($1,$2,$3,$4,$5,$6)',
         [tenantId,principal.id,body.messageId,requestHash,body.message,JSON.stringify({status:'running'})]);
+      const blocked=await reserve(c,principal,body.messageId);
+      if(blocked){
+        const result={status:'completed',messageId:body.messageId,cartVersion:cart.version,mode:'degraded',modelUsed:null,usage:null,proposals:[],recommendations:[],
+          reason:blocked,text:({id:{AI_DISABLED:'Percakapan AI dijeda oleh outlet. Silakan pilih menu atau panggil pelayan.',AI_DAILY_LIMIT:'Batas percakapan AI outlet hari ini tercapai. Anda tetap dapat memilih menu dan memesan.'},
+            en:{AI_DISABLED:'AI chat is paused by the cafe. You can still browse the menu or call a waiter.',AI_DAILY_LIMIT:'The cafe daily AI chat limit has been reached. You can still browse the menu and order.'},
+            ms:{AI_DISABLED:'Perbualan AI dijeda oleh kafe. Anda masih boleh memilih menu atau memanggil pelayan.',AI_DAILY_LIMIT:'Had perbualan AI harian kafe telah dicapai. Anda masih boleh memilih menu dan membuat pesanan.'}})[body.language || 'id'][blocked]};
+        await c.query('UPDATE ai_messages SET result=$4 WHERE tenant_id=$1 AND session_id=$2 AND message_id=$3',[tenantId,principal.id,body.messageId,JSON.stringify(result)]);
+        return {cached:result};
+      }
       return {context:{tenant:{id:tenant.id,name:tenant.name,currency:tenant.currency,orderingPaused:!!tenant.config.orderingPaused},catalog:selected,
         cart:{version:cart.version,lines:cart.lines.map((l,index)=>({...l,id:'line_'+index}))},knowledge,profile,history}};
     });
@@ -59,6 +71,9 @@ function createAiService(db,config,{provider}={}) {
     }catch{
       result={text:'Layanan percakapan belum tersedia. Anda tetap dapat memilih menu dan memesan.',mode:'degraded',modelUsed:null,usage:null,proposals:[],recommendations:[]};
     }
+    // Accounting survives conversation deletion, including in-flight deletion.
+    await db.transaction(tenantId,c=>c.query('UPDATE ai_usage_runs SET mode=$4,usage=$5 WHERE tenant_id=$1 AND session_id=$2 AND message_id=$3',
+      [tenantId,principal.id,body.messageId,result.mode,JSON.stringify(result.usage || null)]));
     return db.transaction(tenantId,async c=>{
       // Serialize finalization with memory deletion and stale-run recovery.
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.id]);
@@ -68,7 +83,8 @@ function createAiService(db,config,{provider}={}) {
       if(current.result.status!=='running')return current.result;
       // A revoked session cannot keep valid action proposals after an in-flight provider call.
       const session=(await c.query('SELECT 1 FROM sessions WHERE id=$1 AND NOT revoked AND expires_at>now()',[principal.id])).rowCount;
-      const proposals=session?result.proposals:[];
+      const enabled=(await policy(c,tenantId)).enabled;
+      const proposals=session && enabled?result.proposals:[];
       const final={...result,proposals,status:'completed',messageId:body.messageId,cartVersion:prepared.context.cart.version};
       for(const proposal of proposals)await c.query('INSERT INTO ai_proposals(tenant_id,id,session_id,message_id,cart_version,action) VALUES($1,$2,$3,$4,$5,$6)',
         [tenantId,proposal.id,principal.id,body.messageId,prepared.context.cart.version,JSON.stringify(proposal)]);
@@ -79,6 +95,7 @@ function createAiService(db,config,{provider}={}) {
   }
   async function confirm(principal,id,body,key) {
     return db.transaction(principal.tenant_id,c=>idempotent(c,principal,'ai-confirm',key,{id,...body},async()=>{
+      requireValue((await policy(c,principal.tenant_id)).enabled,'AI_DISABLED','Percakapan AI dijeda oleh outlet. Gunakan menu untuk memesan.',409);
       const proposal=(await c.query('SELECT * FROM ai_proposals WHERE tenant_id=$1 AND id=$2 AND session_id=$3 AND message_id=$4 FOR UPDATE',
         [principal.tenant_id,id,principal.id,body.messageId])).rows[0];
       requireValue(proposal,'NOT_FOUND','Usulan tidak ditemukan.',404);

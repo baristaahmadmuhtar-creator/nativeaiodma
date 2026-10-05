@@ -109,6 +109,7 @@ function createOrders(db) {
       const o = (await c.query('SELECT * FROM orders WHERE tenant_id=$1 AND id=$2 FOR UPDATE',[principal.tenant_id,id])).rows[0];
       requireValue(o,'NOT_FOUND','Pesanan tidak ditemukan.',404);
       requireValue(o.version === body.expectedVersion,'ORDER_STALE','Status telah berubah.',409);
+      requireValue(principal.role!=='waiter' || o.status==='ready' && body.status==='served','FORBIDDEN','Pelayan hanya dapat menandai pesanan siap sebagai disajikan.',403);
       const allowed = { received:['accepted','rejected','cancelled'], accepted:['preparing','cancelled'], preparing:['ready','cancelled'], ready:['served','cancelled'], served:['completed'] };
       requireValue(allowed[o.status]?.includes(body.status),'INVALID_TRANSITION','Perubahan status tidak diizinkan.',409);
       if (['cancelled','rejected'].includes(body.status)) {

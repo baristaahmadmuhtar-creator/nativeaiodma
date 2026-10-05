@@ -409,3 +409,31 @@ test('membership revocation closes a live staff SSE stream without closing unrel
     });
   }
 });
+
+test('notification inbox is audience scoped, paginated, monotonic and cannot acknowledge future or foreign cursors',testOptions,async()=>{
+  const a=await guest(tenantA),peer=await guest(tenantA),other=await guest(tenantB);
+  const placed=await order(a);
+  const inbox=expectResponse(await request('/api/v1/notifications',{session:a}),200);
+  assert.equal(inbox.items.length,1);assert.equal(inbox.items[0].orderId,placed.value.id);assert.equal(inbox.unread,1);
+  assert.equal(expectResponse(await request('/api/v1/notifications',{session:peer}),200).items.length,0);
+  assert.equal(expectResponse(await request('/api/v1/notifications',{session:other}),200).items.length,0);
+  expectResponse(await request('/api/v1/notifications/read',{method:'POST',session:a,body:{throughSeq:inbox.latestSeq+9999}}),422,'INVALID_CURSOR');
+  expectResponse(await request('/api/v1/notifications/read',{method:'POST',session:{cookie:a.cookie,csrf:'wrong'},body:{throughSeq:inbox.latestSeq}}),403,'CSRF_INVALID');
+  expectResponse(await request('/api/v1/notifications/read',{method:'POST',session:a,body:{throughSeq:inbox.latestSeq}}),200);
+  expectResponse(await request('/api/v1/notifications/read',{method:'POST',session:a,body:{throughSeq:0}}),200);
+  assert.equal(expectResponse(await request('/api/v1/notifications',{session:a}),200).unread,0);
+  assert.equal(expectResponse(await request('/api/v1/notifications?before='+inbox.latestSeq,{session:a}),200).items.length,0);
+  await db.transaction(tenantA,async c=>{
+    for(let i=0;i<53;i++)await c.query("INSERT INTO outbox_events(id,tenant_id,audience_session,kind,payload) VALUES($1,$2,$3,'ORDER_STATUS_CHANGED',$4)",[crypto.randomUUID(),tenantA,(await c.query('SELECT id FROM sessions WHERE token_hash=$1',[require('../../src/modules/identity').hash(a.cookie.split('=')[1])])).rows[0].id,{order:{id:placed.value.id,status:'ready',orderNumber:placed.value.orderNumber,tableNum:1}}]);
+  });
+  const first=expectResponse(await request('/api/v1/notifications',{session:a}),200);
+  assert.equal(first.items.length,50);assert.ok(first.nextBefore);
+  const second=expectResponse(await request('/api/v1/notifications?before='+first.nextBefore,{session:a}),200);
+  assert.equal(second.items.length,4);assert.equal(second.nextBefore,null);
+  assert.equal(new Set([...first.items,...second.items].map(i=>i.seq)).size,54);
+  // Persistent read state follows the same user into a new session.
+  const staff=expectResponse(await request('/api/v1/notifications',{session:ownerA}),200);
+  expectResponse(await request('/api/v1/notifications/read',{method:'POST',session:ownerA,body:{throughSeq:staff.latestSeq}}),200);
+  const again=await login(tenantA);
+  assert.equal(expectResponse(await request('/api/v1/notifications',{session:again}),200).unread,0);
+});

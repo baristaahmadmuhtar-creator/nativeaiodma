@@ -9,11 +9,13 @@
   const owner = () => state.session?.role === 'owner';
   const canCash = () => ['owner', 'manager', 'cashier'].includes(state.session?.role);
   const tabs = {
+    overview: ['Ringkasan', 'OPERASI', roles],
+    notifications: ['Notifikasi', 'OPERASI', roles],
     onboarding: ['Persiapan cafe', 'OUTLET', ['owner']],
     orders: ['Pesanan', 'OPERASI', roles], kds: ['Dapur / KDS', 'OPERASI', roles],
     menu: ['Menu & stok', 'KATALOG', roles], tables: ['Meja & QR', 'OPERASI', roles],
     waiter: ['Panggilan pelayan', 'OPERASI', roles], promos: ['Promo', 'KATALOG', ['owner', 'manager']],
-    knowledge: ['Pengetahuan', 'AI & KONTEN', ['owner', 'manager']], ai: ['Status AI', 'AI & KONTEN', ['owner', 'manager']],
+    knowledge: ['Pengetahuan', 'AI & KONTEN', ['owner', 'manager']], ai: ['AI & penggunaan', 'AI & KONTEN', ['owner', 'manager']],
     reports: ['Laporan', 'KEUANGAN', ['owner', 'manager', 'cashier']], staff: ['Tim & akses', 'KEAMANAN', ['owner']],
     integrations: ['Integrasi', 'KONFIGURASI', ['owner', 'manager']], settings: ['Pengaturan', 'KONFIGURASI', ['owner', 'manager']],
     audit: ['Audit', 'KEAMANAN', ['owner', 'manager']]
@@ -24,6 +26,8 @@
     waiting: 'Menunggu', requested: 'Menunggu', acknowledged: 'Ditangani', resolved: 'Selesai', draft: 'Draft', published: 'Terbit', archived: 'Arsip',
     owner: 'Owner', manager: 'Manajer', cashier: 'Kasir', kitchen: 'Dapur', waiter: 'Pelayan', live: 'Live', degraded: 'Degraded', mock: 'Mock' };
   const paths = { onboarding: '/admin/onboarding', orders: '/orders', kds: '/orders', menu: '/admin/menu', tables: '/admin/tables', waiter: '/admin/waiter-calls',
+    notifications: '/notifications',
+    overview: '/admin/overview',
     promos: '/admin/resources/promo', knowledge: '/admin/resources/knowledge', reports: '/admin/stats', staff: '/admin/staff',
     settings: '/admin/settings', audit: '/admin/audit', ai: '/admin/ai-status' };
   const editor = $('#editor');
@@ -33,6 +37,19 @@
   let scrollPositions = Object.create(null);
   let dialogReturn;
   let toastTimer;
+  let inboxTimer;
+  let inboxGeneration = 0;
+  async function refreshInboxCount() {
+    const session = state.session, generation = ++inboxGeneration;
+    if (!session || session.mfaRequired) return;
+    try {
+      const data = await api('/notifications');
+      if (session !== state.session || generation !== inboxGeneration) return;
+      const link = $('#navigation a[href="#notifications"]');
+      if (link) { link.textContent = `Notifikasi${data.unread ? ` (${data.unread})` : ''}`; link.setAttribute('aria-label', `Notifikasi, ${data.unread} belum dibaca`); }
+    } catch { /* The inbox page provides retry; an optional counter never blocks operations. */ }
+  }
+  function scheduleInboxCount() { clearTimeout(inboxTimer); inboxTimer = setTimeout(refreshInboxCount, 250); }
 
   function el(tag, text, className) {
     const node = document.createElement(tag);
@@ -98,14 +115,16 @@
       const notice = el('div', undefined, 'notice'); notice.dataset.updateNotice = 'true';
       notice.append(el('p','Data outlet mungkin berubah.'), button('Muat data terbaru',() => $('#refresh').click())); parent.append(notice);
     };
-    stream.onopen = () => { if (ready) announce(); ready = true; clearTimeout(timer); resolveReady(); };
-    stream.onerror = () => { ready = true; clearTimeout(timer); resolveReady(); };
+    stream.onopen = () => { offlineState(); scheduleInboxCount(); if (ready) announce(); ready = true; clearTimeout(timer); resolveReady(); };
+    stream.onerror = () => { if (state.session === session && navigator.onLine) $('#connection').textContent = 'Menghubungkan ulang'; ready = true; clearTimeout(timer); resolveReady(); };
     stream.onmessage = event => {
       if (state.session !== session || $('#app').hidden) return;
       let update; try { update = JSON.parse(event.data); } catch { return; }
-      const relevant = ['orders','kds','reports'].includes(state.tab) && update.type?.startsWith('ORDER_')
+      scheduleInboxCount();
+      const relevant = ['orders','kds','reports','overview'].includes(state.tab) && update.type?.startsWith('ORDER_')
         || state.tab === 'waiter' && ['CALL_WAITER','WAITER_CALL_UPDATED'].includes(update.type)
-        || state.tab === 'menu' && update.type === 'MENU_UPDATED';
+        || state.tab === 'menu' && update.type === 'MENU_UPDATED'
+        || ['notifications','overview'].includes(state.tab);
       if (!relevant) return;
       if (update.order && Array.isArray(state.data) && state.data.some(order => order.id === update.order.id && order.version >= update.order.version)) return;
       announce();
@@ -236,6 +255,7 @@
   function pageAction(title, action) { $('#page-actions').replaceChildren(button(title, action, 'primary')); }
 
   function showLogin(message = 'Gunakan akun staf yang terdaftar.', preserve = false) {
+    clearTimeout(inboxTimer); inboxGeneration++;
     events?.close(); events = null;
     state.generation++; state.controller?.abort();
     if (editor.open) { state.suspended = preserve; editor.close(); }
@@ -335,7 +355,14 @@
     if (state.tab === 'integrations') { renderIntegrations(parent); return; }
     const loading = el('div', undefined, 'loading'); loading.append(el('span', undefined, 'spinner'), el('span', 'Memuat data...')); parent.append(loading); parent.setAttribute('aria-busy', 'true');
     try {
-      const data = await api(paths[state.tab], { signal: state.controller.signal });
+      let data = await api(paths[state.tab], { signal: state.controller.signal });
+      const searched=state.filters[state.tab]?.search;
+      if(['orders','kds','waiter'].includes(state.tab) && /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(searched || '')){
+        try {
+          const current=await api(`${state.tab==='waiter'?'/admin/waiter-calls':'/orders'}/${searched}`,{signal:state.controller.signal});
+          data=[current,...list(data).filter(row=>row.id!==current.id)];
+        }catch(error){if(error.status!==404)throw error;}
+      }
       if (generation !== state.generation || !state.session) return;
       state.data = data; parent.replaceChildren(); renderers[state.tab](parent, data);
       $('#updated-at').textContent = `Diperbarui ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
@@ -383,8 +410,9 @@
     const items = el('div', undefined, 'ticket section-space'); orderItems(items, order); body.append(items);
     details(body, [['Subtotal', formatMoney(order.subtotalMinor, order.currency)], ['Diskon', formatMoney(order.discountMinor, order.currency)], ['Service', formatMoney(order.serviceMinor, order.currency)], ['Pajak', formatMoney(order.taxMinor, order.currency)], ['Total', formatMoney(order.totalMinor, order.currency)]]);
     const next = { received: ['accepted', 'rejected', 'cancelled'], accepted: ['preparing', 'cancelled'], preparing: ['ready', 'cancelled'], ready: ['served', 'cancelled'], served: ['completed'] }[order.status] || [];
-    const allowed = next.filter(status => !['cancelled', 'rejected'].includes(status) || manage()).filter(status => !['preparing', 'completed'].includes(status) || payment(order) === 'paid');
-    if (['owner', 'manager', 'kitchen', 'cashier'].includes(state.session.role) && allowed.length) {
+    const allowed = next.filter(status => !['cancelled', 'rejected'].includes(status) || manage()).filter(status => !['preparing', 'completed'].includes(status) || payment(order) === 'paid')
+      .filter(status=>state.session.role!=='waiter' || order.status==='ready' && status==='served');
+    if (roles.includes(state.session.role) && allowed.length) {
       const edit = newForm(body, 'Ubah status'); field(edit.fields, 'status', 'Status berikutnya', allowed[0], { options: allowed }); const reason = field(edit.fields, 'reason', 'Alasan pembatalan / penolakan', '', { maxLength: 300 });
       const syncReason = () => { reason.required = ['cancelled', 'rejected'].includes(edit.form.elements.status.value); reason.minLength = reason.required ? 3 : 0; };
       edit.form.elements.status.addEventListener('change', syncReason); syncReason();
@@ -627,6 +655,23 @@
   }
   function renderAi(parent, data) {
     details(parent, [['Konfigurasi provider', data.configured ? 'Tersedia' : 'Belum tersedia'], ['Model terkonfigurasi', data.model || 'Tidak ada'], ['Verifikasi live', data.liveVerified ? 'Terverifikasi' : 'Belum terverifikasi'], ['Vision', data.visionEnabled ? 'Diaktifkan' : 'Tidak tersedia'], ['Integrasi eksternal', data.externalIntegrationsEnabled ? 'Diaktifkan' : 'Tidak tersedia']]);
+    const day=data.day || {}, policy=data.policy;
+    if (policy) {
+      parent.append(el('h2','Pemakaian hari ini (UTC)','section-space'));
+      details(parent,[['Permintaan diterima',`${day.requests} / ${policy.dailyRequestLimit}`],['Sisa permintaan',day.remainingRequests],
+        ['Token dilaporkan',day.reportedTokens],['Run tanpa laporan lengkap',day.incompleteRuns],['Run live / degraded',`${day.liveRuns} / ${day.degradedRuns}`],['Reset batas',date(day.resetsAt)],['Billing / biaya','Belum terhubung']]);
+      const edit=newForm(parent,'Simpan batas AI');
+      check(edit.fields,'enabled','Percakapan AI diaktifkan',policy.enabled);
+      field(edit.fields,'dailyRequestLimit','Batas permintaan per hari (UTC)',policy.dailyRequestLimit,{type:'number',required:true,min:1,max:10000,step:1});
+      if (!owner()) [...edit.form.elements].forEach(input=>{input.disabled=true;});
+      else {
+        edit.form.addEventListener('input',()=>{state.dirty=true;});
+        bindForm(edit.form,async(_,form)=>{
+          await save(form,'/admin/ai-policy','POST',{enabled:form.elements.enabled.checked,dailyRequestLimit:Number(form.elements.dailyRequestLimit.value),expectedVersion:policy.version});
+          state.dirty=false;notify('Batas AI tersimpan.');await loadPage();
+        });
+      }
+    }
     parent.append(el('h2', 'Run terbaru', 'section-space')); if (!list(data.runs).length) return empty(parent, 'Belum ada run AI', 'Pemakaian ditampilkan hanya jika dilaporkan provider.');
     table(parent, ['Waktu', 'Mode', 'Status', 'Usage aktual'], data.runs.map(run => {
       let reported = null;
@@ -637,6 +682,54 @@
       return [date(run.createdAt), badge(run.mode), run.status || '-', reported === null ? 'Tidak dilaporkan' : `${reported} token`];
     }));
   }
+  function renderNotifications(parent, data) {
+    const session=state.session, generation=state.generation;
+    details(parent,[['Belum dibaca',data.unread]]);
+    const actions=el('div',undefined,'toolbar');
+    const mark=button('Tandai sudah dibaca',async()=>{
+      mark.disabled=true;
+      try { await api('/notifications/read',{method:'POST',body:{throughSeq:data.latestSeq}});scheduleInboxCount();await loadPage(); }
+      catch(error){notify(errorText(error),true);}
+      finally {mark.disabled=false;}
+    });mark.disabled=!data.unread;actions.append(mark);parent.append(actions);
+    const region=el('div');parent.append(region);
+    const draw=items=>{
+      items.forEach(item=>{
+        const row=el('section',undefined,'capability-row');
+        const text=el('div');
+        const title=item.orderId?`Pesanan #${item.orderNumber || item.orderId.slice(0,8)}`:`Panggilan meja ${item.table}`;
+        text.append(el('h3',title),el('p',`${item.table ? `Meja ${item.table} / ` : ''}${labels[item.status] || item.status || ''} / ${date(item.createdAt)}`));
+        if(!item.read)text.append(badge('received','Belum dibaca'));
+        const open=button('Buka',async()=>{
+          if(editorBusy() || state.dirty)return;
+          const target=item.orderId?(state.session.role==='kitchen'?'kds':'orders'):'waiter';
+          state.filters[target]={search:item.orderId || item.callId,status:''};
+          location.hash=target;
+        });row.append(text,open);region.append(row);
+      });
+    };
+    if(!data.items.length)empty(region,'Belum ada notifikasi','Pesanan dan panggilan pelanggan akan muncul di sini.');
+    draw(data.items);
+    let before=data.nextBefore;
+    const more=button('Muat sebelumnya',async()=>{
+      more.disabled=true;
+      try {
+        const next=await api(`/notifications?before=${before}`);
+        if(session!==state.session || generation!==state.generation || !parent.isConnected)return;
+        draw(next.items);before=next.nextBefore;more.hidden=!before;
+      }catch(error){notify(errorText(error),true);}finally{more.disabled=false;}
+    });more.hidden=!before;parent.append(more);
+  }
+  function renderOverview(parent,data) {
+    details(parent,[['Pesanan aktif',data.activeOrders],['Belum dibayar',data.unpaid],['Panggilan terbuka',data.openCalls]]);
+    const operations=el('ul',undefined,'onboarding-checklist');
+    for(const [title,count,tab,status] of [['Pesanan baru',data.orders.received || 0,'orders','received'],['Disiapkan',data.orders.preparing || 0,'kds','preparing'],['Siap disajikan',data.orders.ready || 0,'orders','ready'],['Panggilan pelayan',data.openCalls,'waiter','']]){
+      const row=el('li');
+      const link=onboardingLink('Buka',tab);link.addEventListener('click',()=>{state.filters[tab]={search:'',status};});
+      row.append(el('strong',title),el('span',count,'muted'),link);operations.append(row);
+    }
+    parent.append(operations);
+  }
   function renderIntegrations(parent) {
     [['Payment gateway', 'Belum tersedia. Pembayaran manual tetap melalui kasir.'], ['POS & printer', 'Belum ada koneksi perangkat yang terverifikasi.'], ['Pengiriman email', 'Belum tersedia. Undangan staf memakai tautan manual.'], ['Billing & kredit AI', 'Belum ada layanan billing yang terhubung.']].forEach(([title, detail]) => {
       const row = el('section', undefined, 'capability-row'); const text = el('div'); text.append(el('h3', title), el('p', detail)); row.append(text, badge('inactive', 'Tidak tersedia')); parent.append(row);
@@ -646,7 +739,7 @@
   function downloadText(name, text, type = 'text/plain') {
     const url = URL.createObjectURL(new Blob([text], { type })); const link = el('a'); link.href = url; link.download = name; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  const renderers = { onboarding: renderOnboarding, orders: renderOrders, kds: renderOrders, menu: renderMenu, tables: renderTables, waiter: renderWaiter,
+  const renderers = { overview: renderOverview, notifications: renderNotifications, onboarding: renderOnboarding, orders: renderOrders, kds: renderOrders, menu: renderMenu, tables: renderTables, waiter: renderWaiter,
     promos: renderResources, knowledge: renderResources, reports: renderReports, audit: renderAudit, settings: renderSettings, staff: renderStaff, ai: renderAi };
 
   const login = $('#login-form');

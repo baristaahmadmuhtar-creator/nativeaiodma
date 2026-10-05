@@ -85,6 +85,25 @@ async function main() {
       assert.equal(await sharedCustomer.evaluate(async()=> (await (await fetch('/api/v1/session',{headers:{'X-AIODMA-Surface':'customer'}})).json()).data?.role),'guest');
       await guestContext.close(); await page.locator('#close-editor').click();
       if (process.env.ONBOARDING_ORDER_SMOKE === '1') {
+        const staffContexts=[];
+        async function staff(role) {
+          const account={email:`${role}_${crypto.randomUUID()}@example.test`,password:crypto.randomBytes(20).toString('hex')};
+          const invitation=await page.evaluate(async account=>{
+            const s=(await (await fetch('/api/v1/session')).json()).data;
+            const response=await fetch('/api/v1/admin/invitations',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':s.csrfToken},body:JSON.stringify(account)});
+            if(!response.ok)throw new Error('Staff invitation failed');return (await response.json()).data;
+          },{email:account.email,role});
+          const params=new URLSearchParams(new URL(invitation.invitationUrl).hash.slice(1));
+          const ctx=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'});staffContexts.push(ctx);
+          const operator=await ctx.newPage();operator.on('dialog',dialog=>dialog.accept());operator.on('pageerror',error=>errors.push(error.message));
+          await operator.goto(base+'/admin.html#orders');
+          const status=await operator.evaluate(async invitation=>(await fetch('/api/v1/auth/accept-invitation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(invitation)})).status,{tenantId:params.get('tenant'),id:params.get('invite'),token:params.get('token'),password:account.password});
+          assert.equal(status,200);
+          await operator.locator('#login-form [name=email]').fill(account.email);await operator.locator('#login-form [name=password]').fill(account.password);await operator.locator('#login-form [name=merchantId]').fill(params.get('tenant'));
+          await operator.getByRole('button',{name:'Masuk',exact:true}).click();await expect(operator.locator('#app')).toBeVisible();
+          assert.equal(await operator.evaluate(async()=> (await fetch('/api/v1/admin/ai-status')).status),403);
+          return operator;
+        }
         await sharedCustomer.locator('#btnCatalogCartPill').click(); await sharedCustomer.locator('#btnProceedToPayment').click();
         await expect(sharedCustomer.locator('#btnProcessPayment')).toBeEnabled();
         const orderResponse=sharedCustomer.waitForResponse(response=>new URL(response.url()).pathname==='/api/v1/orders'&&response.request().method()==='POST');
@@ -94,18 +113,33 @@ async function main() {
         await expect(sharedCustomer.locator('#screenOrderSuccess')).toHaveClass(/active/);
         await sharedCustomer.locator('#btnSaveReceipt').click(); await expect(sharedCustomer.locator('.receipt-success-text')).toHaveText('UNPAID');
         await sharedCustomer.screenshot({path:path.join(output,`${width}-unpaid-receipt.png`)});
-        await page.locator('#navigation a[href="#orders"]').click();
-        await page.getByRole('button',{name:'Detail',exact:true}).click();
-        await dialog.locator('[name=reference]').fill('SMOKE TEST - synthetic cash ledger; no real funds');
-        await dialog.getByRole('button',{name:'Catat pembayaran',exact:true}).click(); await expect(dialog).not.toBeVisible();
-        for (const status of ['accepted','preparing','ready','served','completed']) {
-          await page.getByRole('button',{name:'Detail',exact:true}).click(); await dialog.locator('[name=status]').selectOption(status);
-          await dialog.getByRole('button',{name:'Ubah status',exact:true}).click(); await expect(dialog).not.toBeVisible();
+        const cashier=await staff('cashier'),kitchen=await staff('kitchen'),waiter=await staff('waiter');
+        await cashier.getByRole('button',{name:'Detail',exact:true}).click();
+        await cashier.locator('#editor [name=reference]').fill('SMOKE TEST - synthetic cash ledger; no real funds');
+        await cashier.locator('#editor').getByRole('button',{name:'Catat pembayaran',exact:true}).click(); await expect(cashier.locator('#editor')).not.toBeVisible();
+        async function transition(operator,status) {
+          await operator.locator('#refresh').click();await expect(operator.locator('#page-content')).not.toHaveAttribute('aria-busy','true');
+          await operator.getByRole('button',{name:'Detail',exact:true}).click(); await operator.locator('#editor [name=status]').selectOption(status);
+          await operator.locator('#editor').getByRole('button',{name:'Ubah status',exact:true}).click();await expect(operator.locator('#editor')).not.toBeVisible();
         }
+        for (const status of ['accepted','preparing','ready']) await transition(kitchen,status);
+        await transition(waiter,'served');
+        await page.locator('#navigation a[href="#orders"]').click();await transition(page,'completed');
         const persisted=await sharedCustomer.evaluate(async id=>(await (await fetch('/api/v1/orders/'+id,{headers:{'X-AIODMA-Surface':'customer'}})).json()).data,order.id);
         assert.equal(persisted.paymentStatus,'PAID'); assert.equal(persisted.status,'completed'); assert.equal(persisted.totalMinor,350);
         await page.locator('#navigation a[href="#reports"]').click(); await expect(page.locator('#page-content')).toContainText('3,50');
-        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: unpaid receipt, synthetic manual settlement, accepted/preparing/ready/served/completed, guest persisted status and report`);
+        await page.locator('#navigation a[href="#notifications"]').click();await expect(page.locator('#page-content')).toContainText(`#${order.orderNumber}`);
+        await page.getByRole('button',{name:'Tandai sudah dibaca',exact:true}).click();await expect(page.getByRole('button',{name:'Tandai sudah dibaca',exact:true})).toBeDisabled();
+        await page.screenshot({path:path.join(output,`${width}-notifications.png`),fullPage:true});
+        await page.locator('#navigation a[href="#ai"]').click();await page.locator('#page-content [name=enabled]').uncheck();
+        await page.locator('#page-content [name=dailyRequestLimit]').fill('2');await page.getByRole('button',{name:'Simpan batas AI',exact:true}).click();
+        await expect(page.locator('#page-content [name=enabled]')).not.toBeChecked();
+        const blocked=await sharedCustomer.evaluate(async()=>{
+          const s=(await (await fetch('/api/v1/session',{headers:{'X-AIODMA-Surface':'customer'}})).json()).data;
+          return (await (await fetch('/api/v1/ai/chat',{method:'POST',headers:{'Content-Type':'application/json','X-AIODMA-Surface':'customer','X-CSRF-Token':s.csrfToken},body:JSON.stringify({messageId:crypto.randomUUID(),message:'Please recommend coffee',language:'en'})})).json()).data;
+        });assert.equal(blocked.reason,'AI_DISABLED');assert.deepEqual(blocked.proposals,[]);
+        for(const ctx of staffContexts)await ctx.close();
+        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; inbox acknowledgement, AI pause and permission guards`);
       }
       await page.locator('#navigation a[href="#onboarding"]').click();
       await page.getByRole('button', { name: 'Tarik publikasi', exact: true }).click();

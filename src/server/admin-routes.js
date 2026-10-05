@@ -5,10 +5,18 @@ const {requireValue}=require('../shared/errors');
 const {hash}=require('../modules/identity');
 const {audit,emit,idempotent}=require('../modules/transactions');
 const {orderView}=require('../modules/orders');
+const {summary}=require('../modules/ai-governance');
 
 function registerAdminRoutes(api,{db,config,identity,wrap,valid,send,tx}) {
   const manage=identity.allow('owner','manager'),owner=identity.allow('owner');
   const uuid=z.string().uuid(),id=z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
+  api.get('/admin/overview',identity.allow('owner','manager','cashier','kitchen','waiter'),wrap(async(req,res)=>{
+    const data=await tx(req,async c=>{
+      const orders=(await c.query("SELECT status,count(*)::integer AS count,count(*) FILTER (WHERE payment_status='unpaid')::integer AS unpaid FROM orders WHERE tenant_id=$1 AND status NOT IN ('completed','cancelled','rejected') GROUP BY status",[req.principal.tenant_id])).rows;
+      const calls=Number((await c.query("SELECT count(*) AS n FROM waiter_calls WHERE tenant_id=$1 AND status<>'resolved'",[req.principal.tenant_id])).rows[0].n);
+      return {orders:Object.fromEntries(orders.map(r=>[r.status,r.count])),unpaid:orders.reduce((sum,r)=>sum+r.unpaid,0),activeOrders:orders.reduce((sum,r)=>sum+r.count,0),openCalls:calls};
+    });send(res,data);
+  }));
   const knowledge=z.object({title:z.string().trim().min(1).max(200),text:z.string().trim().min(1).max(4000),status:z.enum(['draft','published','archived'])}).strict();
   const promo=z.object({type:z.enum(['percent','fixed']),value:z.number().min(0).max(100000000),minSpend:z.number().min(0).optional(),
     maxDiscount:z.number().min(0).optional(),limit:z.number().int().positive().optional(),active:z.boolean(),
@@ -113,8 +121,20 @@ function registerAdminRoutes(api,{db,config,identity,wrap,valid,send,tx}) {
   }));
   api.get('/admin/ai-status',manage,wrap(async(req,res)=>{
     const rows=(await tx(req,c=>c.query('SELECT message_id,created_at,result FROM ai_messages WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 30',[req.principal.tenant_id]))).rows;
-    send(res,{configured:!!(config.GEMINI_API_KEY&&config.AI_MODEL),model:config.AI_MODEL || null,liveVerified:false,
+    const governance=await tx(req,c=>summary(c,req.principal.tenant_id));
+    send(res,{...governance,configured:!!(config.GEMINI_API_KEY&&config.AI_MODEL),model:config.AI_MODEL || null,liveVerified:false,
       visionEnabled:false,externalIntegrationsEnabled:false,runs:rows.map(r=>({id:r.message_id,createdAt:r.created_at,mode:r.result.mode,status:r.result.status,usage:r.result.usage || null}))});
+  }));
+  api.post('/admin/ai-policy',owner,wrap(async(req,res)=>{
+    const b=valid(z.object({enabled:z.boolean(),dailyRequestLimit:z.number().int().min(1).max(10000),expectedVersion:z.number().int().min(0)}).strict(),req.body);
+    await tx(req,async c=>{
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,20))',[req.principal.tenant_id]);
+      const r=b.expectedVersion===0
+        ?await c.query('INSERT INTO ai_policies(tenant_id,enabled,daily_request_limit) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING version',[req.principal.tenant_id,b.enabled,b.dailyRequestLimit])
+        :await c.query('UPDATE ai_policies SET enabled=$2,daily_request_limit=$3,version=version+1 WHERE tenant_id=$1 AND version=$4 RETURNING version',[req.principal.tenant_id,b.enabled,b.dailyRequestLimit,b.expectedVersion]);
+      requireValue(r.rowCount,'AI_POLICY_STALE','Pengaturan AI berubah. Muat ulang.',409);
+      await audit(c,req.principal,'AI_POLICY_UPDATED',req.principal.tenant_id,b);
+    });send(res,{saved:true});
   }));
 }
 module.exports={registerAdminRoutes};

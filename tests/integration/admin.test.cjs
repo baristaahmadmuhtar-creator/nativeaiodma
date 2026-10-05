@@ -102,6 +102,27 @@ async function resetClientBudgets() {
     [['login', 'invite-accept', 'qr-exchange'].map(name => hash(name + ':127.0.0.1'))]);
 }
 
+test('waiter can serve only ready orders; overview, AI policy versioning and inbox role boundaries remain enforced',options,async()=>{
+  const waiter=account('operations_waiter'),kitchen=account('operations_kitchen');
+  expect(await accept(await invite(waiter,'waiter'),waiter.password),200);
+  expect(await accept(await invite(kitchen,'kitchen'),kitchen.password),200);
+  const ws=session(await login(waiter,tenantA)),ks=session(await login(kitchen,tenantA));
+  let order=await makeOrder(await guest());
+  expect(await request(`/api/v1/admin/orders/${order.id}/status`,{method:'PATCH',session:ws,key:crypto.randomUUID(),body:{expectedVersion:order.version,status:'accepted'}}),403,'FORBIDDEN');
+  order=await settle(order);
+  for(const status of ['accepted','preparing','ready'])order=expect(await request(`/api/v1/admin/orders/${order.id}/status`,{method:'PATCH',session:ks,key:crypto.randomUUID(),body:{expectedVersion:order.version,status}}),200);
+  order=expect(await request(`/api/v1/admin/orders/${order.id}/status`,{method:'PATCH',session:ws,key:crypto.randomUUID(),body:{expectedVersion:order.version,status:'served'}}),200);
+  expect(await request(`/api/v1/admin/orders/${order.id}/status`,{method:'PATCH',session:ws,key:crypto.randomUUID(),body:{expectedVersion:order.version,status:'completed'}}),403,'FORBIDDEN');
+  const overview=expect(await request('/api/v1/admin/overview',{session:ws}),200);assert.ok(overview.orders.served>=1);
+  const inbox=expect(await request('/api/v1/notifications',{session:ws}),200);assert.ok(inbox.items.every(i=>i.type!=='ORDER_PAID'&&i.type!=='ORDER_CREATED'));
+  expect(await request('/api/v1/admin/ai-status',{session:ks}),403,'FORBIDDEN');
+  expect(await request('/api/v1/admin/ai-policy',{method:'POST',session:ws,body:{enabled:false,dailyRequestLimit:1,expectedVersion:0}}),403,'FORBIDDEN');
+  const policy=expect(await request('/api/v1/admin/ai-status',{session:owner}),200).policy;
+  expect(await request('/api/v1/admin/ai-policy',{method:'POST',session:owner,body:{enabled:false,dailyRequestLimit:12,expectedVersion:policy.version}}),200);
+  expect(await request('/api/v1/admin/ai-policy',{method:'POST',session:owner,body:{enabled:true,dailyRequestLimit:13,expectedVersion:policy.version}}),409,'AI_POLICY_STALE');
+  assert.equal(expect(await request('/api/v1/admin/ai-status',{session:owner}),200).policy.dailyRequestLimit,12);
+});
+
 before(async () => {
   database = await startLocalDatabase('events');
   db = createDatabase(database.connectionString);
@@ -238,6 +259,7 @@ test('last owner cannot be demoted, including concurrent attempts against two ow
 });
 
 test('refunds require owner scope, enforce the paid cap and persist only one idempotent refund', options, async () => {
+  const baseline=expect(await request('/api/v1/admin/stats',{session:owner}),200);
   const customer = await guest();
   const unpaid = await makeOrder(customer);
   expect(await refund(unpaid, 1), 409, 'REFUND_DENIED');
@@ -257,7 +279,7 @@ test('refunds require owner scope, enforce the paid cap and persist only one ide
   assert.equal(full.paymentStatus, 'REFUNDED');
   expect(await refund(full, 1), 409, 'REFUND_DENIED');
   assert.deepEqual(await ledger(paid.id), [{ kind: 'refund', count: 2, total: 450 }, { kind: 'settlement', count: 1, total: 450 }]);
-  assert.deepEqual(expect(await request('/api/v1/admin/stats', { session: owner }), 200), { settledMinor: 450, refundedMinor: 450, netMinor: 0 });
+  assert.deepEqual(expect(await request('/api/v1/admin/stats', { session: owner }), 200), { settledMinor: baseline.settledMinor+450, refundedMinor: baseline.refundedMinor+450, netMinor: baseline.netMinor });
 });
 
 test('concurrent refunds cannot spend the same remaining balance twice', options, async () => {

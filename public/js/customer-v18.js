@@ -290,7 +290,13 @@
     state.events?.close(); const epoch = state.epoch; const events = new EventSource('/api/v1/events?surface=customer'); state.events = events;
     events.onmessage = event => {
       if (epoch !== state.epoch) return;
-      try { const data = JSON.parse(event.data); if (data.order && (!state.order || state.order.id === data.order.id)) updateOrder(data.order);
+      try { const data = JSON.parse(event.data); if (data.order && (!state.order || state.order.id === data.order.id)) {
+          const previous=state.order;
+          const changed=previous?.id===data.order.id && data.order.version>previous.version;
+          updateOrder(data.order);
+          if(changed && !state.pending && !state.busy) notice(`#${data.order.orderNumber} - ${t(data.order.status)}. ${['PAID','UNPAID'].includes(data.order.paymentStatus)?t(data.order.paymentStatus==='PAID'?'paid':'unpaid'):data.order.paymentStatus}`);
+        }
+        if(data.type==='WAITER_CALL_UPDATED') notice(({id:{acknowledged:'Pelayan sedang menangani panggilan Anda.',resolved:'Panggilan pelayan selesai.'},en:{acknowledged:'A waiter is handling your request.',resolved:'Your waiter request is resolved.'},ms:{acknowledged:'Pelayan sedang mengurus permintaan anda.',resolved:'Permintaan pelayan selesai.'}})[state.language][data.call?.status] || '');
         if (data.type === 'MENU_UPDATED') { invalidate(); run(loadMenu); }
       } catch { /* Malformed events must not mutate customer state. */ }
     };

@@ -58,7 +58,8 @@ async function main() {
     async function visit(tab, endpoint) {
       phase = `tab ${tab}`;
       const response = endpoint ? page.waitForResponse(r => new URL(r.url()).pathname === `/api/v1${endpoint}` && r.request().method() === 'GET') : null;
-      await page.locator(`#navigation a[href="#${tab}"]`).click();
+      if(await page.evaluate(tab=>location.hash===`#${tab}`,tab))await page.locator('#refresh').click();
+      else await page.locator(`#navigation a[href="#${tab}"]`).click();
       const data = response ? await envelope(await response) : null;
       if (endpoint) await expect(page.locator('#updated-at')).toContainText('Diperbarui');
       await expect(page.locator('#page-content .notice.error')).toHaveCount(0);
@@ -104,12 +105,18 @@ async function main() {
     await expect(page.locator('#page-content')).toContainText('Tidak ada pesanan');
     console.log('PASS owner login and real empty orders');
 
-    const endpoints = { kds: '/orders', menu: '/admin/menu', tables: '/admin/tables', waiter: '/admin/waiter-calls',
+    const endpoints = { overview:'/admin/overview',notifications:'/notifications',kds: '/orders', menu: '/admin/menu', tables: '/admin/tables', waiter: '/admin/waiter-calls',
       promos: '/admin/resources/promo', knowledge: '/admin/resources/knowledge', ai: '/admin/ai-status',
       reports: '/admin/stats', staff: '/admin/staff', settings: '/admin/settings', audit: '/admin/audit' };
     for (const [tab, endpoint] of Object.entries(endpoints)) await visit(tab, endpoint);
     await visit('integrations'); await expect(page.locator('#page-content')).toContainText('Tidak tersedia');
     console.log('PASS every admin tab: real responses; unavailable integrations accurately labelled');
+
+    await visit('ai','/admin/ai-status');
+    await page.locator('#page-content [name=dailyRequestLimit]').fill('50');
+    const policyResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/admin/ai-policy' && r.request().method()==='POST');
+    await page.getByRole('button',{name:'Simpan batas AI',exact:true}).click();await envelope(await policyResponse);
+    await expect(page.locator('#page-content [name=dailyRequestLimit]')).toHaveValue('50');
 
     await visit('menu', '/admin/menu'); phase = 'menu create';
     await page.getByRole('button', {name:'+ Tambah menu',exact:true}).hover();
@@ -212,6 +219,14 @@ async function main() {
     const waiterResponse = page.waitForResponse(r => new URL(r.url()).pathname.startsWith('/api/v1/admin/waiter-calls/') && r.request().method() === 'PATCH');
     await dialog.getByRole('button', { name: 'Perbarui panggilan', exact: true }).click(); await envelope(await waiterResponse); await expect(dialog).not.toBeVisible();
     const stats = await visit('reports', '/admin/stats'); assert.equal(stats.settledMinor, 1100); assert.equal(stats.netMinor, 1100);
+    const inbox=await visit('notifications','/notifications');assert.ok(inbox.items.some(i=>i.orderId===order.id));
+    const ack=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/notifications/read');
+    await page.getByRole('button',{name:'Tandai sudah dibaca',exact:true}).click();await envelope(await ack);
+    await expect(page.getByRole('button',{name:'Tandai sudah dibaca',exact:true})).toBeDisabled();
+    await page.locator('#page-content .capability-row').filter({hasText:`#${order.orderNumber}`}).first().getByRole('button',{name:'Buka',exact:true}).click();
+    await expect(page.locator('#navigation a[href="#orders"]')).toHaveAttribute('aria-current','page');
+    await expect(page.locator('#page-content [name=search]')).toHaveValue(order.id);
+    console.log('PASS persistent inbox acknowledgement and jump to canonical current order; AI policy save');
     for (const [width, height] of [[390, 844], [320, 812]]) {
       await page.setViewportSize({ width, height }); await visit('orders', '/orders'); await capture(`${width}-orders.png`);
       await visit('menu', '/admin/menu'); await capture(`${width}-menu.png`);
@@ -220,8 +235,20 @@ async function main() {
       assert.equal(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth), true, 'Modifier editor horizontal overflow');
       await capture(`${width}-modifiers.png`);
       await page.locator('#close-editor').click();
+      await visit('notifications','/notifications');await capture(`${width}-notifications.png`);
+      await visit('ai','/admin/ai-status');await capture(`${width}-ai.png`);
     }
     phase = 'dark theme'; await page.locator('#theme-toggle').click(); await capture('320-dark-menu.png');
+    phase='waiter service flow';
+    await db.transaction(tenant,client=>client.query("UPDATE memberships SET role='waiter' WHERE tenant_id=$1 AND user_id=(SELECT id FROM users WHERE email=$2)",[tenant,email]));
+    await page.reload();await expect(page.locator('#account-role')).toHaveText('Pelayan');
+    await visit('orders','/orders');
+    await page.locator('tr').filter({hasText:order.orderNumber}).getByRole('button',{name:'Detail',exact:true}).click();
+    await expect(dialog.locator('[name=status]')).toHaveValue('served');
+    await expect(dialog.getByRole('button',{name:'Catat pembayaran',exact:true})).toHaveCount(0);
+    await submit('Ubah status',`/admin/orders/${order.id}/status`,'PATCH');
+    assert.equal((await db.transaction(tenant,c=>c.query('SELECT status FROM orders WHERE id=$1',[order.id]))).rows[0].status,'served');
+    console.log('PASS waiter service-only transition, no cashier controls');
     phase = 'kitchen role navigation';
     await db.transaction(tenant,client=>client.query("UPDATE memberships SET role='kitchen' WHERE tenant_id=$1 AND user_id=(SELECT id FROM users WHERE email=$2)",[tenant,email]));
     await page.reload(); await expect(page.locator('#account-role')).toHaveText('Dapur');

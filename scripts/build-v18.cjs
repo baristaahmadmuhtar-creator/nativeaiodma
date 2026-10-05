@@ -5,6 +5,7 @@ const { provision } = require('./provision-v18.cjs');
 
 async function build() {
   await provision();
+  if(process.env.COFFEENITY_ACCESS_PROVISION==='1')await require('./coffeenity-access.cjs').provisionAccess();
   const root = path.resolve(__dirname, '..');
   const required = ['public/assets','public/css/styles.css','public/css/customer-v18.css',
     'public/css/admin-v18.css','public/js/customer-v18.js','public/js/admin-v18.js',
