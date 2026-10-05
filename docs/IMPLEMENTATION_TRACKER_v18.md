@@ -1,7 +1,7 @@
 # AIODMA v18 Implementation Tracker
 
 Updated: 2026-10-06. Scope authorized through publication; production promotion remains gate-controlled.
-Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed native customer layer code: `593a263c36453d370388a17b577f608228f7ba36`, preserving v20 operations.
+Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Live customer application: `77e1ec6502f86784fb34841d9826e203102cd567`, preserving v20 operations. Final theme/tracking candidate `49e9279727d4893b6fba7fae261cb41a3c22a845` is pushed and locally verified, but its CI is queued and it is not promoted.
 
 ## Gate Status
 
@@ -13,7 +13,7 @@ Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed native customer lay
 | G3 | PARTIAL | Bounded provider/orchestrator, consented profile and explicit proposal confirmation implemented. Customer contract and real local API browser journeys pass; 240-case corpus/live provider evaluation remains missing. |
 | G4 | PARTIAL, DEPENDENCIES NOT PASSED | Admin browser journey passes locally. Self-service signup/MFA/outlet publication passed locally and publicly. Email verification, reporting, external integrations and complete production PWA acceptance remain. |
 | G5 | PARTIAL | Local automated suites pass, CI exists, and Vercel production build applied Neon migrations and seed data. Soak, restore drill, load testing, live AI evaluation and complete public journey acceptance remain. |
-| G6 | CUSTOMER AND SELF-SERVICE PILOT LIVE VERIFIED | Vercel deployment `dpl_GtKuaqdL2gEa7cGS5WKJt5HncaUy` is Ready at `https://nativeaiodma-v18.vercel.app`. Public disposable-outlet full role flow and original Coffeenity customer QR/menu/native grabbers/preferences passed. Original owner requires their enrolled MFA code; no authenticator reset. G5 remains partial. |
+| G6 | MAIN v23 PILOT LIVE VERIFIED; FINAL PATCH PENDING | Vercel deployment `dpl_Fc8XGnW4ts5CLC9XvhHPqkvhNXEM` is Ready at `https://nativeaiodma-v18.vercel.app` on source `77e1ec6`. Public disposable full role flow and actual customer SSE, plus original Coffeenity read-only 320/390/1440 checks passed. Final candidate `49e9279` fixes remaining modifier contrast; CI `37369687670` is queued during GitHub runner delays, so final promotion is pending. Original owner MFA is unchanged. G5 remains partial. |
 
 ## Task Coverage
 
@@ -32,11 +32,11 @@ T30-T35: incomplete. T36: automated public admin/order/KDS/receipt and distinct-
 
 - `npm run test:unit`: 63 passed, 0 failed.
 - `npm run test:integration`: 43 passed, 0 failed, actual local PostgreSQL.
-- `npm run test:customer`: four journey contracts, four refinements and four native layer configurations passed, plus long scrolling, PDF, storage failures and catalog burst coalescing. See v21/v22 acceptance.
+- `npm run test:customer`: all 18 groups passed on final candidate `49e9279`: four contracts, four refinements, four native-layer configurations and four both-theme comfort groups, plus long scrolling, PDF, storage/replay boundaries and catalog burst coalescing. See v23 acceptance and current release evidence.
 - `npm run test:customer:live`: passed against the real local API with PostgreSQL persistence.
 - `node tests/e2e/admin-v18.cjs`: passed; notifications/policy/current-order links, waiter service-only transition and mobile screenshots at `output/admin-v18/d3365111e199/`.
 - `node tests/e2e/onboarding-v19.cjs`: passed mobile/desktop with production MFA; final public smoke passed with its test outlet returned to draft. See `release-readiness.md` and the v19 PRD.
-- GitHub CI `37342663796` passed every suite on deployed code `593a263`, including native customer layers and distinct-role onboarding/order smoke on Linux.
+- GitHub CI `37349222630` passed every suite on current live code `77e1ec6`. Final candidate `49e9279` CI `37369687670` is queued with no runner/test steps yet; it is not marked passed. All corresponding suites have passed locally, including expanded actual customer SSE and dark receipt/tracker checks.
 - Vercel production build: migrations applied and two published test merchants seeded on Neon; least-privilege runtime database role verified; deployment status Ready.
 - Public customer smoke: QR exchange and session passed for Coffeenity Table 1; 62 products and production images loaded; cart persistence and BND 1.50 quote passed; no order was confirmed and browser console errors were empty.
 - Integration scope: non-superuser application role, private-file boundary, QR/session/CSRF checks, tenant and same-table guest isolation, cart/order idempotency, exact manual settlement, scoped SSE/replay/revocation and transaction context reset.
