@@ -480,7 +480,8 @@
           const applied = updateOrder(data.order);
           if(applied && changed && !state.pending && !state.busy) {
             const message = `#${data.order.orderNumber} - ${t(data.order.status)}. ${paymentLabel(data.order)}`;
-            if ($('orderTrackerBackdrop').classList.contains('open')) { if (status.hidden || status.dataset.tone !== 'error') set('accessibilityLiveRegion',message); }
+            const inlineTracking = $('orderTrackerBackdrop').classList.contains('open') || ['screenThermalReceipt','screenOrderSuccess'].includes(currentScreen);
+            if (inlineTracking) { if (status.hidden || status.dataset.tone !== 'error') set('accessibilityLiveRegion',message); }
             else notice(message,false,'success',true);
           }
         }

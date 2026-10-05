@@ -27,6 +27,7 @@ async function main() {
     const executablePath = [await require('puppeteer').executablePath(), 'C:/Program Files/Google/Chrome/Application/chrome.exe', chromium.executablePath()].find(file => fs.existsSync(file));
     assert.ok(executablePath, 'An installed Chromium browser is required');
     browser = await chromium.launch({ executablePath, headless: true });
+    async function settle(customer) {await customer.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});}
     for (const width of liveUrl ? [390] : [390, 1440]) {
       const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: 'block' });
       const page = await context.newPage(), errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -77,6 +78,7 @@ async function main() {
       await customer.locator('[data-lang="id-ID"]').click(); await customer.locator('#qpLihatSemuaMenu').click();
       await expect(customer.locator('.product-card')).toHaveCount(1);
       const sharedCustomer = await context.newPage();
+      sharedCustomer.on('pageerror',error=>errors.push(error.message));
       await sharedCustomer.goto(qr.url); await expect(sharedCustomer.locator('#labelMenuTable')).toHaveText('Table 1');
       await sharedCustomer.locator('[data-lang="en-US"]').click(); await sharedCustomer.locator('#qpLihatSemuaMenu').click();
       await sharedCustomer.locator('.btn-add-product').click(); await sharedCustomer.locator('#btnAddCustomizedToCart').click();
@@ -117,16 +119,32 @@ async function main() {
         await cashier.getByRole('button',{name:'Detail',exact:true}).click();
         await cashier.locator('#editor [name=reference]').fill('SMOKE TEST - synthetic cash ledger; no real funds');
         await cashier.locator('#editor').getByRole('button',{name:'Catat pembayaran',exact:true}).click(); await expect(cashier.locator('#editor')).not.toBeVisible();
+        await expect(sharedCustomer.locator('.receipt-success-text')).toHaveText('PAID',{timeout:20000});
         async function transition(operator,status) {
           await operator.locator('#refresh').click();await expect(operator.locator('#page-content')).not.toHaveAttribute('aria-busy','true');
           await operator.getByRole('button',{name:'Detail',exact:true}).click(); await operator.locator('#editor [name=status]').selectOption(status);
           await operator.locator('#editor').getByRole('button',{name:'Ubah status',exact:true}).click();await expect(operator.locator('#editor')).not.toBeVisible();
         }
-        for (const status of ['accepted','preparing','ready']) await transition(kitchen,status);
-        await transition(waiter,'served');
+        for (const [status,label] of [['accepted','Accepted'],['preparing','Preparing'],['ready','Ready']]) {
+          await transition(kitchen,status);await expect(sharedCustomer.locator('.receipt-order-subtext')).toHaveText(label,{timeout:20000});
+        }
+        await transition(waiter,'served');await expect(sharedCustomer.locator('.receipt-order-subtext')).toHaveText('Served',{timeout:20000});
         await page.locator('#navigation a[href="#orders"]').click();await transition(page,'completed');
+        await expect(sharedCustomer.locator('.receipt-order-subtext')).toHaveText('Completed',{timeout:20000});
+        assert.equal(await sharedCustomer.locator('#customerV18Status').evaluate(el=>el.hidden),true,'receipt updates in place without an obstructing progress toast');
         const persisted=await sharedCustomer.evaluate(async id=>(await (await fetch('/api/v1/orders/'+id,{headers:{'X-AIODMA-Surface':'customer'}})).json()).data,order.id);
         assert.equal(persisted.paymentStatus,'PAID'); assert.equal(persisted.status,'completed'); assert.equal(persisted.totalMinor,350);
+        await sharedCustomer.locator('#btnHeaderThemeToggle').click();await expect(sharedCustomer.locator('html')).toHaveAttribute('data-theme','dark');
+        assert.equal(await sharedCustomer.locator('.thermal-paper-card').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(28, 28, 30)');
+        await settle(sharedCustomer);
+        await sharedCustomer.screenshot({path:path.join(output,`${width}-paid-completed-dark-receipt.png`)});
+        await sharedCustomer.locator('#btnReceiptBackToHome').click();await sharedCustomer.locator('#btnOpenOrderTrackerFromBanner').click();
+        await expect(sharedCustomer.locator('#orderTrackerBackdrop')).toHaveClass(/open/);
+        await expect(sharedCustomer.locator('#trackerStatusBadge')).toHaveText('Completed');
+        await expect(sharedCustomer.locator('#trackerPaymentStatusLabel')).toHaveText('PAID');
+        await expect(sharedCustomer.locator('#trackerStepCompleted .step-title')).toHaveText('4. Completed');
+        await settle(sharedCustomer);
+        await sharedCustomer.screenshot({path:path.join(output,`${width}-completed-dark-tracker.png`)});
         await page.locator('#navigation a[href="#reports"]').click(); await expect(page.locator('#page-content')).toContainText('3,50');
         await page.locator('#navigation a[href="#notifications"]').click();await expect(page.locator('#page-content')).toContainText(`#${order.orderNumber}`);
         await page.getByRole('button',{name:'Tandai sudah dibaca',exact:true}).click();await expect(page.getByRole('button',{name:'Tandai sudah dibaca',exact:true})).toBeDisabled();
@@ -139,7 +157,7 @@ async function main() {
           return (await (await fetch('/api/v1/ai/chat',{method:'POST',headers:{'Content-Type':'application/json','X-AIODMA-Surface':'customer','X-CSRF-Token':s.csrfToken},body:JSON.stringify({messageId:crypto.randomUUID(),message:'Please recommend coffee',language:'en'})})).json()).data;
         });assert.equal(blocked.reason,'AI_DISABLED');assert.deepEqual(blocked.proposals,[]);
         for(const ctx of staffContexts)await ctx.close();
-        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; inbox acknowledgement, AI pause and permission guards`);
+        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; actual customer SSE payment/status rendering, dark receipt/tracker, inbox acknowledgement, AI pause and permission guards`);
       }
       await page.locator('#navigation a[href="#onboarding"]').click();
       await page.getByRole('button', { name: 'Tarik publikasi', exact: true }).click();

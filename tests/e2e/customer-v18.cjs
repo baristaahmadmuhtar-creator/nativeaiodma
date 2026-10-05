@@ -82,7 +82,7 @@ async function capture(page,name){
   await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});
   await page.screenshot({path:path.join(output,name)});
 }
-async function addCoffee(page){await page.locator('[data-menu-id="coffee"] .btn-add-product').click();assert.equal(await page.locator('#btnAddCustomizedToCart').isDisabled(),true);await page.locator('#modDynamicGroups input[value="oat"]').check();await page.locator('#btnAddCustomizedToCart').click();await page.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='1');}
+async function addCoffee(page,inspect){await page.locator('[data-menu-id="coffee"] .btn-add-product').click();assert.equal(await page.locator('#btnAddCustomizedToCart').isDisabled(),true);if(inspect)await inspect();await page.locator('#modDynamicGroups input[value="oat"]').check();await page.locator('#btnAddCustomizedToCart').click();await page.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='1');}
 async function contract(browser,width,height){
   const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});const model=await fixture(context),page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
   try {
@@ -363,7 +363,7 @@ async function comfort(browser,width,height) {
       const back=await page.locator('#btnHeaderBack').boundingBox(),options=await page.locator('#btnHeaderOptions').boundingBox();assert.ok(Math.abs(back.y-options.y)<1,'normal navigation stays on one row');
       const bounds=await page.locator('.app-host-container').boundingBox();assert.ok(Math.abs(bounds.height-height)<1&&Math.abs(bounds.width-width)<1,'full available viewport');
       assert.equal(await page.locator('.catalog-scroll-area').evaluate(el=>getComputedStyle(el).scrollbarWidth),'none');
-      await addCoffee(page);await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();
+      await addCoffee(page,async()=>{await opaqueContrast('.mod-qty-text','.mod-qty-stepper');await opaqueContrast('#btnModPlus','#btnModPlus');await capture(page,`${width}-comfort-${theme}-modifier.png`);});await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();
       await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);await opaqueContrast('.payment-method-card:not([hidden]) .pm-name','.payment-method-card:not([hidden])');
       await capture(page,`${width}-comfort-${theme}-payment.png`);
       model.malformedOrder=theme==='dark';await page.locator('#btnProcessPayment').click();
@@ -380,6 +380,7 @@ async function comfort(browser,width,height) {
       await opaqueContrast('.success-title','#screenOrderSuccess');await opaqueContrast('.success-sub','#screenOrderSuccess');await capture(page,`${width}-comfort-${theme}-success.png`);
       await page.locator('#btnSaveReceipt').click();await opaqueContrast('.receipt-brand-name','.thermal-paper-card');await opaqueContrast('#receiptTotal','.thermal-paper-card');
       assert.equal(await page.locator('.thermal-paper-card').getAttribute('data-payment'),'UNPAID');await capture(page,`${width}-comfort-${theme}-receipt.png`);
+      await opaqueContrast('#btnPrintReceipt','#btnPrintReceipt');
       await page.emulateMedia({media:'print'});assert.equal(await page.locator('#receiptTotal').evaluate(el=>getComputedStyle(el).color),'rgb(17, 17, 17)');
       assert.equal(await page.locator('.thermal-paper-card').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');await page.emulateMedia({media:'screen'});
       await page.locator('#btnReceiptBackToHome').click();await page.locator('#btnOpenOrderTrackerFromBanner').click();await page.waitForSelector('#orderTrackerBackdrop.open');
