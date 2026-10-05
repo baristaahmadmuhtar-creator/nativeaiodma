@@ -529,12 +529,16 @@
     state.tenant = data.tenant;
     details(parent, [['Cafe', data.tenant.name], ['ID outlet', data.tenant.id], ['Mata uang', data.tenant.currency],
       ['Status', data.tenant.published ? 'Terbit' : 'Draft']]);
-    table(parent, ['Persiapan', 'Status', ''], [
+    const checklist = el('ul', undefined, 'onboarding-checklist');
+    for (const [title, status, action] of [
       ['Profil, pajak & layanan', 'Tinjau pengaturan', onboardingLink('Pengaturan', 'settings')],
       ['Menu tersedia', `${data.menu} menu`, onboardingLink('Kelola menu', 'menu')],
       ['Meja aktif', `${data.tables} meja`, onboardingLink('Meja & QR', 'tables')],
       ['Akses staf', 'Owner dan undangan', onboardingLink('Kelola tim', 'staff')]
-    ]);
+    ]) {
+      const row = el('li'); row.append(el('strong', title), el('span', status, 'muted'), action); checklist.append(row);
+    }
+    parent.append(checklist);
     const form = newForm(parent, data.tenant.published ? 'Tarik publikasi' : 'Terbitkan cafe');
     form.form.querySelector('[type="submit"]').disabled = !data.tenant.published && !data.ready;
     if (!data.tenant.published && !data.ready) parent.append(el('p', 'Tambahkan minimal satu menu tersedia dan satu meja aktif.', 'notice'));
