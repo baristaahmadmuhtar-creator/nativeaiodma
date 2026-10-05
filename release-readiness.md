@@ -2,7 +2,21 @@
 
 Verdict: **SELF-SERVICE CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCTION ACCEPTED**. Updated 2026-10-05.
 
-The owner authorized publication. Current UX release `0a64d8e095fd475c5e6621558854fa0a4fb0ce61` is deployed to Vercel at `https://nativeaiodma-v18.vercel.app` with connected Neon PostgreSQL, a least-privilege runtime role and applied migrations including `006_self_service.sql`. Vercel reported production deployment `dpl_62ypu1VejXNu34uEvTV5XpoHo7zF` as Ready. Its immutable URL is `https://nativeaiodma-v18-34wuu97s4-alphas-projects-9d57a19f.vercel.app`. Local databases, credentials, environment files and browser evidence are excluded through `.vercelignore`.
+Current operations release `d09e83ba40293ad8bcc5c6f4b9c563731a2863d5` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_BmZ9NqTkMm67mpRDQixFUYV9mGX8` as Ready; immutable URL: `https://nativeaiodma-v18-qf2afx90b-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` are in use. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
+
+## v20 Operations Verification
+
+- 63 unit and 43 restricted-runtime PostgreSQL integration tests passed. Existing customer contract tests passed at 320x740, 390x844, 844x390 and 1440x1000 plus long catalog/modifier scrolling.
+- Real admin browser tests passed current-order inbox links, persistent reads, AI policy save, owner/waiter/kitchen navigation and permissions, manual settlement and screenshots without mobile overflow or browser exceptions. Local evidence: `output/admin-v18/d3365111e199/`.
+- Distinct invited cashier, kitchen and waiter accounts passed the full flow: guest unpaid receipt -> cashier synthetic settlement -> kitchen accepted/preparing/ready -> waiter served -> owner completed. Inbox acknowledgement, AI pause and permission guards also passed. Local production-MFA evidence: `output/playwright/onboarding-1791208851378/` (390/1440).
+- The same flow passed on the public alias at 390px in a disposable smoke tenant: `output/playwright/onboarding-1791209099079/`. No external funds or real Coffeenity orders were touched. The smoke outlet was returned to draft and guest sessions revoked.
+- New Coffeenity owner access passed actual public login, automatic default outlet, mandatory MFA guard and logout: `output/coffeenity-login-live/mfa-gate-mobile.png`. Existing accounts were preserved. The user's authenticator has not been enrolled by automation; the user must enroll it on first login. The three one-time provisioning environment entries were removed after verification. Passwords are not included in tracked documentation.
+- Notifications are in-app, persisted from scoped committed events, not guaranteed background push. AI controls cap admitted daily requests (UTC), not an invented bill or hard provider token budget. Actual reported tokens are shown with completeness; accounting survives conversation deletion. Live model credentials, email, gateway, billing and full production gates below remain open.
+- GitHub CI passed every suite on the deployed code: https://github.com/baristaahmadmuhtar-creator/nativeaiodma/actions/runs/37321696500.
+
+## Previous v19 Evidence
+
+Previous UX release `0a64d8e095fd475c5e6621558854fa0a4fb0ce61` deployed at production deployment `dpl_62ypu1VejXNu34uEvTV5XpoHo7zF`. The following records describe that earlier release, not the latest code.
 
 Local evidence: 62 unit tests and 40 PostgreSQL integration tests passed. Customer contracts passed at 320x740, 390x844, 844x390 and 1440x1000, including long catalog/modifier scrolling. Real admin and self-service onboarding/order journeys passed with PostgreSQL persistence, shared-browser sessions and production MFA policy. Static exposure and CSP boundaries are covered by integration tests. GitHub CI passed every suite on the deployed code commit: https://github.com/baristaahmadmuhtar-creator/nativeaiodma/actions/runs/37308218969. An earlier CI timeout during knowledge-form submission prompted deterministic initial focus and native form-validity assertions before this successful run.
 

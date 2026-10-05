@@ -28,6 +28,14 @@
   -> waiter served -> owner completed. It checks inbox acknowledgement, AI pause,
   role guards and unpublication, without actual external funds.
 
+## Public Release Evidence
+- Deployed code `d09e83ba40293ad8bcc5c6f4b9c563731a2863d5`; deployment
+  `dpl_BmZ9NqTkMm67mpRDQixFUYV9mGX8` Ready on the public alias.
+- CI `37321696500`: all unit, integration, customer, admin and onboarding stages passed.
+- Public distinct-role flow/inbox/AI-pause evidence:
+  `output/playwright/onboarding-1791209099079/`; smoke tenant returned to draft.
+- Coffeenity owner login verified independently; first-login MFA remains required.
+
 ## Remaining Gates
 Live provider credentials/evaluation, email verification/delivery, background push,
 real printer/POS acceptance, gateway, load/soak, restore drills and real cafe device/
