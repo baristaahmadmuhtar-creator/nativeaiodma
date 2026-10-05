@@ -13,6 +13,7 @@ const { createOrders, catalog, orderView } = require('../modules/orders');
 const { audit, emit, idempotent } = require('../modules/transactions');
 const { createAiService } = require('../modules/ai-service');
 const { registerAdminRoutes } = require('./admin-routes');
+const { registerOnboarding, registerPublication } = require('./onboarding');
 const { decryptSecret,encryptSecret,generateEnrollment,verifyTotp,generateRecoveryCodes,hashRecoveryCode }=require('../modules/mfa');
 
 const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
@@ -97,11 +98,14 @@ function createApp({ db, config, aiProvider }) {
     send(res,{merchant:{id:t.id,name:t.name,currency:t.currency,taxRate:t.config.taxRate || 0,serviceRate:t.config.serviceRate || 0,
       orderingPaused:!!t.config.orderingPaused,language:t.config.language || 'id',paymentMethods:['CASH','MANUAL_TRANSFER']},items});
   }));
+  registerOnboarding(app,{db,config,identity,valid,wrap,send,rate});
   app.post('/api/v1/auth/login',rate('login',10,900),wrap(async (req,res) => {
-    const b=valid(z.object({email:z.email().max(200),password:z.string().max(256),merchantId:idSchema,otp:z.string().max(60).optional(),recoveryCode:z.string().max(60).optional()}).strict(),req.body);
+    const b=valid(z.object({email:z.email().max(200),password:z.string().max(256),merchantId:idSchema.optional(),otp:z.string().max(60).optional(),recoveryCode:z.string().max(60).optional()}).strict(),req.body);
     const user=(await db.pool.query('SELECT * FROM users WHERE email=$1 AND NOT disabled',[b.email.toLowerCase()])).rows[0];
     const ok=user && await verifyPassword(b.password,user.password_hash);
     requireValue(ok,'LOGIN_FAILED','Email atau kata sandi salah.',401);
+    b.merchantId = b.merchantId || user.default_tenant_id;
+    requireValue(b.merchantId,'OUTLET_REQUIRED','Isi ID outlet dari undangan atau pengelola cafe.',422);
     const membership=await db.transaction(b.merchantId,c => c.query('SELECT role FROM memberships WHERE tenant_id=$1 AND user_id=$2',[b.merchantId,user.id]));
     requireValue(membership.rowCount,'LOGIN_FAILED','Akses outlet tidak tersedia.',401);
     const mfaVerified=await db.transaction(b.merchantId,async c=>{
@@ -325,12 +329,13 @@ function createApp({ db, config, aiProvider }) {
     const timer=setInterval(pump,1000);req.on('close',()=>{closed=true;clearInterval(timer);});await pump();
   }));
   registerAdminRoutes(api,{db,config,identity,wrap,valid,send,tx});
+  registerPublication(api,{db,identity,valid,wrap,send});
   app.use('/api/v1',api);
   app.use('/api',(_req,_res,next)=>next(new AppError('NOT_FOUND','Endpoint tidak tersedia.',404)));
   for(const folder of ['assets','css'])app.use('/'+folder,express.static(path.join(publicRoot,folder),{dotfiles:'deny',index:false}));
   for(const file of ['customer-v18.js','admin-v18.js'])app.get('/js/'+file,(_req,res)=>res.sendFile(path.join(publicRoot,'js',file)));
   app.get(['/', '/index.html'],(_req,res)=>res.set('Cache-Control','no-store').type('html').send(customerHtml));
-  app.get('/admin.html',(_req,res)=>res.set('Cache-Control','no-store').sendFile(path.join(root,'admin-v18.html')));
+  app.get(['/admin.html','/register','/recover'],(_req,res)=>res.set('Cache-Control','no-store').sendFile(path.join(root,'admin-v18.html')));
   app.get('/manifest.json',(_req,res)=>res.sendFile(path.join(publicRoot,'manifest.json')));
   app.get('/sw.js',(_req,res)=>res.set('Cache-Control','no-cache').sendFile(path.join(publicRoot,'sw.js')));
   app.use((_req,_res,next)=>next(new AppError('NOT_FOUND','Halaman tidak ditemukan.',404)));

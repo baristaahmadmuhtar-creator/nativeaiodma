@@ -23,3 +23,5 @@ jobs:
       - run: npm ci
       - run: npm run test:unit
       - run: npm run test:integration
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/e2e/onboarding-v19.cjs

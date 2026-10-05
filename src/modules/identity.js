@@ -35,11 +35,11 @@ function safeEqual(left, right) {
 
 function createIdentity(db, config) {
   const csrfFor = token => crypto.createHmac('sha256', config.SESSION_SECRET).update('csrf:' + token).digest('base64url');
-  async function session(tenantId, userId, tableId, mfaVerified=false) {
+  async function session(tenantId, userId, tableId, mfaVerified=false, client=db.pool) {
     const token = crypto.randomBytes(32).toString('base64url');
     const csrf = csrfFor(token);
     const id = crypto.randomUUID();
-    await db.pool.query(`INSERT INTO sessions(id,token_hash,csrf_hash,tenant_id,user_id,table_id,expires_at,mfa_verified)
+    await client.query(`INSERT INTO sessions(id,token_hash,csrf_hash,tenant_id,user_id,table_id,expires_at,mfa_verified)
       VALUES($1,$2,$3,$4,$5,$6,now()+($7 * interval '1 hour'),$8)`,
     [id, hash(token), hash(csrf), tenantId, userId, tableId, userId ? 12 : 4,mfaVerified]);
     return { token, csrf, id, tenantId, tableId };
@@ -61,7 +61,7 @@ function createIdentity(db, config) {
         principal.mfaRequired = !principal.mfa_verified && (principal.mfa_enabled || (config.NODE_ENV==='production' && principal.role==='owner'));
       } else {
         const table = await db.transaction(principal.tenant_id, c => c.query(
-          'SELECT 1 FROM dining_tables WHERE tenant_id=$1 AND id=$2 AND active', [principal.tenant_id, principal.table_id]));
+          'SELECT 1 FROM dining_tables d JOIN tenants t ON t.id=d.tenant_id WHERE d.tenant_id=$1 AND d.id=$2 AND d.active AND t.published', [principal.tenant_id, principal.table_id]));
         if (!table.rowCount) throw new AppError('TABLE_CLOSED', 'Meja tidak aktif.', 403);
         principal.role = 'guest';
       }

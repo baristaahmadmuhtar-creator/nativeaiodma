@@ -9,6 +9,7 @@
   const owner = () => state.session?.role === 'owner';
   const canCash = () => ['owner', 'manager', 'cashier'].includes(state.session?.role);
   const tabs = {
+    onboarding: ['Persiapan cafe', 'OUTLET', ['owner']],
     orders: ['Pesanan', 'OPERASI', roles], kds: ['Dapur / KDS', 'OPERASI', roles],
     menu: ['Menu & stok', 'KATALOG', roles], tables: ['Meja & QR', 'OPERASI', roles],
     waiter: ['Panggilan pelayan', 'OPERASI', roles], promos: ['Promo', 'KATALOG', ['owner', 'manager']],
@@ -22,7 +23,7 @@
     paid: 'Lunas', partially_refunded: 'Refund sebagian', refunded: 'Dikembalikan', failed: 'Gagal', expired: 'Kedaluwarsa',
     waiting: 'Menunggu', requested: 'Menunggu', acknowledged: 'Ditangani', resolved: 'Selesai', draft: 'Draft', published: 'Terbit', archived: 'Arsip',
     owner: 'Owner', manager: 'Manajer', cashier: 'Kasir', kitchen: 'Dapur', waiter: 'Pelayan', live: 'Live', degraded: 'Degraded', mock: 'Mock' };
-  const paths = { orders: '/orders', kds: '/orders', menu: '/admin/menu', tables: '/admin/tables', waiter: '/admin/waiter-calls',
+  const paths = { onboarding: '/admin/onboarding', orders: '/orders', kds: '/orders', menu: '/admin/menu', tables: '/admin/tables', waiter: '/admin/waiter-calls',
     promos: '/admin/resources/promo', knowledge: '/admin/resources/knowledge', reports: '/admin/stats', staff: '/admin/staff',
     settings: '/admin/settings', audit: '/admin/audit', ai: '/admin/ai-status' };
   const editor = $('#editor');
@@ -194,6 +195,11 @@
     if (editor.open) { state.suspended = preserve; editor.close(); }
     state.session = null; $('#startup').hidden = true; $('#app').hidden = true; $('#mfa-gate').hidden = true; $('#auth').hidden = false;
     $('#auth-notice').textContent = message; $('#logout').hidden = true; offlineState();
+    const mode = location.pathname === '/register' ? 'register' : location.pathname === '/recover' ? 'recover' : 'login';
+    for (const name of ['login', 'register', 'recover']) $(`#${name}-form`).hidden = name !== mode;
+    $('#auth h1').textContent = { login: 'Masuk ke outlet', register: 'Daftarkan cafe', recover: 'Pulihkan akun' }[mode];
+    if (mode === 'register') $('#auth-notice').textContent = 'Buat akun owner dan outlet baru.';
+    if (mode === 'recover') $('#auth-notice').textContent = 'Gunakan salah satu kode pemulihan yang disimpan saat mengaktifkan MFA.';
   }
   async function enterSession(session) {
     if (!roles.includes(session.role) || !session.csrfToken || !session.tenantId) { showLogin('Akun staf diperlukan untuk membuka admin.'); return; }
@@ -211,6 +217,7 @@
       state.tenant = data.merchant || data; $('#outlet-name').textContent = state.tenant.name || session.tenantId;
     } catch { /* Each restricted view reports its own actionable error. */ }
     if (state.session !== session) return;
+    if (owner() && state.tenant && !state.tenant.published && !location.hash) history.replaceState(null, '', '/admin.html#onboarding');
     offlineState(); await loadPage();
     if (state.suspended && previousTenant === session.tenantId) { state.suspended = false; editor.showModal(); }
     else if (state.suspended) closeDialog(true);
@@ -518,6 +525,28 @@
       await save(form, '/admin/settings', 'POST', body); state.dirty = false; notify('Pengaturan tersimpan.'); await loadPage();
     });
   }
+  function renderOnboarding(parent, data) {
+    state.tenant = data.tenant;
+    details(parent, [['Cafe', data.tenant.name], ['ID outlet', data.tenant.id], ['Mata uang', data.tenant.currency],
+      ['Status', data.tenant.published ? 'Terbit' : 'Draft']]);
+    table(parent, ['Persiapan', 'Status', ''], [
+      ['Profil, pajak & layanan', 'Tinjau pengaturan', onboardingLink('Pengaturan', 'settings')],
+      ['Menu tersedia', `${data.menu} menu`, onboardingLink('Kelola menu', 'menu')],
+      ['Meja aktif', `${data.tables} meja`, onboardingLink('Meja & QR', 'tables')],
+      ['Akses staf', 'Owner dan undangan', onboardingLink('Kelola tim', 'staff')]
+    ]);
+    const form = newForm(parent, data.tenant.published ? 'Tarik publikasi' : 'Terbitkan cafe');
+    form.form.querySelector('[type="submit"]').disabled = !data.tenant.published && !data.ready;
+    if (!data.tenant.published && !data.ready) parent.append(el('p', 'Tambahkan minimal satu menu tersedia dan satu meja aktif.', 'notice'));
+    if (data.tenant.published) parent.append(el('p', 'QR meja sudah dapat digunakan pelanggan. Menarik publikasi akan mengakhiri sesi pelanggan aktif.', 'notice'));
+    bindForm(form.form, async (_, current) => {
+      if (data.tenant.published && !confirm('Tarik publikasi dan akhiri sesi pelanggan aktif?')) return;
+      await save(current, '/admin/publication', 'POST', { published: !data.tenant.published, expectedVersion: data.tenant.version });
+      notify(data.tenant.published ? 'Publikasi ditarik.' : 'Cafe terbit. QR meja siap dibagikan.');
+      await loadPage();
+    });
+  }
+  function onboardingLink(title, tab) { const link = el('a', title); link.href = `#${tab}`; return link; }
   function renderStaff(parent, data) {
     pageAction('+ Undang staf', invitationDialog);
     if (!list(data).length) return empty(parent, 'Belum ada staf', 'Undang staf untuk memberikan akses outlet.');
@@ -559,7 +588,7 @@
   function downloadText(name, text, type = 'text/plain') {
     const url = URL.createObjectURL(new Blob([text], { type })); const link = el('a'); link.href = url; link.download = name; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  const renderers = { orders: renderOrders, kds: renderOrders, menu: renderMenu, tables: renderTables, waiter: renderWaiter,
+  const renderers = { onboarding: renderOnboarding, orders: renderOrders, kds: renderOrders, menu: renderMenu, tables: renderTables, waiter: renderWaiter,
     promos: renderResources, knowledge: renderResources, reports: renderReports, audit: renderAudit, settings: renderSettings, staff: renderStaff, ai: renderAi };
 
   const login = $('#login-form');
@@ -568,9 +597,30 @@
     login.elements.verificationCode.required = type !== 'none'; login.elements.verificationCode.value = ''; login.elements.verificationCode.inputMode = type === 'otp' ? 'numeric' : 'text';
   });
   bindForm(login, async (_, form) => {
-    const payload = { email: form.elements.email.value, password: form.elements.password.value, merchantId: form.elements.merchantId.value };
+    const payload = { email: form.elements.email.value.trim(), password: form.elements.password.value };
+    if (form.elements.merchantId.value.trim()) payload.merchantId = form.elements.merchantId.value.trim();
     if (form.elements.verification.value !== 'none') payload[form.elements.verification.value] = form.elements.verificationCode.value;
     const session = await save(form, '/auth/login', 'POST', payload, { auth: false }); form.elements.password.value = ''; form.elements.verificationCode.value = ''; form.requestFingerprint = null; await enterSession(session);
+  });
+  bindForm($('#register-form'), async (_, form) => {
+    if (form.elements.password.value !== form.elements.confirmPassword.value) throw new Error('Konfirmasi kata sandi tidak sama.');
+    const body = { email: form.elements.email.value.trim(), password: form.elements.password.value,
+      name: form.elements.name.value.trim(), currency: form.elements.currency.value, timezone: form.elements.timezone.value,
+      language: form.elements.language.value, tables: Number(form.elements.tables.value) };
+    const session = await save(form, '/auth/register', 'POST', body, { auth: false });
+    form.reset(); form.requestFingerprint = null;
+    login.elements.email.value = body.email; login.elements.merchantId.value = session.tenantId;
+    history.replaceState(null, '', '/admin.html#onboarding');
+    await enterSession(session);
+  });
+  bindForm($('#recover-form'), async (_, form) => {
+    if (form.elements.password.value !== form.elements.confirmPassword.value) throw new Error('Konfirmasi kata sandi tidak sama.');
+    const body = { email: form.elements.email.value.trim(), merchantId: form.elements.merchantId.value.trim(),
+      password: form.elements.password.value, recoveryCode: form.elements.recoveryCode.value.trim() };
+    await save(form, '/auth/recover', 'POST', body, { auth: false });
+    form.reset(); form.requestFingerprint = null; history.replaceState(null, '', '/admin.html');
+    login.elements.email.value = body.email; login.elements.merchantId.value = body.merchantId;
+    showLogin('Kata sandi diperbarui. Masuk dengan kata sandi baru dan autentikator atau kode pemulihan lain.');
   });
   $('#logout').addEventListener('click', async () => {
     if (state.dirty && !confirm('Keluar dan tutup perubahan yang belum disimpan?')) return;
@@ -597,5 +647,6 @@
   try { const dark = localStorage.getItem('aiodma-admin-theme') === 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; $('#theme-toggle').setAttribute('aria-pressed', String(dark)); } catch { /* Storage is optional. */ }
   const invitation = invitationFromHash();
   if (invitation) showInvitation(invitation);
+  else if (['/register', '/recover'].includes(location.pathname)) showLogin();
   else api('/session', { auth: false }).then(enterSession).catch(error => showLogin(error.status === 401 ? 'Masuk untuk membuka operasional outlet.' : errorText(error)));
 })();

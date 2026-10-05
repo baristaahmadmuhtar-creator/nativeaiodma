@@ -27,11 +27,35 @@
     <form id="login-form" class="form-stack">
       <label>Email<input name="email" type="email" autocomplete="username" maxlength="200" required></label>
       <label>Kata sandi<input name="password" type="password" autocomplete="current-password" maxlength="256" required></label>
-      <label>ID outlet<input name="merchantId" autocomplete="organization" pattern="[a-zA-Z0-9_-]{1,100}" maxlength="100" required></label>
+      <label>ID outlet (opsional untuk akun baru)<input name="merchantId" autocomplete="organization" pattern="[a-zA-Z0-9_-]{1,100}" maxlength="100"></label>
       <label>Verifikasi tambahan<select name="verification"><option value="none">Tanpa kode</option><option value="otp">Kode autentikator</option><option value="recoveryCode">Kode pemulihan</option></select></label>
       <label id="verification-field" hidden><span id="verification-label">Kode autentikator</span><input name="verificationCode" autocomplete="one-time-code" maxlength="60"></label>
       <div class="form-error" role="alert" hidden></div>
       <button type="submit" class="primary">Masuk</button>
+      <div class="row-actions"><a href="/register">Daftarkan cafe</a><a href="/recover">Pulihkan akun</a></div>
+    </form>
+    <form id="register-form" class="form-stack" hidden>
+      <label>Email owner<input name="email" type="email" autocomplete="username" maxlength="200" required></label>
+      <label>Kata sandi baru<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+      <label>Ulangi kata sandi<input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+      <label>Nama cafe / restoran<input name="name" autocomplete="organization" minlength="2" maxlength="150" required></label>
+      <label>Mata uang<select name="currency"><option value="BND">BND - Dolar Brunei</option><option value="IDR">IDR - Rupiah</option></select></label>
+      <label>Zona waktu<select name="timezone"><option value="Asia/Brunei">Brunei</option><option value="Asia/Jakarta">Indonesia Barat</option><option value="Asia/Makassar">Indonesia Tengah</option><option value="Asia/Jayapura">Indonesia Timur</option></select></label>
+      <label>Bahasa pelanggan<select name="language"><option value="id">Indonesia</option><option value="ms">Melayu</option><option value="en">English</option></select></label>
+      <label>Jumlah meja<input name="tables" type="number" min="1" max="99" value="5" required></label>
+      <div class="form-error" role="alert" hidden></div>
+      <button type="submit" class="primary">Buat akun dan cafe</button>
+      <a href="/admin.html">Sudah punya akun? Masuk</a>
+    </form>
+    <form id="recover-form" class="form-stack" hidden>
+      <label>Email<input name="email" type="email" autocomplete="username" maxlength="200" required></label>
+      <label>ID outlet<input name="merchantId" pattern="[a-zA-Z0-9_-]{1,100}" maxlength="100" required></label>
+      <label>Kode pemulihan MFA<input name="recoveryCode" autocomplete="off" minlength="16" maxlength="60" required></label>
+      <label>Kata sandi baru<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+      <label>Ulangi kata sandi<input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+      <div class="form-error" role="alert" hidden></div>
+      <button type="submit" class="primary">Simpan kata sandi baru</button>
+      <a href="/admin.html">Kembali ke login</a>
     </form>
   </main>
 
