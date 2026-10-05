@@ -4,6 +4,14 @@ Verdict: **SELF-SERVICE CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCTION ACCEPTED**
 
 Current operations release `d09e83ba40293ad8bcc5c6f4b9c563731a2863d5` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_BmZ9NqTkMm67mpRDQixFUYV9mGX8` as Ready; immutable URL: `https://nativeaiodma-v18-qf2afx90b-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` are in use. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
 
+## v21 Customer Refinement Local Verification
+
+The customer refinement is locally verified; the live deployment metadata above still describes v20 until v21 promotion is recorded. See `docs/PRD_v21_CUSTOMER_REFINEMENT.md`, `docs/UX_ACCEPTANCE_v21.md` and `docs/SECURITY_REVIEW_v21_CUSTOMER.md`.
+
+- 63 unit and 43 real PostgreSQL integration tests passed. Customer contracts/refinements passed all eight viewport configurations, long scrolling, receipt PDF generation, reduced-motion/reduced-height checks and storage/catalog-event boundaries. Final fixture evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-xEiQJs/`.
+- Actual local customer API persisted exactly one unpaid order. Real admin evidence: `output/admin-v18/df51259e92d0/`; production-MFA distinct-role onboarding/order evidence: `output/playwright/onboarding-1791215292773/` (390/1440).
+- Local browser evidence is not real iOS/IME/operator acceptance or a vulnerability-free guarantee. Full production gates below remain open.
+
 ## v20 Operations Verification
 
 - 63 unit and 43 restricted-runtime PostgreSQL integration tests passed. Existing customer contract tests passed at 320x740, 390x844, 844x390 and 1440x1000 plus long catalog/modifier scrolling.

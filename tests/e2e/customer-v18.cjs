@@ -7,7 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { chromium } = require('@playwright/test');
 const root = path.resolve(__dirname,'../..');
-const origin = 'http://localhost:8081';
+const origin = 'https://localhost:8081';
 const output = fs.mkdtempSync(path.join(os.tmpdir(),'aiodma-customer-v18-'));
 const item = {id:'coffee',name:'Coffee <img src=x onerror=alert(1)>',desc:'Fresh coffee',category:'Coffee',price:3.5,available:true,image:'assets/products/kopi_milk_aren.jpg',
   modifierGroups:[{id:'milk',min:1,max:1,options:[{id:'oat',name:'Oat',price:.5},{id:'dairy',name:'Dairy',price:0}]}]};
@@ -24,20 +24,22 @@ async function fixture(context) {
     if(p.startsWith('/api/v1')) {
       const endpoint=p.slice(7), body=request.postDataJSON(), key=request.headers()['idempotency-key'];
       model.requests.push({endpoint,method,body,key});
-      if(endpoint==='/menu')return respond(route,{merchant:{id:'fixture',name:'Fixture Cafe',currency:'BND',paymentMethods:['CASH','MANUAL_TRANSFER']},items:model.items});
+      if(endpoint==='/menu')return respond(route,{merchant:{id:'fixture',name:'Fixture Cafe',currency:'BND',paymentMethods:model.paymentMethods||['CASH','MANUAL_TRANSFER']},items:model.items});
       if(endpoint==='/session') {
         if(method==='POST'){assert.equal(body.token,'fixture-valid-qr-token');model.authenticated=true;}
         if(!model.authenticated)return fail(route,401,'SESSION_REQUIRED');
+        if(model.sessionDelay)await new Promise(resolve=>setTimeout(resolve,model.sessionDelay));
         return respond(route,{csrfToken:'fixture-csrf-session-1',tenantId:'fixture',tableId:5,role:'guest'});
       }
       if(!model.authenticated)return fail(route,401,'SESSION_REQUIRED');
       if(method!=='GET')assert.equal(request.headers()['x-csrf-token'],'fixture-csrf-session-1');
       if(endpoint==='/profile'){
+        if(model.profileDelay)await new Promise(resolve=>setTimeout(resolve,model.profileDelay));
         if(method==='PUT'){assert.equal(body.consent,true);model.profile=clone(body);}
         if(method==='DELETE')model.profile={consent:false,preferences:[]};
         return respond(route,model.profile);
       }
-      if(endpoint==='/events')return route.fulfill({status:200,contentType:'text/event-stream',body:': connected\n\n'});
+      if(endpoint==='/events'){const burst=model.menuBurst||0;model.menuBurst=0;return route.fulfill({status:200,contentType:'text/event-stream',body:': connected\n\n'+'data: {"type":"MENU_UPDATED"}\n\n'.repeat(burst)});}
       if(endpoint==='/cart'&&method==='GET')return respond(route,model.cart);
       if(endpoint==='/cart') {
         assert.ok(key);if(model.keys.has(key))return respond(route,model.keys.get(key));
@@ -49,7 +51,7 @@ async function fixture(context) {
         model.quoteCount++;assert.equal(body.expectedVersion,model.cart.version);
         if(model.quoteDelay)await new Promise(resolve=>setTimeout(resolve,model.quoteDelay));
         const items=model.cart.lines.map(line=>{const menu=line.menuId==='coffee'?item:second;const modifiers=menu.modifierGroups.flatMap(g=>g.options).filter(o=>line.optionIds.includes(o.id)).map(o=>({...o,priceMinor:o.price*100}));const unitPriceMinor=menu.price*100+modifiers.reduce((sum,o)=>sum+o.priceMinor,0);return {...line,name:menu.name,modifiers,unitPriceMinor,lineTotalMinor:unitPriceMinor*line.qty};});
-        const subtotalMinor=items.reduce((sum,l)=>sum+l.lineTotalMinor,0);model.quote={id:crypto.randomUUID(),currency:'BND',items,subtotalMinor,taxMinor:40,serviceMinor:20,discountMinor:10,totalMinor:subtotalMinor+50,cartVersion:model.cart.version,expiresAt:new Date(Date.now()+300000).toISOString()};return respond(route,model.quote);
+        const subtotalMinor=items.reduce((sum,l)=>sum+l.lineTotalMinor,0);model.quote={id:crypto.randomUUID(),currency:'BND',items,subtotalMinor,taxMinor:40,serviceMinor:20,discountMinor:10,totalMinor:subtotalMinor+50,cartVersion:model.cart.version,expiresAt:new Date(Date.now()+(model.quoteLifetime||300000)).toISOString()};return respond(route,model.quote);
       }
       if(endpoint==='/orders'&&method==='POST') {
         assert.ok(key);assert.equal(body.confirmed,true);assert.equal(body.paymentMethod,'CASH');assert.equal(body.quoteId,model.quote.id);
@@ -95,6 +97,8 @@ async function contract(browser,width,height){
     await page.locator('#btnModeTrigger').click(); await page.locator('#btnHeaderOptions').click();
     assert.equal(await page.locator('#btnModeTrigger').getAttribute('aria-expanded'),'false');
     await page.keyboard.press('Escape'); assert.equal(await page.locator('#btnHeaderOptions').getAttribute('aria-expanded'),'false');
+    assert.equal(await page.locator('#actionPopupMenu').evaluate(el=>el.inert),true);
+    await page.locator('#btnHeaderOptions').focus();await page.keyboard.press('ArrowDown');assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#actionPopupMenu')),true);await page.keyboard.press('End');await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'btnHeaderOptions');
     await page.locator('.cat-pill-btn').first().focus(); await page.keyboard.press('ArrowRight');
     assert.equal(await page.locator('.cat-pill-btn[aria-selected="true"]').textContent(),'Coffee');
     assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-selected')),'true');
@@ -107,6 +111,7 @@ async function contract(browser,width,height){
     assert.equal(await page.locator('#mainHeaderBar').evaluate(el=>el.inert),false);
     await capture(page,`${width}-light-menu.png`);
     assert.equal(await page.locator('#menuGridContainer .product-card').count(),2);await page.locator('#catalogSearchInput').fill('tea');assert.equal(await page.locator('#menuGridContainer .product-card').count(),1);await page.locator('#btnClearSearch').click();
+    assert.equal(await page.locator('[data-menu-id="tea"] img').getAttribute('src'),null);assert.equal(await page.locator('[data-menu-id="tea"] img').evaluate(el=>el.hidden),true);
     await addCoffee(page);assert.deepEqual(model.cart.lines,[{menuId:'coffee',qty:1,optionIds:['oat']}]);
     model.quoteDelay=400; const beforeQuote=model.quoteCount;
     await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();
@@ -119,10 +124,17 @@ async function contract(browser,width,height){
     await capture(page,`${width}-quote.png`);model.loseOrder=true;await page.locator('#btnProcessPayment').click();await page.waitForFunction(()=>!document.querySelector('#customerV18Status button').hidden);
     assert.equal(model.orders.length,1);await page.reload();await ready(page);await page.locator('#customerV18Status button').click();await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));assert.equal(model.orders.length,1);assert.equal(model.requests.filter(r=>r.endpoint==='/orders'&&r.method==='POST').length,1);
     await page.locator('#btnSaveReceipt').click();assert.match(await page.locator('.receipt-success-text').textContent(),/UNPAID/);await page.screenshot({path:path.join(output,`${width}-receipt.png`)});
+    await page.emulateMedia({media:'print'});
+    assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).position),'static');
+    assert.equal(await page.locator('#screenThermalReceipt').evaluate(el=>getComputedStyle(el).overflow),'visible');
+    assert.equal(await page.locator('#btnReceiptBackToHome').isVisible(),false);
+    const pdf=await page.pdf({path:path.join(output,`${width}-receipt.pdf`),format:'A4'});assert.equal(pdf.subarray(0,4).toString(),'%PDF');
+    await page.emulateMedia({media:'screen'});
     await page.locator('#btnReceiptBackToHome').click();await page.locator('#chatInputText').fill('add tea');await page.locator('#btnChatSend').click();await page.waitForSelector('.v18-proposal');assert.equal(await page.locator('#chatMessageThread img[src="x"]').count(),0);assert.equal(model.cart.lines.length,0);
     await page.locator('.v18-proposal button').click();await page.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='1');assert.equal(model.cart.lines[0].menuId,'tea');
     model.aiMode='checkout';await page.locator('#chatInputText').fill('checkout');await page.locator('#btnChatSend').click();await page.waitForFunction(()=>document.querySelectorAll('.v18-proposal').length===2);await page.locator('.v18-proposal button').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);assert.equal(model.orders.length,1);
     await page.keyboard.press('Escape');await page.locator('#btnHeaderThemeToggle').click();await page.locator('#btnFloatingCart').click();await capture(page,`${width}-dark-cart.png`);
+    assert.equal(await page.locator('#cartSheetItemsList .stepper-qty-val').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');
     model.conflict=true;await page.locator('#cartSheetItemsList .stepper-btn').last().click();await page.waitForFunction(()=>document.querySelector('#customerV18Status').textContent.includes('CART_STALE'));assert.equal(model.cart.lines[0].qty,1);
     model.loseCart=true;await page.locator('#cartSheetItemsList .stepper-btn').last().click();await page.waitForFunction(()=>!document.querySelector('#customerV18Status button').hidden);assert.equal(model.cart.lines[0].qty,2);const pendingKey=model.requests.filter(r=>r.endpoint==='/cart'&&r.method==='PUT').at(-1).key;
     await page.locator('#customerV18Status button').click();await page.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='2');assert.equal(model.cart.lines[0].qty,2);assert.equal(model.requests.filter(r=>r.endpoint==='/cart'&&r.method==='PUT').at(-1).key,pendingKey);
@@ -146,7 +158,7 @@ async function contract(browser,width,height){
     await page.keyboard.press('Escape');assert.equal(await page.locator('#customerMemoryBackdropModal').getAttribute('aria-hidden'),'true');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
     console.log(`PASS contract ${width}x${height}: modifiers, quote-before-confirm, lost order recovery, receipt unpaid, AI confirmation/XSS, cart retry/conflict, waiter, offline`);
-  } finally {await context.close();}
+  } catch(error) { await capture(page,`${width}-failure.png`);console.log('Failure',JSON.stringify({errors,cart:model.cart,requests:model.requests.slice(-6),ui:await page.evaluate(()=>({active:document.activeElement.id,status:document.querySelector('#customerV18Status').textContent,open:[...document.querySelectorAll('.bottom-sheet-backdrop.open')].map(el=>({id:el.id,visibility:getComputedStyle(el).visibility}))}))}));console.log('Screenshots: '+output);throw error; } finally {await context.close();}
 }
 async function scrolling(browser) {
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),model=await fixture(context),page=await context.newPage();
@@ -167,6 +179,63 @@ async function scrolling(browser) {
     console.log('PASS long catalog/modifier scrolling, modal return and browser-back scroll preservation');
   }finally{await context.close();}
 }
+async function reachable(page,selector) {
+  await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});
+  const result=await page.locator(selector).evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return {within:r.x>=0&&r.y>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1,hit:hit===el||el.contains(hit),x:r.x,y:r.y,width:r.width,height:r.height};});
+  assert.ok(result.within&&result.hit,`${selector} is visible and not occluded: ${JSON.stringify(result)}`);
+  assert.ok(result.height>=44&&result.width>=44,`${selector} touch target`);
+}
+async function refinement(browser,width,height) {
+  const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block',reducedMotion:width===320?'reduce':'no-preference'}),model=await fixture(context),page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await context.addInitScript(()=>{localStorage.setItem('aiodma:v18:language',JSON.stringify({bad:true}));localStorage.setItem('aiodma:v18:theme',JSON.stringify(['invalid']));});
+  model.items=[{...clone(item),stock:2,name:'Coffee '+ 'LongName'.repeat(12),desc:'Long description '.repeat(30)},second];
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);
+    assert.equal(await page.locator('html').getAttribute('lang'),'id');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+    await page.evaluate(async()=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('fixture-csrf-session-1'));const ns='aiodma:v18:fixture:'+Array.from(new Uint8Array(digest)).map(n=>n.toString(16).padStart(2,'0')).join('');localStorage.setItem(ns+':pending',JSON.stringify({kind:'order',path:'/admin/ai-policy',method:'PUT',body:{enabled:false},key:crypto.randomUUID()}));});
+    await page.reload();await ready(page);assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.endsWith(':pending'))),false);
+    assert.equal(model.requests.some(r=>r.endpoint==='/admin/ai-policy'),false);
+    if(width===320) {
+      await page.evaluate(async()=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('fixture-csrf-session-1'));const key='aiodma:v18:fixture:'+Array.from(new Uint8Array(digest)).map(n=>n.toString(16).padStart(2,'0')).join('')+':pending';localStorage.setItem(key,JSON.stringify({kind:'cart',path:'/cart',method:'PUT',body:{expectedVersion:1,lines:[null]},key:crypto.randomUUID()}));});
+      await page.reload();await ready(page);assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.endsWith(':pending'))),false);
+    }
+    await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    for(const id of ['btnHeaderBack','btnModeTrigger','btnHeaderLangToggle','btnHeaderThemeToggle','btnHeaderOptions'])await reachable(page,'#'+id);
+    await page.locator('[data-menu-id="coffee"] .btn-add-product').click();await page.locator('#modDynamicGroups input[value="oat"]').check();
+    assert.equal(await page.locator('#btnModMinus').isDisabled(),true);await page.locator('#btnModPlus').click();assert.equal(await page.locator('#btnModPlus').isDisabled(),true);
+    await reachable(page,'#btnAddCustomizedToCart');await reachable(page,'#modifierModalBackdrop .v18-sheet-close');
+    await capture(page,`${width}-refined-long-modifier.png`);
+    await page.locator('#btnAddCustomizedToCart').click();await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    await page.locator('#btnCatalogCartPill').click();assert.equal(await page.locator('#cartSheetItemsList .stepper-btn').last().isDisabled(),true);
+    // Long summaries may scroll, but cannot squeeze the CTA or any row to zero.
+    await page.locator('#btnProceedToPayment').scrollIntoViewIfNeeded();await reachable(page,'#btnProceedToPayment');
+    await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);
+    await page.goBack();await page.waitForSelector('#cartBackdrop.open');assert.equal(await page.locator('#paymentBackdrop').getAttribute('aria-hidden'),'true');
+    await page.goForward();await page.waitForSelector('#paymentBackdrop.open');
+    model.quoteLifetime=450;
+    await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open');await page.locator('#btnProceedToPayment').click();
+    await page.waitForFunction(()=>!document.querySelector('#btnRefreshQuote').hidden);assert.equal(await page.locator('#btnProcessPayment').isDisabled(),true);
+    model.quoteLifetime=300000;await page.locator('#btnRefreshQuote').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);
+    await page.locator('[data-pm="CASH"]').focus();await page.keyboard.press('Home');assert.equal(await page.locator('[data-pm="MANUAL_TRANSFER"]').getAttribute('aria-checked'),'true');
+    await page.keyboard.press('End');assert.equal(await page.locator('[data-pm="CASH"]').getAttribute('aria-checked'),'true');
+    // Returning through history to an invalid quote offers a fresh canonical review.
+    await context.setOffline(true);await page.waitForFunction(()=>!document.querySelector('#btnRefreshQuote').hidden);await context.setOffline(false);
+    await page.waitForFunction(()=>!document.querySelector('#btnRefreshQuote').disabled);await page.locator('#btnRefreshQuote').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);
+    await page.locator('#btnProcessPayment').scrollIntoViewIfNeeded();await reachable(page,'#btnProcessPayment');
+    await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open');await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});
+    await page.locator('#btnHeaderBack').click();
+    model.profileDelay=500;await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemCustomerMemory').click();await page.waitForSelector('#customerMemoryBackdropModal[aria-hidden="false"]');
+    await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('#btnChatSend').getAttribute('aria-busy')||document.querySelector('#btnChatSend').getAttribute('aria-busy')==='false');
+    assert.equal(await page.locator('#v18MemoryPreferences').count(),0);assert.equal(await page.locator('#customerMemoryBackdropModal').getAttribute('aria-hidden'),'true');model.profileDelay=0;
+    model.sessionDelay=400;await page.locator('#chatInputText').fill('original draft');await page.locator('#btnChatSend').click();await page.locator('#chatInputText').fill('next draft');
+    await page.waitForSelector('.v18-proposal');assert.equal(model.requests.filter(r=>r.endpoint==='/ai/chat').at(-1).body.message,'original draft');assert.equal(await page.locator('#chatInputText').inputValue(),'next draft');model.sessionDelay=0;
+    await page.setViewportSize({width,height:Math.min(height,360)});await page.waitForFunction(h=>parseFloat(document.documentElement.style.getPropertyValue('--app-height'))===h,Math.min(height,360));await reachable(page,'#chatInputText');await reachable(page,'#btnFloatingCart');
+    await capture(page,`${width}-refined-keyboard-height.png`);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
+    console.log(`PASS refinement ${width}x${height}: corrupt preferences/replay, long text, stock bounds, hit targets, payment back/forward/review, late memory, chat draft, reduced viewport`);
+  } catch(e) {await capture(page,`${width}-refinement-failure.png`);console.log('Refinement evidence: '+output);throw e;} finally {await context.close();}
+}
 async function live(browser,url){
   // Only use with a disposable merchant/session: this intentionally creates an unpaid order.
   const parsed=new URL(url);assert.ok(['localhost','127.0.0.1'].includes(parsed.hostname),'Live smoke is local-only');
@@ -177,13 +246,36 @@ async function live(browser,url){
     await page.locator('#btnProcessPayment').click();await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));await page.locator('#btnSaveReceipt').click();assert.match(await page.locator('.receipt-success-text').textContent(),/UNPAID/);console.log('PASS real local API: QR, menu, modifier, cart, quote, unpaid order, receipt');
   }finally{await context.close();}
 }
+async function storageBoundaries(browser) {
+  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),model=await fixture(context),page=await context.newPage(),errors=[];
+  model.paymentMethods=['CASH'];model.menuBurst=80;page.on('pageerror',e=>errors.push(e.message));
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    await require('@playwright/test').expect.poll(()=>model.requests.filter(r=>r.endpoint==='/menu').length).toBeGreaterThan(1);
+    await page.waitForFunction(()=>document.querySelector('#btnAddCustomizedToCart').getAttribute('aria-busy')==='false');assert.ok(model.requests.filter(r=>r.endpoint==='/menu').length<10,'80 catalog events are coalesced, not 80 serialized menu reads');
+    await page.locator('[data-menu-id="tea"] .btn-add-product').click();
+    await page.evaluate(()=>{window.originalSet=Storage.prototype.setItem;Storage.prototype.setItem=()=>{throw new Error('blocked');};});
+    await page.locator('#btnAddCustomizedToCart').click();await page.waitForFunction(()=>document.querySelector('#customerV18Status').textContent.includes('Browser storage is unavailable'));
+    assert.equal(model.requests.filter(r=>r.endpoint==='/cart'&&r.method==='PUT').length,0);
+    await page.evaluate(()=>{Storage.prototype.setItem=window.originalSet;});await page.locator('#btnAddCustomizedToCart').click();await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    await page.locator('#btnCatalogCartPill').click();await page.locator('#btnClearCart').click();await page.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='0');assert.equal(model.cart.lines.length,0);
+    await page.keyboard.press('Escape');await page.locator('[data-menu-id="tea"] .btn-add-product').click();await page.locator('#btnAddCustomizedToCart').click();await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);
+    assert.equal(await page.locator('.payment-method-card:visible').count(),1);assert.equal(await page.locator('[data-pm="CASH"]').getAttribute('aria-checked'),'true');
+    await page.evaluate(()=>{Storage.prototype.removeItem=()=>{throw new Error('cleanup blocked');};});
+    await page.locator('#btnProcessPayment').click();await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));assert.equal(model.orders.length,1);
+    await page.reload();await ready(page);await page.locator('#customerV18Status button').click();await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));
+    assert.equal(model.orders.length,1);assert.equal(model.requests.filter(r=>r.endpoint==='/orders'&&r.method==='POST').length,1);assert.deepEqual(errors,[]);
+    console.log('PASS storage/replay boundaries: catalog burst coalesced, no mutation without durable storage, clear cart, configured payment only, committed order survives cleanup failure and reconciles once');
+  }finally{await context.close();}
+}
 async function main(url=process.env.CUSTOMER_V18_URL) {
   const candidates=[process.env.CUSTOMER_V18_BROWSER,await require('puppeteer').executablePath(),
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', chromium.executablePath()].filter(Boolean);
   const executablePath=candidates.find(file=>fs.existsSync(file));
   assert.ok(executablePath,'Configure CUSTOMER_V18_BROWSER with an installed Chromium executable');
   const browser=await chromium.launch({headless:true,executablePath});
-  try {if(url)await live(browser,url);else {for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);}console.log('Screenshots: '+output);}
+  try {if(url)await live(browser,url);else {for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}console.log('Screenshots: '+output);}
   finally{await browser.close();}
 }
 if(require.main===module)main().catch(error=>{console.error(error);process.exitCode=1;});
