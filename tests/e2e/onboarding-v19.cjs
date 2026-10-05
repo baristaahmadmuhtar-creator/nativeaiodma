@@ -74,10 +74,42 @@ async function main() {
       await customer.goto(qr.url); await expect(customer.locator('#labelMenuTable')).toHaveText('Table 1');
       await customer.locator('[data-lang="id-ID"]').click(); await customer.locator('#qpLihatSemuaMenu').click();
       await expect(customer.locator('.product-card')).toHaveCount(1);
+      const sharedCustomer = await context.newPage();
+      await sharedCustomer.goto(qr.url); await expect(sharedCustomer.locator('#labelMenuTable')).toHaveText('Table 1');
+      await sharedCustomer.locator('[data-lang="en-US"]').click(); await sharedCustomer.locator('#qpLihatSemuaMenu').click();
+      await sharedCustomer.locator('.btn-add-product').click(); await sharedCustomer.locator('#btnAddCustomizedToCart').click();
+      await expect(sharedCustomer.locator('#catalogCartBadge')).toHaveText('1');
+      assert.equal(await page.evaluate(async()=> (await (await fetch('/api/v1/session')).json()).data?.role),'owner');
+      assert.equal(await sharedCustomer.evaluate(async()=> (await (await fetch('/api/v1/session',{headers:{'X-AIODMA-Surface':'customer'}})).json()).data?.role),'guest');
       await guestContext.close(); await page.locator('#close-editor').click();
+      if (process.env.ONBOARDING_ORDER_SMOKE === '1') {
+        await sharedCustomer.locator('#btnCatalogCartPill').click(); await sharedCustomer.locator('#btnProceedToPayment').click();
+        await expect(sharedCustomer.locator('#btnProcessPayment')).toBeEnabled();
+        const orderResponse=sharedCustomer.waitForResponse(response=>new URL(response.url()).pathname==='/api/v1/orders'&&response.request().method()==='POST');
+        await sharedCustomer.locator('#btnProcessPayment').click();
+        const response=await orderResponse; assert.equal(response.status(),201);
+        const order=(await response.json()).data; assert.equal(order.paymentStatus,'UNPAID'); assert.equal(order.totalMinor,350);
+        await expect(sharedCustomer.locator('#screenOrderSuccess')).toHaveClass(/active/);
+        await sharedCustomer.locator('#btnSaveReceipt').click(); await expect(sharedCustomer.locator('.receipt-success-text')).toHaveText('UNPAID');
+        await sharedCustomer.screenshot({path:path.join(output,`${width}-unpaid-receipt.png`)});
+        await page.locator('#navigation a[href="#orders"]').click();
+        await page.getByRole('button',{name:'Detail',exact:true}).click();
+        await dialog.locator('[name=reference]').fill('SMOKE TEST - synthetic cash ledger; no real funds');
+        await dialog.getByRole('button',{name:'Catat pembayaran',exact:true}).click(); await expect(dialog).not.toBeVisible();
+        for (const status of ['accepted','preparing','ready','served','completed']) {
+          await page.getByRole('button',{name:'Detail',exact:true}).click(); await dialog.locator('[name=status]').selectOption(status);
+          await dialog.getByRole('button',{name:'Ubah status',exact:true}).click(); await expect(dialog).not.toBeVisible();
+        }
+        const persisted=await sharedCustomer.evaluate(async id=>(await (await fetch('/api/v1/orders/'+id,{headers:{'X-AIODMA-Surface':'customer'}})).json()).data,order.id);
+        assert.equal(persisted.paymentStatus,'PAID'); assert.equal(persisted.status,'completed'); assert.equal(persisted.totalMinor,350);
+        await page.locator('#navigation a[href="#reports"]').click(); await expect(page.locator('#page-content')).toContainText('3,50');
+        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: unpaid receipt, synthetic manual settlement, accepted/preparing/ready/served/completed, guest persisted status and report`);
+      }
       await page.locator('#navigation a[href="#onboarding"]').click();
       await page.getByRole('button', { name: 'Tarik publikasi', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Terbitkan cafe', exact: true })).toBeVisible();
+      assert.equal(await sharedCustomer.evaluate(async()=> (await fetch('/api/v1/session',{headers:{'X-AIODMA-Surface':'customer'}})).status),401);
+      await sharedCustomer.close();
       await page.locator('#logout').click(); await expect(page.locator('#login-form')).toBeVisible();
       await page.locator('#login-form [name=email]').fill(email); await page.locator('#login-form [name=password]').fill(password);
       await page.locator('#login-form [name=merchantId]').fill('');

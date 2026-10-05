@@ -98,6 +98,23 @@ test('guest cannot use admin routes and mutations require CSRF',async()=>{
   assert.equal((await request('/api/v1/cart',{method:'PUT',session:{...guestA,csrf:'bad'},body:{expectedVersion:1,lines:[]},key:crypto.randomUUID()})).status,403);
   assert.equal((await request('/api/v1/auth/login',{method:'POST',body:{email,password,merchantId:tenantA},headers:{Origin:'https://evil.example'}})).status,403);
 });
+test('staff and guest cookies coexist without sharing authority or CSRF',async()=>{
+  assert.match(owner.cookie,/^aiodma_session=/); assert.match(guestA.cookie,/^aiodma_guest=/);
+  const combined = `${owner.cookie}; ${guestA.cookie}`;
+  const staff = await request('/api/v1/session',{headers:{Cookie:combined}});
+  assert.equal(staff.status,200); assert.equal(staff.data.data.role,'owner');
+  const customerHeaders = {Cookie:combined,'X-AIODMA-Surface':'customer'};
+  const customer = await request('/api/v1/session',{headers:customerHeaders});
+  assert.equal(customer.status,200); assert.equal(customer.data.data.role,'guest');
+  assert.equal(customer.data.data.csrfToken,guestA.csrf);
+  assert.equal((await request('/api/v1/admin/menu',{headers:customerHeaders})).status,403);
+  assert.equal((await request('/api/v1/session',{session:owner,headers:{'X-AIODMA-Surface':'customer'}})).status,401);
+  assert.equal((await request('/api/v1/cart',{method:'PUT',body:{expectedVersion:1,lines:[]},key:crypto.randomUUID(),headers:{...customerHeaders,'X-CSRF-Token':owner.csrf}})).status,403);
+  const disposable = await guest(tenantA);
+  assert.equal((await request('/api/v1/auth/logout',{method:'POST',body:{},headers:{Cookie:`${owner.cookie}; ${disposable.cookie}`,'X-CSRF-Token':disposable.csrf,'X-AIODMA-Surface':'customer'}})).status,200);
+  assert.equal((await request('/api/v1/session',{session:owner})).data.data.role,'owner');
+  assert.equal((await request('/api/v1/session',{session:disposable})).status,401);
+});
 test('unknown catalog item and invalid quantity cannot enter cart',async()=>{
   for(const invalid of [{menuId:'fake',qty:1,optionIds:[]},{menuId:'latte',qty:-1,optionIds:[]},{menuId:'latte',qty:1,optionIds:['foreign_modifier']}]){
     const cart=(await request('/api/v1/cart',{session:guestA})).data.data;

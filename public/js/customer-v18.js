@@ -10,6 +10,8 @@
     selected: null, qty: 1, options: new Set(), payment: 'CASH', epoch: 0, events: null };
   const controllers = new Set();
   let queue = Promise.resolve(), quoteTimer, focusReturn;
+  let currentScreen = 'screenSelectLanguage';
+  let viewRevision = 0;
   const words = {
     id: { all:'Semua', empty:'Belum ada item', search:'Cari menu', add:'Tambahkan', review:'Periksa pesanan', confirm:'Konfirmasi pesanan', retry:'Coba lagi', offline:'Offline. Pemesanan memerlukan koneksi.', session:'Scan QR meja yang valid untuk memesan.', unavailable:'Belum tersedia', pending:'Hasil permintaan belum pasti. Coba lagi dengan permintaan yang sama.', paid:'LUNAS', unpaid:'BELUM LUNAS', tax:'Pajak', service:'Layanan', discount:'Diskon', waiter:'Panggilan pelayan terkirim', received:'Diterima', accepted:'Diterima dapur', preparing:'Disiapkan', ready:'Siap', served:'Disajikan', completed:'Selesai', cancelled:'Dibatalkan', rejected:'Ditolak', transfer:'Transfer manual', cash:'Tunai', paymentNote:'Pembayaran diverifikasi oleh kasir.', expired:'Ringkasan berubah atau kedaluwarsa. Periksa kembali.', saved:'Keranjang diperbarui', help:'Mohon bantuan pelayan di meja', failed:'Permintaan gagal', reconnect:'Perbarui koneksi' },
     en: { all:'All', empty:'No items yet', search:'Search menu', add:'Add', review:'Review order', confirm:'Confirm order', retry:'Retry', offline:'Offline. Ordering requires a connection.', session:'Scan a valid table QR to order.', unavailable:'Unavailable', pending:'The request outcome is uncertain. Retry the same request.', paid:'PAID', unpaid:'UNPAID', tax:'Tax', service:'Service', discount:'Discount', waiter:'Waiter request sent', received:'Received', accepted:'Accepted', preparing:'Preparing', ready:'Ready', served:'Served', completed:'Completed', cancelled:'Cancelled', rejected:'Rejected', transfer:'Manual transfer', cash:'Cash', paymentNote:'Payment is verified by the cashier.', expired:'The quote changed or expired. Review it again.', saved:'Cart updated', help:'Please send a waiter to the table', failed:'Request failed', reconnect:'Reconnect' },
@@ -33,7 +35,7 @@
     const timeout = setTimeout(() => controller.abort(), 20000);
     try {
       const response = await fetch(`/api/v1${path}`, { method, credentials:'same-origin', cache:'no-store', signal:controller.signal,
-        headers: { ...(body ? {'Content-Type':'application/json'} : {}), ...(method !== 'GET' && state.session ? {'X-CSRF-Token':state.session.csrfToken} : {}), ...(key ? {'Idempotency-Key':key} : {}) },
+        headers: { 'X-AIODMA-Surface':'customer', ...(body ? {'Content-Type':'application/json'} : {}), ...(method !== 'GET' && state.session ? {'X-CSRF-Token':state.session.csrfToken} : {}), ...(key ? {'Idempotency-Key':key} : {}) },
         ...(body ? {body:JSON.stringify(body)} : {}) });
       const envelope = await response.json();
       if (epoch !== state.epoch) throw new DOMException('Stale response','AbortError');
@@ -99,20 +101,61 @@
     state.cart = await api('/cart'); invalidate(); renderCart();
     await loadOrders(); if (!p || p.kind !== 'waiter') notice('');
   }
-  function showScreen(id) {
+  function closePopups(restore = false) {
+    const trigger = $('actionPopupMenu').classList.contains('open') ? $('btnHeaderOptions') : $('modeDropdownMenu').classList.contains('open') ? $('btnModeTrigger') : null;
+    all('.action-popup-menu,.mode-dropdown-menu').forEach(el => el.classList.remove('open'));
+    $('btnHeaderOptions').setAttribute('aria-expanded','false'); $('btnModeTrigger').setAttribute('aria-expanded','false');
+    if (restore) trigger?.focus();
+  }
+  function recordNavigation(sheetId = null, replace = false) {
+    const clean = new URL(location.href); clean.searchParams.delete('token');
+    history[replace ? 'replaceState' : 'pushState']({ ...history.state, aiodmaCustomer:{screen:currentScreen,sheet:sheetId} }, '', clean);
+  }
+  function showScreen(id, { record = true, replace = false } = {}) {
+    if (!$(id)?.classList.contains('screen')) return;
+    const changed = currentScreen !== id;
+    if (changed) viewRevision++;
+    const hadSheet = !!history.state?.aiodmaCustomer?.sheet;
+    closeSheets({ record: false, restore: false }); currentScreen = id;
     all('.screen').forEach(el => { const active = el.id === id; el.classList.toggle('active',active); el.setAttribute('aria-hidden',String(!active)); el.inert = !active; });
     const language = id === 'screenSelectLanguage'; $('mainHeaderBar').classList.toggle('hidden',language); $('mainHeaderBar').style.display = language ? 'none' : '';
-    all('.mode-dropdown-menu,.action-popup-menu').forEach(el => el.classList.remove('open'));
+    closePopups();
+    if (record && (changed || replace || hadSheet)) recordNavigation(null, replace || !changed);
+    const heading = $(id).querySelector('h1,h2,h3') || $(id); heading.tabIndex = -1; heading.focus({preventScroll:true});
   }
-  function closeSheets() {
-    all('.action-popup-menu,.mode-dropdown-menu').forEach(el=>el.classList.remove('open'));
-    $('btnHeaderOptions').setAttribute('aria-expanded','false');$('btnModeTrigger').setAttribute('aria-expanded','false');
+  function closeSheets({ record = true, restore = true } = {}) {
+    const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
+    if (opened) viewRevision++;
+    closePopups();
     all('.bottom-sheet-backdrop.open').forEach(el => { el.classList.remove('open'); el.setAttribute('aria-hidden','true'); el.inert = true; });
     const memory=$('customerMemoryBackdropModal');memory.style.display='none';memory.setAttribute('aria-hidden','true');memory.inert=true;$('phoneViewport').inert=false;
+    $('mainHeaderBar').inert=false; all('.screen').forEach(el => { el.inert = !el.classList.contains('active'); });
     placeStatus();
-    focusReturn?.focus();
+    if (record && history.state?.aiodmaCustomer?.sheet) recordNavigation(null, true);
+    if (restore && opened && focusReturn?.isConnected && focusReturn.getClientRects().length) focusReturn.focus({preventScroll:true});
   }
-  function sheet(id) { closeSheets(); focusReturn = document.activeElement; const el = $(id); el.inert = false; el.classList.add('open'); el.setAttribute('aria-hidden','false'); placeStatus(); (el.querySelector('button:not(:disabled):not([hidden]),input:not(:disabled)') || el).focus(); }
+  function dismissSheets() { if (history.state?.aiodmaCustomer?.sheet) history.back(); else closeSheets(); }
+  function sheet(id, { record = true } = {}) {
+    viewRevision++;
+    const previous = document.querySelector('.bottom-sheet-backdrop.open');
+    const trigger = document.activeElement;
+    closeSheets({ record:false, restore:false }); if (!previous) focusReturn = trigger;
+    const el = $(id); el.inert = false; el.classList.add('open'); el.setAttribute('aria-hidden','false');
+    all('.screen,#mainHeaderBar').forEach(node => { node.inert = true; });
+    const card = el.querySelector('.bottom-sheet-card'); if (card) card.scrollTop = 0;
+    el.querySelectorAll('.mod-options-body').forEach(node => { node.scrollTop = 0; });
+    if (record) recordNavigation(id, !!previous); placeStatus();
+    (el.querySelector('button:not(:disabled):not([hidden]),input:not(:disabled)') || el).focus({preventScroll:true});
+  }
+  function memorySheet({record = true} = {}) {
+    viewRevision++;
+    const previous = history.state?.aiodmaCustomer?.sheet, trigger = document.activeElement;
+    closeSheets({record:false,restore:false}); if (!previous) focusReturn=trigger;
+    const modal=$('customerMemoryBackdropModal'); modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); modal.inert=false;
+    $('phoneViewport').inert=true; modal.querySelector('.mobile-qr-card-modal').scrollTop=0;
+    if(record) recordNavigation(modal.id,!!previous);
+    placeStatus(); $('btnCloseMemoryModal').focus({preventScroll:true});
+  }
   function imageFor(item, cls) { const img = node('img',cls); img.alt = item.name || ''; img.loading = 'lazy';
     if (/^(assets\/|https:\/\/)/.test(item.image || '')) img.src = item.image;
     else img.hidden = true;
@@ -126,10 +169,25 @@
     bottom.append(add); body.append(info,bottom); card.append(wrap,body); return card;
   }
   function renderMenu() {
-    const tabs = document.querySelector('.category-filter-scroll'); tabs.replaceChildren();
+    const tabs = document.querySelector('.category-filter-scroll');
+    const focused = tabs.contains(document.activeElement), scroll = tabs.scrollLeft; tabs.replaceChildren();
     for (const category of ['all',...new Set(state.items.map(item => item.category).filter(Boolean))]) {
       const tab = button(category === 'all' ? t('all') : category,`cat-pill-btn${state.category === category ? ' active' : ''}`,() => {state.category = category; renderMenu();});
-      tab.dataset.cat = category; tab.setAttribute('role','tab'); tab.setAttribute('aria-selected',String(state.category === category)); tabs.append(tab);
+      tab.dataset.cat = category; tab.setAttribute('role','tab'); tab.setAttribute('aria-selected',String(state.category === category)); tab.tabIndex = state.category === category ? 0 : -1; tabs.append(tab);
+      tab.addEventListener('keydown',event => {
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault(); const options = [...tabs.children], index = options.indexOf(tab);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length;
+        options[next].focus(); options[next].click();
+      });
+    }
+    tabs.scrollLeft = scroll;
+    if (focused) {
+      const selected = tabs.querySelector('[aria-selected="true"]'); selected?.focus({preventScroll:true});
+      if (selected) { const bounds = selected.getBoundingClientRect(), box = tabs.getBoundingClientRect();
+        if (bounds.right > box.right) tabs.scrollLeft += bounds.right - box.right + 8;
+        else if (bounds.left < box.left) tabs.scrollLeft -= box.left - bounds.left + 8;
+      }
     }
     const term = $('catalogSearchInput').value.trim().toLocaleLowerCase();
     const items = state.items.filter(item => (state.category === 'all' || item.category === state.category) && `${item.name} ${item.desc || ''}`.toLocaleLowerCase().includes(term));
@@ -196,9 +254,13 @@
     container.replaceChildren(); for (const item of snapshot.items || []) { const row = node('div','cart-item-row'); row.setAttribute('role','listitem'); const info = node('div','cart-item-info'); info.append(node('div','cart-item-title',`${item.qty} x ${item.name}`),node('div','cart-item-sub',(item.modifiers || []).map(o => o.name).join(', '))); row.append(info,node('span','cart-item-price',money(item.lineTotalMinor,snapshot.currency))); container.append(row); }
   }
   async function reviewQuote() {
+    const view = viewRevision;
     await verifySession(); if (state.pending) throw new Error(t('pending'));
     state.cart = await api('/cart'); renderCart();
-    state.quote = await api('/quotes',{method:'POST',body:{expectedVersion:state.cart.version}});
+    if (view !== viewRevision) return;
+    const quote = await api('/quotes',{method:'POST',body:{expectedVersion:state.cart.version}});
+    if (view !== viewRevision) return;
+    state.quote = quote;
     snapshotItems($('paymentItemsPreviewList'),state.quote); totals('paySheet',state.quote); set('paySheetTitle',t('review'));
     document.querySelector('.pm-header-sub').textContent = t('paymentNote'); sheet('paymentBackdrop');
     clearTimeout(quoteTimer); quoteTimer = setTimeout(() => {invalidate(); notice(t('expired'));},Math.max(0,new Date(state.quote.expiresAt).getTime()-Date.now())); syncControls();
@@ -225,7 +287,7 @@
   }
   async function loadOrders() { const orders = await api('/orders'); const selected = orders.find(o => o.id === state.order?.id) || orders[0]; if (selected) updateOrder(selected); }
   function connectEvents() {
-    state.events?.close(); const epoch = state.epoch; const events = new EventSource('/api/v1/events'); state.events = events;
+    state.events?.close(); const epoch = state.epoch; const events = new EventSource('/api/v1/events?surface=customer'); state.events = events;
     events.onmessage = event => {
       if (epoch !== state.epoch) return;
       try { const data = JSON.parse(event.data); if (data.order && (!state.order || state.order.id === data.order.id)) updateOrder(data.order);
@@ -304,14 +366,13 @@
   }
   function bind(id, action) { $(id)?.addEventListener('click',action); }
   async function openMemory() {
-    await verifySession();closeSheets();focusReturn=document.activeElement;
+    await verifySession();
     const copy={
       id:{title:'Preferensi & memori',scope:'Tersimpan hanya untuk sesi meja ini, dengan persetujuan Anda.',label:'Preferensi',consent:'Saya setuju menyimpan preferensi ini',save:'Simpan preferensi',remove:'Hapus preferensi dan percakapan',saved:'Preferensi tersimpan',deleted:'Preferensi dan percakapan dihapus',hint:'Satu preferensi per baris'},
       en:{title:'Preferences & memory',scope:'Saved only for this table session, with your consent.',label:'Preferences',consent:'I consent to saving these preferences',save:'Save preferences',remove:'Delete preferences and conversation',saved:'Preferences saved',deleted:'Preferences and conversation deleted',hint:'One preference per line'},
       ms:{title:'Pilihan & memori',scope:'Disimpan untuk sesi meja ini sahaja, dengan persetujuan anda.',label:'Pilihan',consent:'Saya bersetuju menyimpan pilihan ini',save:'Simpan pilihan',remove:'Padam pilihan dan perbualan',saved:'Pilihan disimpan',deleted:'Pilihan dan perbualan dipadam',hint:'Satu pilihan setiap baris'}
     }[state.language];
-    const modal=$('customerMemoryBackdropModal');modal.style.display='flex';modal.setAttribute('aria-hidden','false');modal.inert=false;
-    $('phoneViewport').inert=true;all('.action-popup-menu').forEach(el=>el.classList.remove('open'));placeStatus();
+    memorySheet();
     set('memoryModalTitle',copy.title);set('memoryModalSubtitle',copy.scope);set('memoryModalSectionLabel',copy.label);
     const content=$('memoryModalContent');content.replaceChildren(node('p','',t('reconnect')));$('btnResetMemoryProfile').hidden=true;
     $('btnCloseMemoryModal').focus();
@@ -346,20 +407,20 @@
     state.namespace = `aiodma:v18:${state.merchantId}:${Array.from(new Uint8Array(digest)).map(n => n.toString(16).padStart(2,'0')).join('')}`;
     state.pending = storage.get(`${state.namespace}:pending`);
     updateTableLabels();
-    const clean = new URL(location.href); clean.searchParams.delete('token'); history.replaceState(null,'',clean); query.delete('token');
+    const clean = new URL(location.href); clean.searchParams.delete('token'); history.replaceState(history.state,'',clean); query.delete('token');
     state.cart = await api('/cart'); renderCart(); await loadOrders(); connectEvents();
     if (state.pending) notice(t('pending'),true); else notice('');
   }
   function boot() {
     $('phoneViewport').prepend(status);
     all('.bottom-sheet-backdrop').forEach(el => {
-      el.inert = true; el.addEventListener('click',event => {if (event.target === el) closeSheets();});
-      const close = button('×','header-btn-circle v18-sheet-close',closeSheets); close.setAttribute('aria-label','Close'); el.querySelector('.bottom-sheet-card')?.prepend(close);
+      el.inert = true; el.addEventListener('click',event => {if (event.target === el) dismissSheets();});
+      const close = button('×','header-btn-circle v18-sheet-close',dismissSheets); close.setAttribute('aria-label','Close'); el.querySelector('.bottom-sheet-card')?.prepend(close);
     });
     document.addEventListener('keydown',event => {
-      if (event.key === 'Escape') closeSheets();
+      if (event.key === 'Escape') { event.preventDefault(); if (document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]')) dismissSheets(); else closePopups(true); }
       const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
-      if (event.key === 'Tab' && opened) {const focusable = [...opened.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(el => el.getClientRects().length); const first=focusable[0],last=focusable.at(-1); if (event.shiftKey && document.activeElement === first) {event.preventDefault();last?.focus();} else if (!event.shiftKey && document.activeElement === last) {event.preventDefault();first?.focus();}}
+      if (event.key === 'Tab' && opened) {const focusable = [...opened.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href],[tabindex="0"]')].filter(el => el.getClientRects().length && !el.closest('[inert]')); const first=focusable[0],last=focusable.at(-1); if (event.shiftKey && (document.activeElement === first || !opened.contains(document.activeElement))) {event.preventDefault();last?.focus();} else if (!event.shiftKey && (document.activeElement === last || !opened.contains(document.activeElement))) {event.preventDefault();first?.focus();}}
       if (['Enter',' '].includes(event.key) && event.target.matches('[role="button"],[role="menuitem"],[role="radio"]')) {event.preventDefault();event.target.click();}
     });
     all('[data-lang]').forEach(el => el.addEventListener('click',() => {language(el.dataset.lang);showScreen('screenChatCashier');}));
@@ -367,29 +428,39 @@
     for (const id of ['btnHeaderThemeToggle','btnLangThemeToggle','menuItemToggleTheme']) bind(id,theme);
     for (const id of ['btnHeaderBack','btnLangBack','btnBackToChat','btnReceiptBackToHome']) bind(id,() => showScreen('screenChatCashier'));
     bind('optModeChat',() => showScreen('screenChatCashier')); for (const id of ['optModeMenu','qpLihatSemuaMenu']) bind(id,() => showScreen('screenMenuCatalog'));
-    for (const [id,menu] of [['btnModeTrigger','modeDropdownMenu'],['btnHeaderOptions','actionPopupMenu']]) bind(id,() => {const open=$(menu).classList.toggle('open');$(id).setAttribute('aria-expanded',String(open));});
+    for (const [id,menu] of [['btnModeTrigger','modeDropdownMenu'],['btnHeaderOptions','actionPopupMenu']]) bind(id,() => {const open=!$(menu).classList.contains('open');closePopups();$(menu).classList.toggle('open',open);$(id).setAttribute('aria-expanded',String(open));});
+    document.addEventListener('click',event => {if (!event.target.closest('#btnModeTrigger,#btnHeaderOptions,.action-popup-menu,.mode-dropdown-menu')) closePopups();});
+    window.addEventListener('popstate',event => {
+      const navigation = event.state?.aiodmaCustomer;
+      if (!navigation) { closeSheets({record:false}); return; }
+      if (navigation.screen !== currentScreen) showScreen(navigation.screen,{record:false});
+      else closeSheets({record:false});
+      if (navigation.sheet && $(navigation.sheet)?.classList.contains('bottom-sheet-backdrop')) sheet(navigation.sheet,{record:false});
+      else if (navigation.sheet === 'customerMemoryBackdropModal') memorySheet({record:false});
+      syncControls();
+    });
     $('actionPopupMenu').addEventListener('click',event=>{if(event.target.closest('.action-item-row')){$('actionPopupMenu').classList.remove('open');$('btnHeaderOptions').setAttribute('aria-expanded','false');}});
     for (const id of ['btnFloatingCart','btnCatalogCartPill']) bind(id,() => {renderCart();sheet('cartBackdrop');});
     bind('btnModMinus',() => {state.qty=Math.max(1,state.qty-1);syncControls();}); bind('btnModPlus',() => {state.qty=Math.min(99,state.qty+1);syncControls();});
-    bind('btnAddCustomizedToCart',() => {if (!validModifiers()) return; const line={menuId:state.selected.id,qty:state.qty,optionIds:[...state.options]}; run(async () => {await changeCart(lines => {const existing=lines.find(l => lineKey(l)===lineKey(line));if(existing)existing.qty+=line.qty;else lines.push(line);return lines;});closeSheets();});});
+    bind('btnAddCustomizedToCart',() => {if (!validModifiers()) return; const view=viewRevision, line={menuId:state.selected.id,qty:state.qty,optionIds:[...state.options]}; run(async () => {await changeCart(lines => {const existing=lines.find(l => lineKey(l)===lineKey(line));if(existing)existing.qty+=line.qty;else lines.push(line);return lines;});if(view===viewRevision)closeSheets();});});
     bind('btnProceedToPayment',() => run(reviewQuote));
     bind('btnProcessPayment',() => {if ($('btnProcessPayment').disabled) return;run(async () => {if (!state.quote) throw new Error(t('expired')); const order=await transact('/orders','POST',{quoteId:state.quote.id,confirmed:true,paymentMethod:state.payment},'order');await accepted(order);});});
     const methods=all('.payment-method-card'); methods.forEach((el,index) => {if(index===1||index===2){el.hidden=true;el.style.display='none';return;} const method=index===0?'MANUAL_TRANSFER':'CASH';el.dataset.pm=method;el.querySelector('.pm-name').textContent=method==='CASH'?t('cash'):t('transfer');el.setAttribute('aria-label',method);el.classList.toggle('selected',method===state.payment);el.setAttribute('aria-checked',String(method===state.payment));el.addEventListener('click',() => {if(state.pending||state.busy)return;state.payment=method;methods.forEach(card => {card.classList.toggle('selected',card===el);card.setAttribute('aria-checked',String(card===el));});});});
-    for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,() => run(async () => {await verifySession();await loadOrders();if(state.order){updateOrder(await api(`/orders/${state.order.id}`));sheet('orderTrackerBackdrop');}}));
-    bind('btnSaveReceipt',() => {if(state.order)showScreen('screenThermalReceipt');});bind('btnPrintReceipt',() => window.print());bind('btnCloseTrackerSheet',closeSheets);bind('btnTrackerOrderMore',() => {closeSheets();showScreen('screenMenuCatalog');});
+    for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,() => {const view=viewRevision;run(async () => {await verifySession();await loadOrders();if(state.order){updateOrder(await api(`/orders/${state.order.id}`));if(view===viewRevision)sheet('orderTrackerBackdrop');}});});
+    bind('btnSaveReceipt',() => {if(state.order)showScreen('screenThermalReceipt');});bind('btnPrintReceipt',() => window.print());bind('btnCloseTrackerSheet',dismissSheets);bind('btnTrackerOrderMore',() => {closeSheets();showScreen('screenMenuCatalog');});
     for (const id of ['menuItemCallWaiter','btnTrackerCallWaiter']) bind(id,() => run(async () => {await transact('/waiter-calls','POST',{reason:t('help')},'waiter');notice(t('waiter'));}));
-    bind('menuItemTableStatus',() => {const box=$('tableInfoTitle').parentElement.nextElementSibling;box.replaceChildren(node('p','',state.session?`${state.merchant.name} - Table ${state.tableId}`:t('session')));sheet('tableInfoBackdrop');});bind('btnCloseTableInfo',closeSheets);
+    bind('menuItemTableStatus',() => {const box=$('tableInfoTitle').parentElement.nextElementSibling;box.replaceChildren(node('p','',state.session?`${state.merchant.name} - Table ${state.tableId}`:t('session')));sheet('tableInfoBackdrop');});bind('btnCloseTableInfo',dismissSheets);
     $('modSpecialNote').disabled=true;$('modSpecialNote').placeholder=t('unavailable');
     $('btnChatNotes').setAttribute('aria-disabled','true');bind('btnChatNotes',()=>notice(t('unavailable')));
-    bind('menuItemCustomerMemory',()=>run(openMemory));bind('btnCloseMemoryModal',closeSheets);
+    bind('menuItemCustomerMemory',()=>run(openMemory));bind('btnCloseMemoryModal',dismissSheets);
     $('customerMemoryBackdropModal').inert=true;
-    $('customerMemoryBackdropModal').addEventListener('click',event=>{if(event.target===$('customerMemoryBackdropModal'))closeSheets();});
+    $('customerMemoryBackdropModal').addEventListener('click',event=>{if(event.target===$('customerMemoryBackdropModal'))dismissSheets();});
     bind('btnChatSend',() => run(() => chat($('chatInputText').value.trim())));$('chatInputText').addEventListener('input',syncControls);$('chatInputText').addEventListener('keydown',event => {if(event.key==='Enter'&&!event.isComposing&&!$('btnChatSend').disabled){event.preventDefault();$('btnChatSend').click();}});
     all('.quick-prompt-pill').filter(el=>el.id!=='qpLihatSemuaMenu').forEach(el=>el.addEventListener('click',()=>run(()=>chat(el.dataset.prompt || el.textContent.trim()))));
     $('catalogSearchInput').addEventListener('input',renderMenu);bind('btnClearSearch',()=>{$('catalogSearchInput').value='';renderMenu();});
     window.addEventListener('offline',()=>{invalidate();notice(t('offline'));syncControls();});window.addEventListener('online',()=>run(async()=>{if(!state.session)await initialize();else await recover();}));
     window.addEventListener('pagehide',()=>{state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
-    document.documentElement.dataset.theme=storage.get('aiodma:v18:theme')||'light';language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage');run(initialize);
+    document.documentElement.dataset.theme=storage.get('aiodma:v18:theme')||'light';language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage',{replace:true});run(initialize);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

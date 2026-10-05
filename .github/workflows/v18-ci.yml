@@ -24,4 +24,8 @@ jobs:
       - run: npm run test:unit
       - run: npm run test:integration
       - run: npx playwright install --with-deps chromium
+      - run: npm run test:customer
+      - run: node tests/e2e/admin-v18.cjs
       - run: node tests/e2e/onboarding-v19.cjs
+        env:
+          ONBOARDING_ORDER_SMOKE: "1"

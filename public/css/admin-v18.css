@@ -9,3 +9,6 @@
 @media print{.topbar,.app-layout,.auth-layout,.toast,.dialog-heading button,.form-actions{display:none!important}dialog[open]{display:block;position:static;width:100%;max-height:none;border:0;box-shadow:none;background:#fff;color:#000}dialog::backdrop{display:none}.dialog-heading{position:static;background:#fff;color:#000}#dialog-body{padding:16px}.qr-image{width:320px;height:320px}}
 .onboarding-checklist{list-style:none;padding:0;margin:0 0 24px;border-top:1px solid var(--line)}.onboarding-checklist li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:8px 18px;padding:16px 0;border-bottom:1px solid var(--line)}.onboarding-checklist strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}.onboarding-checklist a{min-height:42px;display:flex;align-items:center;color:var(--blue);font-weight:600}.onboarding-checklist .muted{font-size:12px}
 @media(max-width:760px){.onboarding-checklist li{grid-template-columns:minmax(0,1fr) auto;gap:4px 16px}.onboarding-checklist .muted{grid-column:1;grid-row:2}.onboarding-checklist a{grid-column:2;grid-row:1/3}}
+.toast{position:static;transform:none;max-width:100%;margin:0 0 18px;box-shadow:none;overflow-wrap:anywhere}
+dialog{overscroll-behavior:contain}body:has(dialog[open]){overflow:hidden}
+#workspace{scroll-margin-top:88px}nav{overscroll-behavior-x:contain}

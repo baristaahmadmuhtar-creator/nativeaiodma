@@ -46,13 +46,18 @@ function createIdentity(db, config) {
   }
   async function authenticate(req, _res, next) {
     try {
-      const token = req.cookies?.aiodma_session;
+      const customerSurface = req.headers['x-aiodma-surface'] === 'customer' || req.query.surface === 'customer';
+      const token = customerSurface
+        ? req.cookies?.aiodma_guest || req.cookies?.aiodma_session
+        : req.cookies?.aiodma_session || req.cookies?.aiodma_guest;
       if (!token) throw new AppError('UNAUTHENTICATED', 'Silakan masuk atau pindai QR meja.', 401);
       const result = await db.pool.query(`SELECT s.*,u.disabled,(u.mfa_secret IS NOT NULL) AS mfa_enabled FROM sessions s
         LEFT JOIN users u ON u.id=s.user_id WHERE token_hash=$1 AND NOT revoked AND expires_at>now()
         AND (user_id IS NULL OR last_seen_at>now()-interval '30 minutes')`, [hash(token)]);
       const principal = result.rows[0];
       if (!principal || principal.disabled) throw new AppError('SESSION_EXPIRED', 'Sesi berakhir. Silakan masuk kembali.', 401);
+      // Legacy guest cookies remain usable, but the customer surface never borrows staff authority.
+      if (customerSurface && principal.user_id) throw new AppError('UNAUTHENTICATED', 'Silakan pindai QR meja.', 401);
       if (principal.user_id) {
         const role = await db.transaction(principal.tenant_id, c => c.query(
           'SELECT role FROM memberships WHERE tenant_id=$1 AND user_id=$2', [principal.tenant_id, principal.user_id]));
@@ -84,7 +89,7 @@ function createIdentity(db, config) {
   };
 
   function setCookie(res, value) {
-    res.cookie('aiodma_session', value.token, { httpOnly: true, secure: config.NODE_ENV === 'production',
+    res.cookie(value.tableId ? 'aiodma_guest' : 'aiodma_session', value.token, { httpOnly: true, secure: config.NODE_ENV === 'production',
       sameSite: 'strict', path: '/', maxAge: value.tableId ? 4 * 3600000 : 12 * 3600000 });
   }
   return { session, authenticate, allow, setCookie, csrfFor };

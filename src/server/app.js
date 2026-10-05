@@ -188,7 +188,7 @@ function createApp({ db, config, aiProvider }) {
   }));
   api.post('/auth/logout',wrap(async (req,res) => {
     await db.pool.query('UPDATE sessions SET revoked=true WHERE id=$1',[req.principal.id]);
-    res.clearCookie('aiodma_session',{path:'/'});send(res,{});
+    res.clearCookie(req.principal.user_id ? 'aiodma_session' : 'aiodma_guest',{path:'/'});send(res,{});
   }));
   api.post('/ai/chat',guest,rate('ai-chat',20,60),wrap(async(req,res)=>{
     const b=valid(z.object({messageId:uuid,message:z.string().trim().min(1).max(2000),language:z.enum(['id','en','ms']).default('id')}).strict(),req.body);
@@ -306,6 +306,11 @@ function createApp({ db, config, aiProvider }) {
     requireValue(!req.principal.mfaRequired,'MFA_REQUIRED','Verifikasi MFA diperlukan.',403);
     const p=req.principal;
     let cursor=Number(req.get('Last-Event-ID') || req.query.cursor || 0);
+    if(!req.get('Last-Event-ID') && req.query.cursor==='latest') {
+      const latest=await db.transaction(p.tenant_id,c=>c.query(`SELECT COALESCE(max(seq),0)::text AS seq FROM outbox_events WHERE tenant_id=$1
+        ${p.role==='guest' ? "AND (audience_session=$2 OR kind='MENU_UPDATED')" : ''}`,p.role==='guest'?[p.tenant_id,p.id]:[p.tenant_id]));
+      cursor=Number(latest.rows[0].seq);
+    }
     requireValue(Number.isSafeInteger(cursor)&&cursor>=0,'INVALID_CURSOR','Cursor tidak valid.');
     res.setHeader('Content-Type','text/event-stream');res.setHeader('Cache-Control','no-cache');res.setHeader('X-Accel-Buffering','no');res.flushHeaders();
     let closed=false,busy=false;

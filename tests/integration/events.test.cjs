@@ -123,8 +123,8 @@ async function openEvents(session, lastEventId = 0) {
   const state = { events: [], heartbeats: 0, ended: false, error: null, stopped: false };
   let response;
   let buffer = '';
-  const req = track(http.request(new URL('/api/v1/events', base), { agent: false, signal: controller.signal,
-    headers: { Cookie: session.cookie, 'Last-Event-ID': String(lastEventId) } }));
+  const req = track(http.request(new URL(lastEventId === 'latest' ? '/api/v1/events?cursor=latest' : '/api/v1/events', base), { agent: false, signal: controller.signal,
+    headers: { Cookie: session.cookie, ...(lastEventId === 'latest' ? {} : { 'Last-Event-ID': String(lastEventId) }) } }));
   const closed = new Promise(resolve => req.once('close', resolve));
   const timeout = setTimeout(() => {
     state.error = new Error('SSE exceeded 15-second test deadline');
@@ -255,6 +255,14 @@ test('SSE isolates guests at the same table and both tenants while staff see onl
   }
 });
 
+test('latest cursor skips historical events but delivers subsequent outlet activity', testOptions, async t => {
+  await menuEvent(ownerA);
+  const stream = await openEvents(ownerA,'latest'); t.after(() => stream.close());
+  assert.equal(stream.events.length,0);
+  const marker = await menuEvent(ownerA);
+  await until(() => stream.events.some(event => event.menuId === marker),'new event after latest cursor',[stream]);
+  assert.equal(stream.events.length,1);
+});
 test('Last-Event-ID resumes after the cursor without replaying delivered or foreign events', testOptions, async t => {
   const first = await openEvents(guestA, await cursor());
   t.after(() => first.close());

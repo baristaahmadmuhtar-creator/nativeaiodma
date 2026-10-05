@@ -27,6 +27,11 @@
     promos: '/admin/resources/promo', knowledge: '/admin/resources/knowledge', reports: '/admin/stats', staff: '/admin/staff',
     settings: '/admin/settings', audit: '/admin/audit', ai: '/admin/ai-status' };
   const editor = $('#editor');
+  const notification = $('#toast');
+  const editorBusy = () => [...editor.querySelectorAll('form')].some(form => form.busy);
+  let events;
+  let scrollPositions = Object.create(null);
+  let dialogReturn;
   let toastTimer;
 
   function el(tag, text, className) {
@@ -60,7 +65,9 @@
   const payment = order => String(order.paymentStatus || order.payment_status || '').toLowerCase();
   const list = data => Array.isArray(data) ? data : [];
   function notify(message, isError = false) {
-    clearTimeout(toastTimer); const node = $('#toast'); node.textContent = message; node.className = `toast${isError ? ' error' : ''}`; node.hidden = false;
+    clearTimeout(toastTimer); const node = notification;
+    (editor.open ? $('#dialog-body') : !$('#app').hidden ? $('#notification-slot') : !$('#mfa-gate').hidden ? $('#mfa-content') : $('#auth')).prepend(node);
+    node.textContent = message; node.className = `toast${isError ? ' error' : ''}`; node.hidden = false;
     toastTimer = setTimeout(() => { node.hidden = true; }, 5500);
   }
   function errorText(error) {
@@ -78,6 +85,32 @@
     const offline = !navigator.onLine;
     $('#connection').textContent = offline ? 'Offline' : state.session ? 'Sesi aktif' : 'Belum masuk';
     $('#connection').className = `connection ${offline ? 'offline' : state.session ? 'online' : ''}`;
+  }
+  function connectUpdates() {
+    events?.close(); if (!state.session || state.session.mfaRequired) return Promise.resolve();
+    const session = state.session, stream = new EventSource('/api/v1/events?cursor=latest'); events = stream;
+    let ready = false, resolveReady;
+    const initialConnection = new Promise(resolve => { resolveReady = resolve; });
+    const timer = setTimeout(() => { ready = true; resolveReady(); }, 2000);
+    const announce = () => {
+      const parent = $('#page-status');
+      if (state.session !== session || $('#app').hidden || parent.querySelector('[data-update-notice]')) return;
+      const notice = el('div', undefined, 'notice'); notice.dataset.updateNotice = 'true';
+      notice.append(el('p','Data outlet mungkin berubah.'), button('Muat data terbaru',() => $('#refresh').click())); parent.append(notice);
+    };
+    stream.onopen = () => { if (ready) announce(); ready = true; clearTimeout(timer); resolveReady(); };
+    stream.onerror = () => { ready = true; clearTimeout(timer); resolveReady(); };
+    stream.onmessage = event => {
+      if (state.session !== session || $('#app').hidden) return;
+      let update; try { update = JSON.parse(event.data); } catch { return; }
+      const relevant = ['orders','kds','reports'].includes(state.tab) && update.type?.startsWith('ORDER_')
+        || state.tab === 'waiter' && ['CALL_WAITER','WAITER_CALL_UPDATED'].includes(update.type)
+        || state.tab === 'menu' && update.type === 'MENU_UPDATED';
+      if (!relevant) return;
+      if (update.order && Array.isArray(state.data) && state.data.some(order => order.id === update.order.id && order.version >= update.order.version)) return;
+      announce();
+    };
+    return initialConnection;
   }
 
   // No token in browser storage. A form retains its request key after an uncertain
@@ -152,16 +185,28 @@
     form.append(fields, error, actions); parent.append(form); return { form, fields, actions, submit };
   }
   function openDialog(title) {
+    if (editorBusy()) return null;
     if (editor.open && state.dirty && !confirm('Tutup perubahan yang belum disimpan?')) return null;
+    if (!editor.open) dialogReturn = document.activeElement;
     state.dirty = false; state.suspended = false; state.editorTenant = state.session?.tenantId;
     $('#dialog-title').textContent = title; $('#dialog-body').replaceChildren();
-    if (!editor.open) editor.showModal(); return $('#dialog-body');
+    if (!editor.open) editor.showModal();
+    editor.scrollTop = 0;
+    requestAnimationFrame(() => {
+      if (!editor.open) return;
+      const input = $('#dialog-body').querySelector('input:not([readonly]):not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled)');
+      (input || $('#close-editor')).focus({ preventScroll: true });
+    });
+    return $('#dialog-body');
   }
   function closeDialog(force = false) {
+    if (!force && editorBusy()) return;
     if (!force && state.dirty && !confirm('Tutup perubahan yang belum disimpan?')) return;
     editor.close(); state.dirty = false; state.suspended = false; $('#dialog-body').replaceChildren();
+    if (dialogReturn?.isConnected) dialogReturn.focus({ preventScroll: true });
+    else $('#workspace').focus({ preventScroll: true });
   }
-  async function saved(message = 'Perubahan tersimpan.') { closeDialog(true); notify(message); await loadPage(); }
+  async function saved(message = 'Perubahan tersimpan.') { closeDialog(true); notify(message); await loadPage(); if (!dialogReturn?.isConnected) $('#workspace').focus({preventScroll:true}); }
   function details(parent, entries) {
     const dl = el('dl', undefined, 'detail-list'); entries.forEach(([key, value]) => { dl.append(el('dt', key), el('dd', value ?? 'Belum tersedia')); }); parent.append(dl);
   }
@@ -191,6 +236,7 @@
   function pageAction(title, action) { $('#page-actions').replaceChildren(button(title, action, 'primary')); }
 
   function showLogin(message = 'Gunakan akun staf yang terdaftar.', preserve = false) {
+    events?.close(); events = null;
     state.generation++; state.controller?.abort();
     if (editor.open) { state.suspended = preserve; editor.close(); }
     state.session = null; $('#startup').hidden = true; $('#app').hidden = true; $('#mfa-gate').hidden = true; $('#auth').hidden = false;
@@ -204,12 +250,16 @@
   async function enterSession(session) {
     if (!roles.includes(session.role) || !session.csrfToken || !session.tenantId) { showLogin('Akun staf diperlukan untuk membuka admin.'); return; }
     const previousTenant = state.editorTenant;
+    if (state.tenant && state.tenant.id !== session.tenantId) { state.filters = {}; scrollPositions = Object.create(null); }
     state.session = session; $('#logout').hidden = false; $('#startup').hidden = true; $('#auth').hidden = true;
     if (session.mfaRequired) { showMfa(); return; }
     $('#mfa-gate').hidden = true; $('#app').hidden = false;
     $('#outlet-name').textContent = session.tenantId; $('#account-role').textContent = labels[session.role] || session.role;
     $('#session-time').textContent = session.expiresAt ? `Sesi hingga ${date(session.expiresAt)}` : '';
-    const nav = $('#navigation'); nav.replaceChildren(); Object.entries(tabs).forEach(([key, [name]]) => { const a = el('a', name); a.href = `#${key}`; nav.append(a); });
+    const nav = $('#navigation'); nav.replaceChildren(); Object.entries(tabs).forEach(([key, [name, , permitted]]) => {
+      if (!permitted.includes(session.role)) return;
+      const a = el('a', name); a.href = `#${key}`; nav.append(a);
+    });
     state.tenant = null;
     try {
       const data = manage() ? await api('/admin/settings') : await api(`/menu?merchant=${encodeURIComponent(session.tenantId)}`);
@@ -218,11 +268,12 @@
     } catch { /* Each restricted view reports its own actionable error. */ }
     if (state.session !== session) return;
     if (owner() && state.tenant && !state.tenant.published && !location.hash) history.replaceState(null, '', '/admin.html#onboarding');
-    offlineState(); await loadPage();
+    offlineState(); await connectUpdates(); await loadPage();
     if (state.suspended && previousTenant === session.tenantId) { state.suspended = false; editor.showModal(); }
     else if (state.suspended) closeDialog(true);
   }
   function showMfa() {
+    events?.close(); events = null;
     if (editor.open) editor.close();
     $('#app').hidden = true; $('#auth').hidden = true; $('#startup').hidden = true; $('#mfa-gate').hidden = false;
     const parent = $('#mfa-content'); parent.replaceChildren();
@@ -270,13 +321,16 @@
 
   async function loadPage() {
     if (!state.session || state.session.mfaRequired || state.invitation) return;
+    const previousTab = state.tab, previousScroll = window.scrollY;
+    if (!$('#page-content').hasAttribute('aria-busy')) scrollPositions[previousTab] = previousScroll;
     const hash = location.hash.slice(1); const aliases = { analytics: 'reports', 'table-qr': 'tables', stock: 'menu', billing: 'ai', security: 'staff', api: 'integrations', help: 'audit' };
     state.tab = tabs[hash] ? hash : aliases[hash] || 'orders';
+    const restoreScroll = scrollPositions[state.tab] || 0;
     const [title, group, permitted] = tabs[state.tab]; const generation = ++state.generation;
     state.controller?.abort(); state.controller = new AbortController();
     $('#page-title').textContent = title; $('#page-group').textContent = group; $('#page-actions').replaceChildren(); $('#page-status').replaceChildren(); $('#updated-at').textContent = '';
     $('#navigation').querySelectorAll('a').forEach(a => { if (a.hash === `#${state.tab}`) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-    const parent = $('#page-content'); parent.replaceChildren();
+    const parent = $('#page-content'); parent.removeAttribute('aria-busy'); parent.replaceChildren();
     if (!permitted.includes(state.session.role)) { empty(parent, 'Akses terbatas', 'Peran Anda tidak memiliki izin untuk modul ini.'); return; }
     if (state.tab === 'integrations') { renderIntegrations(parent); return; }
     const loading = el('div', undefined, 'loading'); loading.append(el('span', undefined, 'spinner'), el('span', 'Memuat data...')); parent.append(loading); parent.setAttribute('aria-busy', 'true');
@@ -289,7 +343,7 @@
       if (generation !== state.generation || error.name === 'AbortError') return;
       parent.replaceChildren(); const notice = el('div', undefined, 'notice error'); notice.role = 'alert';
       notice.append(el('h2', error.status === 403 ? 'Akses tidak diizinkan' : 'Data belum dapat dimuat'), el('p', errorText(error)), button('Coba lagi', loadPage)); parent.append(notice);
-    } finally { if (generation === state.generation) parent.removeAttribute('aria-busy'); }
+    } finally { if (generation === state.generation) { parent.removeAttribute('aria-busy'); window.scrollTo({top:restoreScroll,behavior:'instant'}); } }
   }
 
   function orderItems(parent, order) {
@@ -628,22 +682,33 @@
   });
   $('#logout').addEventListener('click', async () => {
     if (state.dirty && !confirm('Keluar dan tutup perubahan yang belum disimpan?')) return;
-    try { await api('/auth/logout', { method: 'POST', body: {} }); closeDialog(true); state.tenant = null; state.filters = {}; state.data = null; showLogin('Anda telah keluar.'); }
+    try { await api('/auth/logout', { method: 'POST', body: {} }); closeDialog(true); state.tenant = null; state.filters = {}; scrollPositions = Object.create(null); state.data = null; showLogin('Anda telah keluar.'); }
     catch (error) { notify(errorText(error), true); }
   });
   $('#switch-outlet').addEventListener('click', () => { if (confirm('Keluar dari sesi ini untuk masuk ke outlet lain?')) $('#logout').click(); });
-  $('#refresh').addEventListener('click', () => { if (state.dirty && !confirm('Muat ulang dan tutup perubahan yang belum disimpan?')) return; state.dirty = false; loadPage(); });
+  $('#refresh').addEventListener('click', () => { if (editorBusy()) return; if (state.dirty && !confirm('Muat ulang dan tutup perubahan yang belum disimpan?')) return; if (editor.open) closeDialog(true); state.dirty = false; loadPage(); });
   $('#close-editor').addEventListener('click', () => closeDialog());
   editor.addEventListener('cancel', event => { event.preventDefault(); closeDialog(); });
   editor.addEventListener('input', () => { state.dirty = true; });
   window.addEventListener('beforeunload', event => { if (state.dirty) { event.preventDefault(); event.returnValue = ''; } });
   window.addEventListener('hashchange', () => {
+    if (location.hash === '#workspace') { $('#workspace').focus(); return; }
     const invitation = invitationFromHash(); if (invitation) return showInvitation(invitation);
     if (state.invitation) return;
+    if (editorBusy()) { history.replaceState(null, '', `#${state.tab}`); return; }
     if (state.dirty && !confirm('Pindah halaman dan tutup perubahan yang belum disimpan?')) { history.replaceState(null, '', `#${state.tab}`); return; }
-    state.dirty = false; if (editor.open) closeDialog(true); loadPage();
+    state.dirty = false; if (editor.open) closeDialog(true);
+    const requestedHash = location.hash;
+    loadPage().then(() => {
+      if (location.hash !== requestedHash) return;
+      if (state.session && !editor.open) $('#workspace').focus({ preventScroll: true });
+      const active = $('#navigation a[aria-current="page"]');
+      if (active) $('#navigation').scrollTo({ left: Math.max(0, active.offsetLeft - $('#navigation').offsetLeft - 12), behavior: 'instant' });
+    });
   });
   window.addEventListener('offline', offlineState); window.addEventListener('online', () => { offlineState(); notify('Koneksi tersedia. Muat ulang untuk melihat data terbaru.'); });
+  window.addEventListener('pagehide', () => events?.close());
+  window.addEventListener('pageshow', event => { if (event.persisted) connectUpdates(); });
   $('#theme-toggle').addEventListener('click', () => {
     const dark = document.documentElement.dataset.theme !== 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; $('#theme-toggle').setAttribute('aria-pressed', String(dark));
     try { localStorage.setItem('aiodma-admin-theme', dark ? 'dark' : 'light'); } catch { /* Storage is optional. */ }

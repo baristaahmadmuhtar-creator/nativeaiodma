@@ -14,7 +14,7 @@ const item = {id:'coffee',name:'Coffee <img src=x onerror=alert(1)>',desc:'Fresh
 const second = {id:'tea',name:'Tea',desc:'Green tea',category:'Tea',price:2,available:true,modifierGroups:[]};
 const clone = value => structuredClone(value);
 async function fixture(context) {
-  const model = {authenticated:false,profile:{consent:false,preferences:[]},cart:{version:1,lines:[]},orders:[],keys:new Map(),requests:[],loseOrder:false,loseCart:false,conflict:false,quoteCount:0,aiMode:'cart'};
+  const model = {items:[item,second],authenticated:false,profile:{consent:false,preferences:[]},cart:{version:1,lines:[]},orders:[],keys:new Map(),requests:[],loseOrder:false,loseCart:false,conflict:false,quoteCount:0,aiMode:'cart'};
   const respond = (route,data,status=200) => route.fulfill({status,contentType:'application/json',body:JSON.stringify({success:true,data})});
   const fail = (route,status,code) => route.fulfill({status,contentType:'application/json',body:JSON.stringify({success:false,error:{code,message:code},requestId:'test-request'})});
   await context.route('**/*',async route => {
@@ -24,7 +24,7 @@ async function fixture(context) {
     if(p.startsWith('/api/v1')) {
       const endpoint=p.slice(7), body=request.postDataJSON(), key=request.headers()['idempotency-key'];
       model.requests.push({endpoint,method,body,key});
-      if(endpoint==='/menu')return respond(route,{merchant:{id:'fixture',name:'Fixture Cafe',currency:'BND',paymentMethods:['CASH','MANUAL_TRANSFER']},items:[item,second]});
+      if(endpoint==='/menu')return respond(route,{merchant:{id:'fixture',name:'Fixture Cafe',currency:'BND',paymentMethods:['CASH','MANUAL_TRANSFER']},items:model.items});
       if(endpoint==='/session') {
         if(method==='POST'){assert.equal(body.token,'fixture-valid-qr-token');model.authenticated=true;}
         if(!model.authenticated)return fail(route,401,'SESSION_REQUIRED');
@@ -47,6 +47,7 @@ async function fixture(context) {
       }
       if(endpoint==='/quotes') {
         model.quoteCount++;assert.equal(body.expectedVersion,model.cart.version);
+        if(model.quoteDelay)await new Promise(resolve=>setTimeout(resolve,model.quoteDelay));
         const items=model.cart.lines.map(line=>{const menu=line.menuId==='coffee'?item:second;const modifiers=menu.modifierGroups.flatMap(g=>g.options).filter(o=>line.optionIds.includes(o.id)).map(o=>({...o,priceMinor:o.price*100}));const unitPriceMinor=menu.price*100+modifiers.reduce((sum,o)=>sum+o.priceMinor,0);return {...line,name:menu.name,modifiers,unitPriceMinor,lineTotalMinor:unitPriceMinor*line.qty};});
         const subtotalMinor=items.reduce((sum,l)=>sum+l.lineTotalMinor,0);model.quote={id:crypto.randomUUID(),currency:'BND',items,subtotalMinor,taxMinor:40,serviceMinor:20,discountMinor:10,totalMinor:subtotalMinor+50,cartVersion:model.cart.version,expiresAt:new Date(Date.now()+300000).toISOString()};return respond(route,model.quote);
       }
@@ -89,9 +90,30 @@ async function contract(browser,width,height){
     assert.equal(await page.locator('#cartSheetTitle').textContent(),'Table 5 order cart');
     assert.equal(await page.locator('.lang-table-badge-pill').getAttribute('aria-label'),'Customer table number: Table 5');
     await page.locator('#qpLihatSemuaMenu').click();
+    await page.goBack(); await page.waitForFunction(()=>document.querySelector('#screenChatCashier').classList.contains('active'));
+    await page.goForward(); await page.waitForFunction(()=>document.querySelector('#screenMenuCatalog').classList.contains('active'));
+    await page.locator('#btnModeTrigger').click(); await page.locator('#btnHeaderOptions').click();
+    assert.equal(await page.locator('#btnModeTrigger').getAttribute('aria-expanded'),'false');
+    await page.keyboard.press('Escape'); assert.equal(await page.locator('#btnHeaderOptions').getAttribute('aria-expanded'),'false');
+    await page.locator('.cat-pill-btn').first().focus(); await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('.cat-pill-btn[aria-selected="true"]').textContent(),'Coffee');
+    assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-selected')),'true');
+    await page.keyboard.press('Home'); assert.equal(await page.locator('#menuGridContainer .product-card').count(),2);
+    await page.locator('[data-menu-id="coffee"] .btn-add-product').click();
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#modifierModalBackdrop')),true);
+    await page.goBack(); await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    assert.equal(await page.evaluate(()=>document.activeElement.closest('[data-menu-id]')?.dataset.menuId),'coffee');
+    assert.equal(await page.locator('#mainHeaderBar').evaluate(el=>el.inert),false);
     await capture(page,`${width}-light-menu.png`);
     assert.equal(await page.locator('#menuGridContainer .product-card').count(),2);await page.locator('#catalogSearchInput').fill('tea');assert.equal(await page.locator('#menuGridContainer .product-card').count(),1);await page.locator('#btnClearSearch').click();
     await addCoffee(page);assert.deepEqual(model.cart.lines,[{menuId:'coffee',qty:1,optionIds:['oat']}]);
+    model.quoteDelay=400; const beforeQuote=model.quoteCount;
+    await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();
+    await require('@playwright/test').expect.poll(()=>model.quoteCount).toBeGreaterThan(beforeQuote);
+    await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});
+    await page.waitForFunction(()=>!document.querySelector('#btnProceedToPayment').disabled);
+    assert.equal(await page.locator('#paymentBackdrop').getAttribute('aria-hidden'),'true');model.quoteDelay=0;
     await page.locator('#btnCatalogCartPill').click();await page.locator('#cartSheetItemsList .stepper-btn').last().click();await page.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='2');
     await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);assert.equal(model.orders.length,0);assert.match(await page.locator('#paySheetTotal').textContent(),/8\.50/);assert.match(await page.locator('#paymentItemsPreviewList').textContent(),/Oat/);
     await capture(page,`${width}-quote.png`);model.loseOrder=true;await page.locator('#btnProcessPayment').click();await page.waitForFunction(()=>!document.querySelector('#customerV18Status button').hidden);
@@ -112,13 +134,38 @@ async function contract(browser,width,height){
     await page.locator('#v18MemoryConsent').check();await page.locator('.v18-memory-form [type="submit"]').click();
     await page.waitForFunction(()=>document.querySelector('#customerV18Status').textContent.includes('Preferences saved'));
     assert.deepEqual(model.profile,{consent:true,preferences:['Less sugar','No dairy']});
-    await capture(page,`${width}-memory.png`);await page.locator('#btnResetMemoryProfile').click();
+    assert.equal(await page.locator('#customerMemoryBackdropModal .mobile-qr-card-modal').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(28, 28, 30)');
+    assert.equal(await page.locator('#btnResetMemoryProfile').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(28, 28, 30)');
+    await capture(page,`${width}-memory.png`);
+    await page.goBack(); await page.waitForSelector('#customerMemoryBackdropModal[aria-hidden="false"]',{state:'hidden'});
+    await page.goForward(); await page.waitForSelector('#customerMemoryBackdropModal[aria-hidden="false"]');
+    await page.locator('#btnResetMemoryProfile').click();
+    assert.equal(await page.locator('#v18MemoryPreferences').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(28, 28, 30)');
     await page.waitForFunction(()=>document.querySelector('#customerV18Status').textContent.includes('conversation deleted'));
     assert.deepEqual(model.profile,{consent:false,preferences:[]});assert.equal(await page.locator('#chatMessageThread').textContent(),'');
     await page.keyboard.press('Escape');assert.equal(await page.locator('#customerMemoryBackdropModal').getAttribute('aria-hidden'),'true');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
     console.log(`PASS contract ${width}x${height}: modifiers, quote-before-confirm, lost order recovery, receipt unpaid, AI confirmation/XSS, cart retry/conflict, waiter, offline`);
   } finally {await context.close();}
+}
+async function scrolling(browser) {
+  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),model=await fixture(context),page=await context.newPage();
+  model.items=Array.from({length:36},(_,index)=>({...second,id:`item_${index}`,name:`Menu ${index}`,category:`Category ${index%9}`,image:item.image,modifierGroups:[{id:'extras',name:'Extras',min:0,max:1,options:Array.from({length:24},(_,i)=>({id:`extra_${i}`,name:`Extra ${i}`,price:0}))}]}));
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);
+    await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    await page.locator('#catalogScrollArea').evaluate(el=>{el.scrollTop=600;});
+    const position=await page.locator('#catalogScrollArea').evaluate(el=>el.scrollTop);assert.ok(position>0);
+    const visibleButton=page.locator('[data-menu-id="item_8"] .btn-add-product');await visibleButton.click();
+    const beforeSheet=await page.locator('#catalogScrollArea').evaluate(el=>el.scrollTop);
+    await page.locator('#modOptionsBody').hover(); await page.mouse.wheel(0,650);
+    await require('@playwright/test').expect.poll(()=>page.locator('#modOptionsBody').evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+    await capture(page,'390-long-modifiers.png');await page.keyboard.press('Escape');await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    assert.equal(await page.locator('#catalogScrollArea').evaluate(el=>el.scrollTop),beforeSheet);
+    await page.locator('#btnHeaderBack').click();await page.goBack();await page.waitForFunction(()=>document.querySelector('#screenMenuCatalog').classList.contains('active'));
+    assert.equal(await page.locator('#catalogScrollArea').evaluate(el=>el.scrollTop),beforeSheet);
+    console.log('PASS long catalog/modifier scrolling, modal return and browser-back scroll preservation');
+  }finally{await context.close();}
 }
 async function live(browser,url){
   // Only use with a disposable merchant/session: this intentionally creates an unpaid order.
@@ -132,11 +179,11 @@ async function live(browser,url){
 }
 async function main(url=process.env.CUSTOMER_V18_URL) {
   const candidates=[process.env.CUSTOMER_V18_BROWSER,await require('puppeteer').executablePath(),
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'].filter(Boolean);
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', chromium.executablePath()].filter(Boolean);
   const executablePath=candidates.find(file=>fs.existsSync(file));
   assert.ok(executablePath,'Configure CUSTOMER_V18_BROWSER with an installed Chromium executable');
   const browser=await chromium.launch({headless:true,executablePath});
-  try {if(url)await live(browser,url);else for(const size of [[390,844],[1440,1000]])await contract(browser,...size);console.log('Screenshots: '+output);}
+  try {if(url)await live(browser,url);else {for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);}console.log('Screenshots: '+output);}
   finally{await browser.close();}
 }
 if(require.main===module)main().catch(error=>{console.error(error);process.exitCode=1;});

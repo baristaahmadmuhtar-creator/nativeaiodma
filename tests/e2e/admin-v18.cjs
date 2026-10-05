@@ -36,13 +36,14 @@ async function main() {
     });
     const base = config.PUBLIC_BASE_URL = `http://127.0.0.1:${server.address().port}`;
     const executablePath = [process.env.ADMIN_V18_BROWSER, await require('puppeteer').executablePath(),
-      'C:/Program Files/Google/Chrome/Application/chrome.exe'].filter(Boolean).find(file => fs.existsSync(file));
+      'C:/Program Files/Google/Chrome/Application/chrome.exe', chromium.executablePath()].filter(Boolean).find(file => fs.existsSync(file));
     assert.ok(executablePath, 'Installed Chromium executable required');
     browser = await chromium.launch({ executablePath, headless: true });
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: 'block' });
     const page = await context.newPage(); page.setDefaultTimeout(12000);
     page.on('pageerror', () => errors.push(`browser exception during ${phase}`));
-    page.on('dialog', dialog => dialog.accept());
+    let acceptDialog = true;
+    page.on('dialog', dialog => acceptDialog ? dialog.accept() : dialog.dismiss());
     page.on('request', req => {
       if (req.url().includes('/api/v1/') && req.method() !== 'GET') {
         const headers = req.headers();
@@ -110,6 +111,13 @@ async function main() {
 
     await visit('menu', '/admin/menu'); phase = 'menu create';
     await page.getByRole('button', { name: '+ Tambah menu', exact: true }).click();
+    await expect(dialog.locator('[name=id]')).toBeFocused();
+    await dialog.locator('[name=id]').fill('unsaved_test'); acceptDialog = false;
+    await page.keyboard.press('Escape'); await expect(dialog).toBeVisible();
+    await expect(dialog.locator('[name=id]')).toHaveValue('unsaved_test'); acceptDialog = true;
+    await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Tambah menu', exact: true })).toBeFocused();
+    await page.getByRole('button', { name: '+ Tambah menu', exact: true }).click();
     await dialog.locator('[name=id]').fill('browser_latte'); await dialog.locator('[name=name]').fill('Browser Latte');
     await dialog.locator('[name=price]').fill('4.50'); await dialog.locator('[name=category]').fill('Coffee');
     await dialog.locator('[name=image]').fill('assets/products/hot_latte.jpg');
@@ -118,6 +126,8 @@ async function main() {
     await dialog.getByRole('button', { name: '+ Opsi', exact: true }).click();
     await dialog.locator('[name=optionId]').fill('extra_oat'); await dialog.locator('[name=optionName]').fill('Oat'); await dialog.locator('[name=optionPrice]').fill('0.75');
     await submit('Simpan', '/admin/menu', 'POST', 201);
+    assert.equal(await page.locator('#toast').evaluate(node=>getComputedStyle(node).position),'static');
+    await page.screenshot({path:path.join(output,'desktop-menu-feedback.png'),animations:'disabled'});
     phase = 'menu edit';
     await page.locator('tr').filter({ hasText: 'Browser Latte' }).getByRole('button', { name: 'Edit', exact: true }).click();
     await dialog.locator('[name=name]').fill('Browser Latte Updated'); await dialog.locator('[name=price]').fill('4.75');
@@ -135,6 +145,20 @@ async function main() {
     await expect(dialog.locator('.qr-image')).toBeVisible();
     await page.waitForFunction(() => document.querySelector('.qr-image')?.naturalWidth > 0);
     await page.locator('#close-editor').click();
+    phase = 'same browser staff and customer';
+    const customerPage = await context.newPage();
+    await customerPage.goto(qr.url);
+    await customerPage.waitForFunction(()=>document.querySelector('#labelMenuTable').textContent==='Table 1');
+    await customerPage.locator('[data-lang="en-US"]').click(); await customerPage.locator('#qpLihatSemuaMenu').click();
+    await customerPage.locator('[data-menu-id="coffee"] .btn-add-product').click();
+    await customerPage.locator('#btnAddCustomizedToCart').click();
+    await customerPage.waitForFunction(()=>document.querySelector('#catalogCartBadge').textContent==='1');
+    const customerSession = await envelope(await context.request.get(`${base}/api/v1/session`,{headers:{'X-AIODMA-Surface':'customer'}}));
+    assert.equal(customerSession.role,'guest');
+    assert.equal((await envelope(await context.request.get(`${base}/api/v1/session`))).role,'owner');
+    await page.locator('#refresh').click(); await expect(page.locator('#updated-at')).toContainText('Diperbarui');
+    await expect(page.locator('#app')).toBeVisible(); await customerPage.close();
+    console.log('PASS same-browser QR/cart preserves owner session and isolated CSRF');
 
     await visit('knowledge', '/admin/resources/knowledge'); phase = 'knowledge creation';
     await page.getByRole('button', { name: '+ Dokumen', exact: true }).click(); await dialog.locator('[name=id]').fill('hours');
@@ -155,10 +179,16 @@ async function main() {
     const cart = await envelope(await guest.get('/api/v1/cart'));
     const changed = await envelope(await guest.put('/api/v1/cart', { headers: guestHeaders(), data: { expectedVersion: cart.version, lines: [{ menuId: 'browser_latte', qty: 2, optionIds: ['extra_oat'] }] } }));
     const quote = await envelope(await guest.post('/api/v1/quotes', { headers: guestHeaders(), data: { expectedVersion: changed.version } }), 201);
+    await visit('orders', '/orders'); phase = 'live operational updates';
+    await page.locator('.toolbar input[type=search]').fill('Browser Latte');
     const order = await envelope(await guest.post('/api/v1/orders', { headers: guestHeaders(), data: { quoteId: quote.id, confirmed: true, paymentMethod: 'CASH' } }), 201);
+    await expect(page.locator('[data-update-notice]')).toBeVisible();
+    await expect(page.locator('.toolbar input[type=search]')).toHaveValue('Browser Latte');
+    await page.locator('[data-update-notice] button').click();
+    await expect(page.locator('[data-update-notice]')).toHaveCount(0);
     assert.equal(order.paymentStatus, 'UNPAID'); assert.equal(order.totalMinor, 1100);
     await envelope(await guest.post('/api/v1/waiter-calls', { headers: guestHeaders(), data: { reason: 'Need help with the menu' } }), 201);
-    await visit('orders', '/orders'); phase = 'manual payment';
+    phase = 'manual payment';
     await page.getByRole('button', { name: 'Detail', exact: true }).click();
     await dialog.locator('form').filter({ has: page.getByRole('button', { name: 'Catat pembayaran', exact: true }) }).locator('[name=reference]').fill('Browser cash received');
     await submit('Catat pembayaran', `/admin/orders/${order.id}/payment`, 'PATCH');
@@ -188,6 +218,12 @@ async function main() {
       await page.locator('#close-editor').click();
     }
     phase = 'dark theme'; await page.locator('#theme-toggle').click(); await capture('320-dark-menu.png');
+    phase = 'kitchen role navigation';
+    await db.transaction(tenant,client=>client.query("UPDATE memberships SET role='kitchen' WHERE tenant_id=$1 AND user_id=(SELECT id FROM users WHERE email=$2)",[tenant,email]));
+    await page.reload(); await expect(page.locator('#account-role')).toHaveText('Dapur');
+    await expect(page.locator('#navigation a[href="#staff"],#navigation a[href="#settings"],#navigation a[href="#reports"]')).toHaveCount(0);
+    assert.equal((await context.request.get(`${base}/api/v1/admin/settings`)).status(),403);
+    await capture('320-kitchen-navigation.png');
     assert.deepEqual(errors, []);
     for (const write of writes) {
       assert.match(write.key || '', /^[a-f0-9-]{36}$/i, `Missing idempotency key at ${write.path}`);

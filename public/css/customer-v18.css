@@ -1,23 +1,30 @@
 /* Scoped functional states; the original customer composition stays intact. */
-.v18-status { position: relative; z-index: 100; padding: 10px 16px; background: var(--bg-surface, #fff); color: var(--text-primary, #111); font-size: 13px; overflow-wrap: anywhere; }
+.v18-status { position: relative; z-index: 100; padding: 10px 16px; background: var(--bg-card, #fff); color: var(--text-primary, #111); font-size: 13px; overflow-wrap: anywhere; }
 .v18-status[hidden], .v18-status button[hidden] { display: none; }
 .v18-status button { margin-left: 8px; }
-.v18-memory-form { display: grid; gap: 12px; color: #111827 !important; }
+.v18-memory-form { display: grid; gap: 12px; color: var(--text-primary,#111827) !important; }
 #customerMemoryBackdropModal .v18-memory-form,
 #customerMemoryBackdropModal .v18-memory-form label,
 #customerMemoryBackdropModal .v18-memory-form .v18-option,
 #customerMemoryBackdropModal .v18-memory-form .v18-option span {
-  color: #111827 !important;
+  color: var(--text-primary,#111827) !important;
 }
 .v18-memory-form label { font-weight: 700; }
-.v18-memory-form textarea { display:block; width:100%; max-width:100%; margin-top:8px; border:1px solid var(--border-subtle,#aaa); border-radius:6px; background:var(--bg-surface,#fff); color:var(--text-primary,#111); padding:10px; font:inherit; resize:vertical; }
-#customerMemoryBackdropModal .mobile-qr-card-modal { max-height:calc(100svh - 32px); overflow:auto; background:#fff; color:#111827; }
+.v18-memory-form textarea { display:block; width:100%; max-width:100%; margin-top:8px; border:1px solid var(--border-subtle,#aaa); border-radius:6px; background:var(--bg-card,#fff); color:var(--text-primary,#111); padding:10px; font:inherit; resize:vertical; }
+#customerMemoryBackdropModal{--bg-surface:var(--bg-subtle,#f1f3f5)}
+#customerMemoryBackdropModal .mobile-qr-card-modal { max-height:calc(100dvh - 32px); overflow:auto; overscroll-behavior:contain; background:var(--bg-card,#fff)!important; color:var(--text-primary,#111827); text-align:left!important; }
+[data-theme="dark"] #btnResetMemoryProfile{color:#ff9ea6!important}
+#btnResetMemoryProfile{background:var(--bg-card,#fff)!important;border:1px solid currentColor!important}
+#btnCloseMemoryModal{width:44px!important;height:44px!important;flex-shrink:0}
 #customerMemoryBackdropModal .mobile-qr-card-modal p,
-#customerMemoryBackdropModal .mobile-qr-card-modal span { color: #4b5563; }
-.v18-option { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 14px; color: #111827; }
-.v18-option span { color: #111827 !important; font-weight: 700; line-height: 1.35; }
+#customerMemoryBackdropModal .mobile-qr-card-modal span { color: var(--text-secondary,#4b5563); }
+.v18-option { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 14px; color: var(--text-primary,#111827); }
+.v18-option span { color: var(--text-primary,#111827) !important; font-weight: 700; line-height: 1.35; }
 .v18-option input { width: 20px; height: 20px; flex: 0 0 20px; }
 .v18-sheet-close { align-self: flex-end; flex-shrink: 0; }
+.bottom-sheet-card,.catalog-scroll-area,.mod-options-body{overscroll-behavior:contain}
+#tableInfoBackdrop .bottom-sheet-card > div:has(> p){background:var(--bg-subtle,#f1f3f5)!important;color:var(--text-primary,#111)}
+button:focus-visible,[role="button"]:focus-visible,[role="tab"]:focus-visible{outline:2px solid var(--text-primary,#111);outline-offset:3px}
 .v18-proposal { border-top: 1px solid var(--border-subtle, #ddd); margin-top: 12px; padding-top: 12px; }
 .v18-proposal p, .chat-bubble-ai-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .modifier-group { min-width: 0; }
