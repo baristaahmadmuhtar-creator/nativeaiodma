@@ -73,6 +73,13 @@ test('v18 static boundary serves only vetted app assets with restrictive CSP',as
   const csp=home.headers.get('content-security-policy');
   assert.match(csp,/default-src 'self'/);
   assert.match(csp,/script-src 'self' 'sha256-/);
+  const scriptPolicy=csp.split(';').find(part=>part.trim().startsWith('script-src '));
+  assert.doesNotMatch(scriptPolicy,/unsafe-inline|unsafe-eval/);
+  for(const match of home.text.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+    const hash=crypto.createHash('sha256').update(match[1]).digest('base64');
+    assert.ok(scriptPolicy.includes(`'sha256-${hash}'`),'every constant inline script has an exact CSP hash');
+  }
+  assert.ok(home.text.indexOf('aiodma:v18:theme')<home.text.indexOf('css/styles.css'),'first-paint theme precedes stylesheet loading');
   assert.match(csp,/script-src-attr 'none'/);
   assert.match(csp,/object-src 'none'/);
   assert.match(csp,/frame-ancestors 'none'/);

@@ -25,7 +25,7 @@
   const button = (text, cls, action) => { const el = node('button', cls, text); el.type = 'button'; el.addEventListener('click', action); return el; };
   const money = (minor, currency = state.merchant?.currency || 'IDR') => new Intl.NumberFormat({id:'id-ID',en:'en-US',ms:'ms-BN'}[state.language], { style:'currency', currency }).format(Number(minor) / 100);
   const storage = { get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }, put(key, value) { localStorage.setItem(key, JSON.stringify(value)); }, remove(key) { localStorage.removeItem(key); } };
-  const status = node('div', 'v18-status'); status.id = 'customerV18Status'; status.setAttribute('role','status'); status.hidden = true;
+  const status = node('div', 'v18-status'); status.id = 'customerV18Status'; status.setAttribute('aria-live','off'); status.hidden = true;
   const statusText = node('span'); const retry = button('', 'tracker-btn-outline', () => run(async () => {
     if (!state.session) return initialize();
     if (!state.pending && $('customerMemoryBackdropModal').getAttribute('aria-hidden') === 'false') return openMemory({record:false});
@@ -34,8 +34,11 @@
   status.append(statusText, retry);
   function measureStatus() { document.documentElement.style.setProperty('--notice-height', !status.hidden && status.parentElement === $('phoneViewport') ? `${status.offsetHeight + 8}px` : '0px'); }
   function placeStatus() {
-    const host = status.dataset.tone === 'success' ? document.querySelector('.app-host-container') : document.querySelector('#customerMemoryBackdropModal[aria-hidden="false"] .mobile-qr-card-modal,.bottom-sheet-backdrop.open .bottom-sheet-card') || $('phoneViewport');
-    host.prepend(status); measureStatus();
+    const opened = document.querySelector('#customerMemoryBackdropModal[aria-hidden="false"] .mobile-qr-card-modal,.bottom-sheet-backdrop.open .bottom-sheet-card');
+    const host = opened || (status.dataset.tone === 'success' ? document.querySelector('.app-host-container') : $('phoneViewport'));
+    const grab = opened?.querySelector('.v18-sheet-grab');
+    if (grab) grab.after(status); else host.prepend(status);
+    measureStatus();
   }
   function notice(message, canRetry = false, tone = 'info', background = false) {
     // Background progress must not replace an unresolved actionable error.
@@ -396,31 +399,62 @@
     clearTimeout(quoteTimer); quoteTimer = setTimeout(() => {invalidate(); notice(t('expired'));},Math.max(0,new Date(state.quote.expiresAt).getTime()-Date.now())); syncControls();
   }
   async function accepted(order) {
-    updateOrder(order); invalidate(); showScreen('screenOrderSuccess',{replace:true}); notice('');
+    if (!validOrder(order)) throw new Error(t('reconnect'));
+    updateOrder(order);
+    invalidate(); showScreen('screenOrderSuccess',{replace:true}); notice('');
     state.cart = await api('/cart'); renderCart();
   }
+  function paymentLabel(order) {
+    return ({UNPAID:t('unpaid'),PAID:t('paid'),PARTIALLY_REFUNDED:({id:'DIKEMBALIKAN SEBAGIAN',en:'PARTIALLY REFUNDED',ms:'DIPULANGKAN SEBAHAGIAN'})[state.language],REFUNDED:({id:'DIKEMBALIKAN',en:'REFUNDED',ms:'DIPULANGKAN'})[state.language]})[order.paymentStatus];
+  }
+  function validOrder(order) {
+    const text = (v,max) => typeof v === 'string' && v.length > 0 && v.length <= max;
+    const minor = v => Number.isSafeInteger(v) && v >= 0;
+    // Validate the entire snapshot before touching state or any receipt/tracker DOM.
+    return !!order && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.id) && order.merchantId === state.merchantId && order.tableNum === state.tableId &&
+      text(order.orderNumber,100) && text(order.table,100) && text(order.createdAt,100) && Number.isFinite(Date.parse(order.createdAt)) &&
+      Number.isSafeInteger(order.version) && order.version > 0 && /^[A-Z]{3}$/.test(order.currency) &&
+      ['received','accepted','preparing','ready','served','completed','cancelled','rejected'].includes(order.status) &&
+      ['UNPAID','PAID','PARTIALLY_REFUNDED','REFUNDED'].includes(order.paymentStatus) && ['CASH','MANUAL_TRANSFER'].includes(order.paymentMethod) &&
+      ['subtotalMinor','taxMinor','serviceMinor','discountMinor','totalMinor'].every(key => minor(order[key])) &&
+      Array.isArray(order.items) && order.items.length > 0 && order.items.length <= 50 && order.items.every(item => item && text(item.name,500) &&
+        Number.isInteger(item.qty) && item.qty > 0 && item.qty <= 99 && minor(item.lineTotalMinor) &&
+        Array.isArray(item.modifiers) && item.modifiers.length <= 30 && item.modifiers.every(option => option && text(option.name,500)));
+  }
   function updateOrder(order) {
-    if (state.order?.id === order.id && state.order.version > order.version) return;
+    if (!validOrder(order) || (state.order?.id === order.id && state.order.version > order.version)) return false;
     state.order = order;
-    const label = t(order.status), paid = order.paymentStatus === 'PAID' ? t('paid') : (order.paymentStatus === 'UNPAID' ? t('unpaid') : order.paymentStatus);
+    const label = t(order.status), paid = paymentLabel(order);
     set('successSubtitle',`#${order.orderNumber} - ${label}. ${paid}`); set('receiptBrandName',state.merchant?.name || 'AIODMA'); set('receiptOrderId',`#${order.orderNumber}`);
     set('receiptDateTime',new Date(order.createdAt).toLocaleString({id:'id-ID',en:'en-US',ms:'ms-BN'}[state.language]));
     set('receiptPaymentName',order.paymentMethod === 'CASH' ? t('cash') : t('transfer'));
     document.querySelector('.receipt-success-text').textContent = paid; document.querySelector('.receipt-pm-status-pill').textContent = paid;
+    document.querySelector('.receipt-order-subtext').textContent = label;
+    document.querySelector('.thermal-paper-card').dataset.payment = order.paymentStatus;
+    $('trackerPaymentStatusLabel').dataset.payment = order.paymentStatus;
     snapshotItems($('receiptItemsContainer'),order); totals('receipt',order);
     set('trackerOrderNumberLabel',`#${order.orderNumber} - ${order.table}`); set('trackerStatusBadge',label); set('trackerPaymentStatusLabel',paid); set('trackerOrderTotalVal',money(order.totalMinor,order.currency)); snapshotItems($('trackerItemsList'),order);
     const progress = {received:1,accepted:1,preparing:2,ready:3,served:4,completed:4}[order.status] || 0;
     ['Received','Preparing','Ready','Completed'].forEach((name,i) => $(`trackerStep${name}`).classList.toggle('active',progress > i));
+    const descriptions = ({id:['Masuk ke antrean dapur','Tim dapur menyiapkan pesanan','Menunggu diantar ke meja','Diantar ke meja Anda'],en:['In the kitchen queue','The kitchen is preparing your order','Waiting for table delivery','Delivered to your table'],ms:['Dalam giliran dapur','Dapur sedang menyediakan pesanan','Menunggu dihantar ke meja','Dihantar ke meja anda']})[state.language];
+    ['Received','Preparing','Ready','Completed'].forEach((name,i) => {
+      $(`trackerStep${name}`).querySelector('.step-title').textContent = `${i+1}. ${t(['received','preparing','ready',order.status==='completed'?'completed':'served'][i])}`;
+      $(`trackerStep${name}`).querySelector('.step-desc').textContent = descriptions[i];
+    });
     const timeline = document.querySelector('.tracker-steps-timeline'); timeline.setAttribute('aria-valuemin','0'); timeline.setAttribute('aria-valuenow',String(progress)); timeline.setAttribute('aria-valuetext',label);
+    timeline.hidden = ['cancelled','rejected'].includes(order.status);
+    for (const id of ['trackerStatusBadge','activityBannerBadge']) $(id).dataset.status = order.status;
     set('activityBannerTitle',`#${order.orderNumber} - ${order.table}`); set('activityBannerSub',`${label} - ${paid}`); set('activityBannerBadge',label);
     $('liveOrderActivityBanner').style.display = ''; $('menuItemOpenTracker').style.display = '';
+    return true;
   }
   async function loadOrders() {
     await verifySession(); const before = state.order;
     const orders = await api('/orders');
+    if (!Array.isArray(orders)) throw new Error(t('reconnect'));
     if (before?.id !== state.order?.id) return;
     const selected = orders.find(o => o.id === state.order?.id) || orders[0];
-    if (selected) updateOrder(selected);
+    if (selected) { if (!validOrder(selected)) throw new Error(t('reconnect')); updateOrder(selected); }
     else { state.order = null; $('liveOrderActivityBanner').style.display = 'none'; $('menuItemOpenTracker').style.display = 'none'; }
   }
   function refreshCatalog() {
@@ -433,20 +467,32 @@
   }
   function connectEvents() {
     state.events?.close(); const epoch = state.epoch; const events = new EventSource('/api/v1/events?surface=customer'); state.events = events;
+    trackingConnection(false);
     events.onmessage = event => {
       if (epoch !== state.epoch) return;
       try { const data = JSON.parse(event.data); if (data.order && (!state.order || state.order.id === data.order.id)) {
           const previous=state.order;
           const changed=previous?.id===data.order.id && data.order.version>previous.version;
-          updateOrder(data.order);
-          if(changed && !state.pending && !state.busy) notice(`#${data.order.orderNumber} - ${t(data.order.status)}. ${['PAID','UNPAID'].includes(data.order.paymentStatus)?t(data.order.paymentStatus==='PAID'?'paid':'unpaid'):data.order.paymentStatus}`,false,'success',true);
+          const applied = updateOrder(data.order);
+          if(applied && changed && !state.pending && !state.busy) {
+            const message = `#${data.order.orderNumber} - ${t(data.order.status)}. ${paymentLabel(data.order)}`;
+            if ($('orderTrackerBackdrop').classList.contains('open')) { if (status.hidden || status.dataset.tone !== 'error') set('accessibilityLiveRegion',message); }
+            else notice(message,false,'success',true);
+          }
         }
-        if(data.type==='WAITER_CALL_UPDATED') notice(({id:{acknowledged:'Pelayan sedang menangani panggilan Anda.',resolved:'Panggilan pelayan selesai.'},en:{acknowledged:'A waiter is handling your request.',resolved:'Your waiter request is resolved.'},ms:{acknowledged:'Pelayan sedang mengurus permintaan anda.',resolved:'Permintaan pelayan selesai.'}})[state.language][data.call?.status] || '',false,'success',true);
+        if(data.type==='WAITER_CALL_UPDATED') {
+          const message = ({id:{acknowledged:'Pelayan sedang menangani panggilan Anda.',resolved:'Panggilan pelayan selesai.'},en:{acknowledged:'A waiter is handling your request.',resolved:'Your waiter request is resolved.'},ms:{acknowledged:'Pelayan sedang mengurus permintaan anda.',resolved:'Permintaan pelayan selesai.'}})[state.language][data.call?.status];
+          if (message) notice(message,false,'success',true);
+        }
         if (data.type === 'MENU_UPDATED') refreshCatalog();
       } catch { /* Malformed events must not mutate customer state. */ }
     };
-    events.onopen = () => { if (state.session && epoch === state.epoch) loadOrders().catch(report); };
-    events.onerror = () => { if (!navigator.onLine) notice(t('offline')); };
+    events.onopen = () => { if (state.session && epoch === state.epoch) {trackingConnection(true);loadOrders().catch(report);} };
+    events.onerror = () => { if (epoch !== state.epoch) return; trackingConnection(false); if (!navigator.onLine) notice(t('offline'),true,'error',true); };
+  }
+  function trackingConnection(live) {
+    state.trackingLive = live && navigator.onLine;
+    set('trackerConnectionLabel',state.trackingLive ? ({id:'Terhubung ke pembaruan langsung',en:'Connected to live updates',ms:'Disambung ke kemas kini langsung'})[state.language] : ({id:navigator.onLine?'Menyambungkan ulang. Status terakhir tetap ditampilkan.':'Offline. Status terakhir tetap ditampilkan.',en:navigator.onLine?'Reconnecting. Showing the last known status.':'Offline. Showing the last known status.',ms:navigator.onLine?'Menyambung semula. Status terakhir dipaparkan.':'Luar talian. Status terakhir dipaparkan.'})[state.language]);
   }
   function bubble(text, user = false) { const area = $('chatScrollArea'), following = area.scrollHeight-area.scrollTop-area.clientHeight < 80;
     const el = node('div',user ? 'chat-bubble-user' : 'chat-bubble-ai'); el.append(node('div',user ? '' : 'chat-bubble-ai-text',text)); $('chatEmptyState').hidden = true; $('chatMessageThread').style.display = ''; $('chatMessageThread').append(el); if (user || following) area.scrollTop = area.scrollHeight; return el; }
@@ -545,6 +591,7 @@
     all('.v18-sheet-grab').forEach(el=>{el.setAttribute('aria-label',closeLabel);el.title=closeLabel;});
     updateTableLabels();
     renderTheme();
+    trackingConnection(state.trackingLive);
     renderMenu(); renderCart(); if (state.order) updateOrder(state.order);
   }
   function theme() { const dark = document.documentElement.dataset.theme !== 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -553,8 +600,10 @@
   }
   function renderTheme() {
     const dark = document.documentElement.dataset.theme === 'dark';
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    document.querySelector('meta[name="theme-color"]').content = dark ? '#000000' : '#FFFFFF';
     for (const prefix of ['header','lang']) { $(`${prefix}ThemeIconDark`).style.display = dark ? 'none' : ''; $(`${prefix}ThemeIconLight`).style.display = dark ? '' : 'none'; }
-    for (const id of ['btnHeaderThemeToggle','btnLangThemeToggle']) $(id).setAttribute('aria-pressed',String(dark));
+    for (const id of ['btnHeaderThemeToggle','btnLangThemeToggle']) { $(id).setAttribute('aria-pressed',String(dark)); $(id).setAttribute('aria-label',({id:dark?'Mode terang':'Mode gelap',en:dark?'Light mode':'Dark mode',ms:dark?'Mod terang':'Mod gelap'})[state.language]); }
     set('themeMenuLabel',({id:dark?'Mode terang':'Mode gelap',en:dark?'Light mode':'Dark mode',ms:dark?'Mod terang':'Mod gelap'})[state.language]);
   }
   function bind(id, action) { $(id)?.addEventListener('click',action); }
@@ -617,7 +666,9 @@
       document.documentElement.style.setProperty('--app-height',`${viewport?.height || innerHeight}px`);
       document.documentElement.style.setProperty('--viewport-top',`${viewport?.offsetTop || 0}px`);
     }
-    sizeViewport(); window.addEventListener('resize',sizeViewport); window.visualViewport?.addEventListener('resize',sizeViewport); window.visualViewport?.addEventListener('scroll',sizeViewport);
+    let viewportFrame = 0;
+    const queueViewport = () => { if (!viewportFrame) viewportFrame = requestAnimationFrame(() => {viewportFrame=0;sizeViewport();}); };
+    sizeViewport(); window.addEventListener('resize',queueViewport); window.visualViewport?.addEventListener('resize',queueViewport); window.visualViewport?.addEventListener('scroll',queueViewport);
     $('modOptionsBody').prepend(document.querySelector('.mod-header-row'));
     $('modSpecialNote').closest('.modifier-group').hidden = true;
     $('btnChatNotes').hidden = true;
@@ -631,6 +682,7 @@
     memoryCard.prepend($('btnCloseMemoryModal'));memoryHeader.after(memoryBody);
     nativeGrab($('btnCloseMemoryModal'),memoryCard,$('customerMemoryBackdropModal'));
     new ResizeObserver(measureStatus).observe(status);
+    new ResizeObserver(() => { if ($('mainHeaderBar').offsetHeight) document.documentElement.style.setProperty('--measured-header-space',`${$('mainHeaderBar').offsetHeight + 4}px`); }).observe($('mainHeaderBar'));
     new ResizeObserver(() => document.documentElement.style.setProperty('--activity-height',`${$('liveOrderActivityBanner').offsetHeight ? $('liveOrderActivityBanner').offsetHeight+8 : 0}px`)).observe($('liveOrderActivityBanner'));
     all('.bottom-sheet-backdrop').forEach(el => {
       el.inert = true; el.addEventListener('click',event => {if (event.target === el) dismissSheets();});
@@ -647,6 +699,7 @@
         if (el.id==='cartBackdrop') {const clear=button('','tracker-btn-outline',()=>run(()=>changeCart(()=>[])));clear.id='btnClearCart';$('cartSheetTitle').after(clear);}
       }
     });
+    all('.chat-scroll-area,.catalog-scroll-area,.v18-sheet-content,.mod-options-body,.v18-memory-body').forEach(el => {el.tabIndex=0;});
     document.addEventListener('keydown',event => {
       if (event.key === 'Escape') { event.preventDefault(); if (document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]')) dismissSheets(); else closePopups(true); }
       const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
@@ -700,9 +753,9 @@
     bind('btnChatSend',() => {if($('btnChatSend').disabled)return;const message=$('chatInputText').value.trim();$('chatInputText').value='';run(() => chat(message));});$('chatInputText').addEventListener('input',syncControls);$('chatInputText').addEventListener('keydown',event => {if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!$('btnChatSend').disabled){event.preventDefault();$('btnChatSend').click();}});
     all('.quick-prompt-pill').filter(el=>el.id!=='qpLihatSemuaMenu').forEach(el=>el.addEventListener('click',()=>run(()=>chat(el.dataset.prompt || el.textContent.trim()))));
     $('catalogSearchInput').addEventListener('input',renderMenu);bind('btnClearSearch',()=>{$('catalogSearchInput').value='';renderMenu();});
-    window.addEventListener('offline',()=>{invalidate();notice(t('offline'),false,'error');syncControls();});window.addEventListener('online',()=>run(async()=>{if(!state.session)await initialize();else await recover();}));
+    window.addEventListener('offline',()=>{trackingConnection(false);invalidate();notice(t('offline'),false,'error');syncControls();});window.addEventListener('online',()=>{trackingConnection(false);run(async()=>{if(!state.session)await initialize();else await recover();});});
     window.addEventListener('pagehide',()=>{state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
-    document.documentElement.dataset.theme=storage.get('aiodma:v18:theme')==='dark'?'dark':'light';language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage',{replace:true});run(initialize);
+    language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage',{replace:true});run(initialize);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

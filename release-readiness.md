@@ -4,6 +4,16 @@ Verdict: **NATIVE CUSTOMER LAYERS AND CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCT
 
 Current customer release `593a263c36453d370388a17b577f608228f7ba36` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_GtKuaqdL2gEa7cGS5WKJt5HncaUy` as Ready; immutable URL: `https://nativeaiodma-v18-co8w8hyy6-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` remain in use. Existing owner credentials, catalog edits, publication and orders are preserved by conflict-safe provisioning. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
 
+## v23 Theme and Tracking Candidate Verification
+
+This candidate is locally verified and awaiting its own CI/production promotion. The deployed source above remains v22 until the promotion record is updated.
+
+- Customer surfaces now cover actual receipt/success/payment/tracker selectors in both themes, first-paint OS/saved theme, 48px controls, measured safe-area header, scrollbar-free scrolling, print colors and canonical/refund/stopped tracking. Sheet notifications cannot overlay controls; open tracking avoids duplicate visual progress toasts. See `docs/UX_ACCEPTANCE_v23_THEME_TRACKING.md` and `docs/SECURITY_REVIEW_v23_CUSTOMER.md`.
+- 63 unit tests passed. The 43 real PostgreSQL tests also verify exact hashes for every constant inline script, including first-paint theme, without weakening script CSP.
+- All 18 customer groups passed: fourteen retained journeys and four new both-theme comfort groups. Full local evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-ZPrSut/`; final focused comfort evidence after the HTTP/announcement guards: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-6qmerE/`.
+- Actual local API persisted exactly one unpaid order: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-9HvODz/`. Admin flow passed at `output/admin-v18/e84d1a5a9ad2/`; distinct production-MFA role flow passed locally at 390/1440: `output/playwright/onboarding-1791220888639/`.
+- No owner credentials/MFA, original cafe ledger or financial routes were changed. Physical Safari/IME/VoiceOver/operator and other full production gates remain open. This candidate is not yet a new live verification claim.
+
 ## v22 Native Customer Layer Verification
 
 - Centered grabbers replace modal X buttons, with bounded drag/flick dismissal, cancelled/short/upward gesture recovery, accessible tap/keyboard closure and one-layer history restoration. Preferences now shares the sheet/scroll contract. Success feedback is transient; actionable errors persist. Search/cart/send controls, long names, mode state, focus indicators and dark proposal contrast are refined. See `docs/UX_ACCEPTANCE_v22_NATIVE_SHEETS.md`.

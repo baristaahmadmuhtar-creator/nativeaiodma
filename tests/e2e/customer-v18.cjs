@@ -56,7 +56,7 @@ async function fixture(context) {
       if(endpoint==='/orders'&&method==='POST') {
         assert.ok(key);assert.equal(body.confirmed,true);assert.equal(body.paymentMethod,'CASH');assert.equal(body.quoteId,model.quote.id);
         if(model.keys.has(key))return respond(route,model.keys.get(key));
-        const order={...model.quote,id:crypto.randomUUID(),orderNumber:'FIXTURE1',table:'Meja 5',tableNum:5,status:'received',paymentStatus:'UNPAID',paymentMethod:body.paymentMethod,version:1,createdAt:new Date().toISOString()};model.orders.unshift(order);model.keys.set(key,order);model.cart={version:model.cart.version+1,lines:[]};
+        const order={...model.quote,id:crypto.randomUUID(),merchantId:'fixture',orderNumber:'FIXTURE1',table:'Meja 5',tableNum:5,status:'received',paymentStatus:'UNPAID',paymentMethod:body.paymentMethod,version:1,createdAt:new Date().toISOString()};model.orders.unshift(order);model.keys.set(key,order);model.cart={version:model.cart.version+1,lines:[]};
         if(model.loseOrder){model.loseOrder=false;return route.abort('failed');}return respond(route,order,201);
       }
       if(endpoint==='/orders')return respond(route,model.orders);
@@ -333,13 +333,93 @@ async function nativeLayers(browser,width,height) {
     console.log(`PASS native layers ${width}x${height}: focus rings, mode checks, search width, transient feedback, drag/snap/cancel/touch/history, pinned memory controls, canonical cart totals, circular busy send, persistent offline`);
   }catch(e){await capture(page,`${width}-native-failure.png`);console.log('Native layer evidence: '+output);throw e;}finally{await context.close();}
 }
+async function comfort(browser,width,height) {
+  const context=await browser.newContext({viewport:{width,height},colorScheme:'dark',serviceWorkers:'block'});
+  const model=await fixture(context),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  // Controllable transport only for malformed/stale-event UI tests; live tests use real SSE.
+  await context.addInitScript(()=>{window.__streams=[];window.EventSource=class {
+    constructor(){window.__streams.push(this);} close(){} emit(data){this.onmessage?.({data:JSON.stringify(data)});}
+  };});
+  const emit=async data=>page.evaluate(data=>window.__streams.at(-1).emit(data),data);
+  async function opaqueContrast(selector,background) {
+    const ratio=await page.locator(selector).first().evaluate((el,bg)=>{
+      const parse=s=>s.match(/[\d.]+/g).slice(0,3).map(Number);
+      const lum=rgb=>rgb.map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);
+      const fg=lum(parse(getComputedStyle(el).color)),b=lum(parse(getComputedStyle(document.querySelector(bg)).backgroundColor));
+      return (Math.max(fg,b)+.05)/(Math.min(fg,b)+.05);
+    },background);assert.ok(ratio>=4.5,`${selector}: contrast ${ratio}`);
+  }
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);
+    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','OS dark is respected without a stored preference');
+    assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'),'#000000');
+    await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    for(const theme of ['dark','light']) {
+      if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#btnHeaderThemeToggle').click();
+      for(const id of ['btnHeaderBack','btnHeaderLangToggle','btnHeaderThemeToggle','btnHeaderOptions']) {
+        await reachable(page,'#'+id);const box=await page.locator('#'+id).boundingBox();assert.ok(box.width>=48&&box.height>=48);
+      }
+      const back=await page.locator('#btnHeaderBack').boundingBox(),options=await page.locator('#btnHeaderOptions').boundingBox();assert.ok(Math.abs(back.y-options.y)<1,'normal navigation stays on one row');
+      const bounds=await page.locator('.app-host-container').boundingBox();assert.ok(Math.abs(bounds.height-height)<1&&Math.abs(bounds.width-width)<1,'full available viewport');
+      assert.equal(await page.locator('.catalog-scroll-area').evaluate(el=>getComputedStyle(el).scrollbarWidth),'none');
+      await addCoffee(page);await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();
+      await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);await opaqueContrast('.payment-method-card:not([hidden]) .pm-name','.payment-method-card:not([hidden])');
+      await capture(page,`${width}-comfort-${theme}-payment.png`);
+      await page.locator('#btnProcessPayment').click();await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));
+      await opaqueContrast('.success-title','#screenOrderSuccess');await opaqueContrast('.success-sub','#screenOrderSuccess');await capture(page,`${width}-comfort-${theme}-success.png`);
+      await page.locator('#btnSaveReceipt').click();await opaqueContrast('.receipt-brand-name','.thermal-paper-card');await opaqueContrast('#receiptTotal','.thermal-paper-card');
+      assert.equal(await page.locator('.thermal-paper-card').getAttribute('data-payment'),'UNPAID');await capture(page,`${width}-comfort-${theme}-receipt.png`);
+      await page.emulateMedia({media:'print'});assert.equal(await page.locator('#receiptTotal').evaluate(el=>getComputedStyle(el).color),'rgb(17, 17, 17)');
+      assert.equal(await page.locator('.thermal-paper-card').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');await page.emulateMedia({media:'screen'});
+      await page.locator('#btnReceiptBackToHome').click();await page.locator('#btnOpenOrderTrackerFromBanner').click();await page.waitForSelector('#orderTrackerBackdrop.open');
+      await page.evaluate(()=>window.__streams.at(-1).onopen());await page.waitForFunction(()=>document.querySelector('#trackerConnectionLabel').textContent==='Connected to live updates');
+      await opaqueContrast('.step-title','#orderTrackerBackdrop .bottom-sheet-card');await opaqueContrast('#trackerOrderTotalVal','#orderTrackerBackdrop .bottom-sheet-card');
+      const order=model.orders[0];
+      await emit({type:'WAITER_CALL_UPDATED',call:{status:'acknowledged'}});
+      assert.equal(await page.locator('#customerV18Status').evaluate(el=>el.parentElement.classList.contains('bottom-sheet-card')),true,'sheet feedback never overlays its content');
+      for(const status of ['accepted','preparing','ready','served','completed','cancelled','rejected']) {
+        order.status=status;order.version++;order.paymentStatus=status==='served'?'PARTIALLY_REFUNDED':status==='completed'?'REFUNDED':'PAID';
+        await emit({type:'ORDER_UPDATED',order});
+        assert.equal(await page.locator('#trackerStatusBadge').getAttribute('data-status'),status);
+        assert.equal(await page.locator('.tracker-steps-timeline').evaluate(el=>el.hidden),['cancelled','rejected'].includes(status));
+        if(status==='served')assert.equal(await page.locator('#trackerStepCompleted .step-title').textContent(),'4. Served');
+        if(status==='completed')assert.match(await page.locator('#trackerPaymentStatusLabel').textContent(),/^REFUNDED$/);
+        if(status==='preparing')await capture(page,`${width}-comfort-${theme}-preparing.png`);
+      }
+      const before=await page.locator('#activityBannerSub').textContent();
+      await emit({order:{...order,version:order.version+999,items:null}});await emit({order:{...order,version:order.version+999,tableNum:6}});
+      await emit({order:{...order,version:order.version-1,status:'received'}});
+      assert.equal(await page.locator('#activityBannerSub').textContent(),before,'bad and stale events do not poison state');
+      await emit({type:'WAITER_CALL_UPDATED',call:{status:'not-real'}});
+      assert.match(await page.locator('#customerV18Status').textContent(),/A waiter is handling your request/,'unknown waiter events do not clear feedback');
+      await capture(page,`${width}-comfort-${theme}-tracker.png`);
+      await page.keyboard.press('Escape');await page.waitForSelector('#orderTrackerBackdrop.open',{state:'hidden'});
+      // Safe areas are simulated layout contracts, not a claim of physical iPhone validation.
+      await page.evaluate(()=>{const r=document.documentElement;r.style.setProperty('--safe-top','24px');r.style.setProperty('--safe-left','24px');r.style.setProperty('--safe-right','24px');r.style.setProperty('--safe-bottom','24px');});
+      await page.locator('#chatInputText').fill('Safe area check');await reachable(page,'#btnHeaderOptions');await reachable(page,'#btnChatSend');await page.locator('#chatInputText').fill('');await capture(page,`${width}-comfort-${theme}-safe-area.png`);
+      await page.evaluate(()=>['top','left','right','bottom'].forEach(s=>document.documentElement.style.removeProperty('--safe-'+s)));
+      await page.locator('#qpLihatSemuaMenu').click();
+    }
+    model.items=Array.from({length:80},(_,i)=>({...second,id:'long-'+i,name:'Long menu '+i}));await emit({type:'MENU_UPDATED'});await page.waitForFunction(()=>document.querySelectorAll('#menuGridContainer .product-card').length===80);
+    await page.locator('.catalog-scroll-area').focus();await page.keyboard.press('PageDown');await page.waitForFunction(()=>document.querySelector('.catalog-scroll-area').scrollTop>0);
+    await context.setOffline(true);await page.waitForFunction(()=>document.querySelector('#customerV18Status').dataset.tone==='error');
+    assert.equal(await page.locator('#trackerConnectionLabel').textContent(),'Offline. Showing the last known status.');
+    const error=await page.locator('#customerV18Status').textContent();await emit({type:'WAITER_CALL_UPDATED',call:{status:'resolved'}});assert.equal(await page.locator('#customerV18Status').textContent(),error);
+    await page.emulateMedia({contrast:'more'});assert.equal(await page.locator('#customerV18Status').evaluate(el=>getComputedStyle(el).backdropFilter),'none');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
+    console.log(`PASS comfort ${width}x${height}: OS theme, 48px controls, screen/print contrast, canonical tracker/refunds, malformed/stale events, safe areas, hidden scrollbar keyboard scroll, error priority`);
+  }catch(e){await capture(page,`${width}-comfort-failure.png`);console.log('Comfort evidence: '+output);throw e;}finally{await context.close();}
+}
 async function main(url=process.env.CUSTOMER_V18_URL) {
   const candidates=[process.env.CUSTOMER_V18_BROWSER,await require('puppeteer').executablePath(),
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', chromium.executablePath()].filter(Boolean);
   const executablePath=candidates.find(file=>fs.existsSync(file));
   assert.ok(executablePath,'Configure CUSTOMER_V18_BROWSER with an installed Chromium executable');
   const browser=await chromium.launch({headless:true,executablePath});
-  try {if(url)await live(browser,url);else {if(!process.env.CUSTOMER_V18_NATIVE_ONLY){for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await nativeLayers(browser,...size);}console.log('Screenshots: '+output);}
+  try {if(url)await live(browser,url);else {
+    if(!process.env.CUSTOMER_V18_COMFORT_ONLY){if(!process.env.CUSTOMER_V18_NATIVE_ONLY){for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await nativeLayers(browser,...size);}
+    if(!process.env.CUSTOMER_V18_NATIVE_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await comfort(browser,...size);
+  }console.log('Screenshots: '+output);}
   finally{await browser.close();}
 }
 if(require.main===module)main().catch(error=>{console.error(error);process.exitCode=1;});

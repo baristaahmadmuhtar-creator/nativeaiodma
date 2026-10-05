@@ -5,7 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>AIODMA — AI Conversational Ordering & Digital Menu Assistant</title>
   <meta name="description" content="iOS-Grade Digital Cashier and Smart Menu Assistant with Instant App Clip Launch and Real-Time KDS Integration.">
-  <meta name="theme-color" content="#F6F8FC">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (() => {
+      let preference;
+      try { preference = JSON.parse(localStorage.getItem('aiodma:v18:theme')); } catch {}
+      const theme = ['light','dark'].includes(preference) ? preference : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+      document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#000000' : '#FFFFFF';
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-touch-fullscreen" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -43,7 +54,7 @@
     <div id="phoneViewport" class="phone-viewport-wrapper">
 
       <!-- Universal Live Activity Order Tracking Banner (Active for all other phones/devices) -->
-      <div id="liveOrderActivityBanner" class="live-activity-banner" role="status" aria-live="polite" style="display: none;">
+      <div id="liveOrderActivityBanner" class="live-activity-banner" aria-live="off" style="display: none;">
         <div class="activity-banner-inner" id="btnOpenOrderTrackerFromBanner" role="button" tabindex="0" aria-label="Buka pelacak pesanan langsung Meja 5">
           <div class="activity-left">
             <span class="activity-cafe-icon" id="activityBannerIcon" aria-hidden="true">
@@ -691,10 +702,11 @@
                 <div id="trackerOrderNumberLabel" style="font-size: 12px; color: #64748B;">Order #5K9DU &bull; Meja 5</div>
               </div>
             </div>
-            <span id="trackerStatusBadge" class="tracker-status-pill preparing" aria-live="polite">Sedang Diracik</span>
+            <span id="trackerStatusBadge" class="tracker-status-pill preparing">Sedang Diracik</span>
           </div>
 
           <!-- 4-Step Interactive Timeline Tracker -->
+          <p id="trackerConnectionLabel" class="tracker-connection-label"></p>
           <div class="tracker-steps-timeline" role="progressbar" aria-label="Progres Penyajian Pesanan" aria-valuemin="1" aria-valuemax="4" aria-valuenow="2">
             <div class="tracker-step-item active" id="trackerStepReceived">
               <div class="step-icon-circle" aria-hidden="true">
