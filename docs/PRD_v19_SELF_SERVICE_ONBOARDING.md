@@ -69,5 +69,8 @@ publish/unpublish, QR pelanggan, dan pemulihan lewat kode MFA selesai.
 `npm run test:unit`: 62 lulus. `npm run test:integration`: 38 lulus.
 Browser onboarding mobile 390 dan desktop 1440 lulus menggunakan MFA production,
 login ulang dengan recovery code, dan pengembalian outlet uji ke draft.
-Kontrak browser pelanggan mobile dan desktop lulus. Deployment dan public smoke
-dicatat setelah dilakukan di release-readiness.md.
+Kontrak browser pelanggan mobile dan desktop lulus. Commit `de9457b` sudah di-push
+dan dideploy sebagai `dpl_GHwJUVtiTZNndxigHy1M17Yatefn`. CI GitHub lulus. Public
+browser smoke pendaftaran/MFA/menu/publikasi/QR/login lulus; outlet uji kembali
+draft tanpa pesanan atau pembayaran. Detail dan batasan tercatat di
+release-readiness.md. Email delivery/verification dan AI live belum dikonfigurasi.
