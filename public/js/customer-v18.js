@@ -9,7 +9,8 @@
     language: 'id', category: 'all', busy: 0, chatBusy: false, namespace: '', pending: null,
     selected: null, qty: 1, options: new Set(), payment: 'CASH', epoch: 0, events: null };
   const controllers = new Set();
-  let queue = Promise.resolve(), quoteTimer, focusReturn, dismissing = false;
+  const resetSheetDrags = new Set();
+  let queue = Promise.resolve(), quoteTimer, noticeTimer, noticeExitTimer, focusReturn, dismissing = false;
   let currentScreen = 'screenSelectLanguage';
   let viewRevision = 0;
   let menuRefresh = null, menuDirty = false;
@@ -32,9 +33,23 @@
   }));
   status.append(statusText, retry);
   function measureStatus() { document.documentElement.style.setProperty('--notice-height', !status.hidden && status.parentElement === $('phoneViewport') ? `${status.offsetHeight + 8}px` : '0px'); }
-  function placeStatus() { (document.querySelector('#customerMemoryBackdropModal[aria-hidden="false"] .mobile-qr-card-modal,.bottom-sheet-backdrop.open .bottom-sheet-card') || $('phoneViewport')).prepend(status); measureStatus(); }
-  function notice(message, canRetry = false) { status.hidden = !message; placeStatus(); statusText.textContent = message || ''; retry.hidden = !canRetry; retry.textContent = t('retry'); set('accessibilityLiveRegion',message || ''); }
-  function report(error) { if (error.name !== 'AbortError') notice(`${error.message || t('failed')}${error.requestId ? ` (${error.requestId})` : ''}`, !!state.pending || !state.session || !navigator.onLine || !error.status || error.status >= 500); }
+  function placeStatus() {
+    const host = status.dataset.tone === 'success' ? document.querySelector('.app-host-container') : document.querySelector('#customerMemoryBackdropModal[aria-hidden="false"] .mobile-qr-card-modal,.bottom-sheet-backdrop.open .bottom-sheet-card') || $('phoneViewport');
+    host.prepend(status); measureStatus();
+  }
+  function notice(message, canRetry = false, tone = 'info', background = false) {
+    // Background progress must not replace an unresolved actionable error.
+    if (background && !status.hidden && status.dataset.tone === 'error') return;
+    clearTimeout(noticeTimer); clearTimeout(noticeExitTimer); status.classList.remove('v18-toast-exit');
+    status.hidden = !message; status.dataset.tone = tone;
+    statusText.textContent = message || ''; retry.hidden = !canRetry; retry.textContent = t('retry'); placeStatus();
+    set('accessibilityLiveRegion',message || '');
+    if (message && tone === 'success') noticeTimer = setTimeout(() => {
+      status.classList.add('v18-toast-exit');
+      noticeExitTimer = setTimeout(() => {status.hidden = true; measureStatus();},180);
+    },2800);
+  }
+  function report(error) { if (error.name !== 'AbortError') notice(`${error.message || t('failed')}${error.requestId ? ` (${error.requestId})` : ''}`, !!state.pending || !state.session || !navigator.onLine || !error.status || error.status >= 500,'error'); }
   // Storage can be edited by other scripts or browser tools; never trust a replay URL.
   function readPending() {
     const value = storage.get(`${state.namespace}:pending`);
@@ -129,7 +144,7 @@
       }
       const result = await sendPending();
       if (p.kind === 'order') await accepted(result);
-      if (p.kind === 'waiter') notice(t('waiter'));
+      if (p.kind === 'waiter') notice(t('waiter'),false,'success');
     }
     await loadMenu(); state.cart = await api('/cart'); invalidate(); renderCart();
     await loadOrders(); if (!p || p.kind !== 'waiter') notice('');
@@ -148,6 +163,13 @@
     const active = document.activeElement;
     return active.closest('#actionPopupMenu') ? $('btnHeaderOptions') : active.closest('#modeDropdownMenu') ? $('btnModeTrigger') : active;
   }
+  function syncMode() {
+    for (const [id,screen] of [['optModeChat','screenChatCashier'],['optModeMenu','screenMenuCatalog']]) {
+      const selected = currentScreen === screen;
+      $(id).setAttribute('aria-checked',String(selected));
+      $(id).querySelector('.mode-option-check').style.opacity = selected ? '1' : '0';
+    }
+  }
   function showScreen(id, { record = true, replace = false } = {}) {
     if (!$(id)?.classList.contains('screen')) return;
     if (['screenOrderSuccess','screenThermalReceipt'].includes(id) && !state.order) id = 'screenChatCashier';
@@ -156,6 +178,7 @@
     const hadSheet = !!history.state?.aiodmaCustomer?.sheet;
     closeSheets({ record: false, restore: false }); currentScreen = id;
     document.documentElement.dataset.customerScreen = id;
+    syncMode();
     all('.screen').forEach(el => { const active = el.id === id; el.classList.toggle('active',active); el.setAttribute('aria-hidden',String(!active)); el.inert = !active; });
     const language = id === 'screenSelectLanguage'; $('mainHeaderBar').classList.toggle('hidden',language); $('mainHeaderBar').style.display = language ? 'none' : '';
     closePopups();
@@ -165,6 +188,7 @@
   function closeSheets({ record = true, restore = true } = {}) {
     const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
     if (opened) viewRevision++;
+    resetSheetDrags.forEach(reset => reset());
     closePopups();
     all('.bottom-sheet-backdrop.open').forEach(el => { el.classList.remove('open'); el.setAttribute('aria-hidden','true'); el.inert = true; });
     const memory=$('customerMemoryBackdropModal');memory.style.display='none';memory.setAttribute('aria-hidden','true');memory.inert=true;$('phoneViewport').inert=false;
@@ -177,6 +201,40 @@
     if (dismissing) return;
     if (history.state?.aiodmaCustomer?.sheet) { dismissing = true; closeSheets({record:false}); history.back(); }
     else closeSheets();
+  }
+  function nativeGrab(handle, card, backdrop) {
+    handle.className = 'v18-sheet-close v18-sheet-grab';
+    const line = node('span'); line.setAttribute('aria-hidden','true'); handle.replaceChildren(line);
+    let drag = null, suppressClickUntil = 0;
+    function reset() {
+      const active = drag; drag = null;
+      card.style.removeProperty('transform'); card.style.removeProperty('transition'); card.classList.remove('v18-dragging');
+      if (active && handle.hasPointerCapture(active.id)) handle.releasePointerCapture(active.id);
+    }
+    resetSheetDrags.add(reset);
+    handle.addEventListener('pointerdown',event => {
+      if (!event.isPrimary || event.button !== 0 || backdrop.getAttribute('aria-hidden') !== 'false') return;
+      reset(); drag = {id:event.pointerId,start:event.clientY,x:event.clientX,dy:0,travel:0,time:performance.now()};
+      handle.setPointerCapture(event.pointerId); card.classList.add('v18-dragging');
+      card.style.setProperty('transition','none','important');
+    });
+    handle.addEventListener('pointermove',event => {
+      if (!drag || drag.id !== event.pointerId) return;
+      drag.dy = Math.max(0,event.clientY-drag.start);
+      drag.travel = Math.max(drag.travel,Math.hypot(event.clientX-drag.x,event.clientY-drag.start));
+      card.style.setProperty('transform',`translateY(${drag.dy}px)`,'important');
+    });
+    handle.addEventListener('pointerup',event => {
+      if (!drag || drag.id !== event.pointerId) return;
+      const {dy,time,travel} = drag, threshold = Math.max(50,Math.min(100,card.offsetHeight*.22));
+      const dismiss = dy >= threshold || (dy > 24 && dy/Math.max(1,performance.now()-time) > .6);
+      if (travel > 6) suppressClickUntil = performance.now()+350;
+      reset(); if (dismiss) dismissSheets();
+    });
+    for (const name of ['pointercancel','lostpointercapture']) handle.addEventListener(name,() => {if(drag?.travel>6)suppressClickUntil=performance.now()+350;reset();});
+    handle.addEventListener('click',event => {
+      if (event.detail && performance.now()<suppressClickUntil) {event.preventDefault();event.stopImmediatePropagation();}
+    },true);
   }
   function sheet(id, { record = true } = {}) {
     if (dismissing) return;
@@ -196,7 +254,7 @@
     const previous = history.state?.aiodmaCustomer?.sheet, trigger = layerTrigger();
     closeSheets({record:false,restore:false}); if (!previous) focusReturn=trigger;
     const modal=$('customerMemoryBackdropModal'); modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); modal.inert=false;
-    $('phoneViewport').inert=true; modal.querySelector('.mobile-qr-card-modal').scrollTop=0;
+    $('phoneViewport').inert=true; modal.querySelector('.v18-memory-body').scrollTop=0;
     if(record) recordNavigation(modal.id,!!previous);
     placeStatus(); $('btnCloseMemoryModal').focus({preventScroll:true});
   }
@@ -281,7 +339,7 @@
   function lineKey(line) { return JSON.stringify([line.menuId,[...(line.optionIds || [])].sort()]); }
   async function changeCart(transform) {
     invalidate(); const lines = transform(state.cart.lines.map(line => ({menuId:line.menuId,qty:line.qty,optionIds:[...line.optionIds]})));
-    state.cart = await transact('/cart','PUT',{expectedVersion:state.cart.version,lines},'cart'); renderCart(); notice(t('saved'));
+    state.cart = await transact('/cart','PUT',{expectedVersion:state.cart.version,lines},'cart'); renderCart(); notice(t('saved'),false,'success');
   }
   function renderCart() {
     const list = $('cartSheetItemsList'), focus = document.activeElement;
@@ -304,8 +362,10 @@
     }
     if (!count) list.append(node('p','',t('empty')));
     set('chatCartBadge',count); set('catalogCartBadge',count); set('catalogCartTotal',t('review'));
-    // Cart has no priced snapshot. Only a server quote may populate financial totals.
-    for (const id of ['cartSheetSubtotal','cartSheetTax','cartSheetTotal']) set(id,'-');
+    // Never present catalog estimates or empty placeholders as a financial total.
+    const priced = state.quote && state.quote.cartVersion === state.cart.version && Date.parse(state.quote.expiresAt) > Date.now();
+    $('cartSheetTotal').closest('.cart-calc-box').hidden = !priced;
+    if (priced) totals('cartSheet',state.quote);
     syncControls();
     if (restore) {
       const next = [...list.querySelectorAll('button')].find(el => el.dataset.cartKey === restore.key && el.dataset.delta === restore.delta);
@@ -329,6 +389,7 @@
     const quote = await api('/quotes',{method:'POST',body:{expectedVersion:state.cart.version}});
     if (view !== viewRevision) return;
     state.quote = quote;
+    totals('cartSheet',quote);
     notice('');
     snapshotItems($('paymentItemsPreviewList'),state.quote); totals('paySheet',state.quote); set('paySheetTitle',t('review'));
     document.querySelector('.pm-header-sub').textContent = t('paymentNote'); sheet('paymentBackdrop', {record:history.state?.aiodmaCustomer?.sheet !== 'paymentBackdrop'});
@@ -378,9 +439,9 @@
           const previous=state.order;
           const changed=previous?.id===data.order.id && data.order.version>previous.version;
           updateOrder(data.order);
-          if(changed && !state.pending && !state.busy) notice(`#${data.order.orderNumber} - ${t(data.order.status)}. ${['PAID','UNPAID'].includes(data.order.paymentStatus)?t(data.order.paymentStatus==='PAID'?'paid':'unpaid'):data.order.paymentStatus}`);
+          if(changed && !state.pending && !state.busy) notice(`#${data.order.orderNumber} - ${t(data.order.status)}. ${['PAID','UNPAID'].includes(data.order.paymentStatus)?t(data.order.paymentStatus==='PAID'?'paid':'unpaid'):data.order.paymentStatus}`,false,'success',true);
         }
-        if(data.type==='WAITER_CALL_UPDATED') notice(({id:{acknowledged:'Pelayan sedang menangani panggilan Anda.',resolved:'Panggilan pelayan selesai.'},en:{acknowledged:'A waiter is handling your request.',resolved:'Your waiter request is resolved.'},ms:{acknowledged:'Pelayan sedang mengurus permintaan anda.',resolved:'Permintaan pelayan selesai.'}})[state.language][data.call?.status] || '');
+        if(data.type==='WAITER_CALL_UPDATED') notice(({id:{acknowledged:'Pelayan sedang menangani panggilan Anda.',resolved:'Panggilan pelayan selesai.'},en:{acknowledged:'A waiter is handling your request.',resolved:'Your waiter request is resolved.'},ms:{acknowledged:'Pelayan sedang mengurus permintaan anda.',resolved:'Permintaan pelayan selesai.'}})[state.language][data.call?.status] || '',false,'success',true);
         if (data.type === 'MENU_UPDATED') refreshCatalog();
       } catch { /* Malformed events must not mutate customer state. */ }
     };
@@ -393,7 +454,9 @@
     if (!message || state.chatBusy) return; state.chatBusy = true; syncControls(); bubble(message,true);
     try {
       await verifySession(); const messageId = crypto.randomUUID();
-      const response = await api('/ai/chat',{method:'POST',body:{messageId,message,language:state.language}}); const el = bubble(response.text || t('unavailable')); el.dataset.mode = response.mode || '';
+      const response = await api('/ai/chat',{method:'POST',body:{messageId,message,language:state.language}});
+      const area = $('chatScrollArea'), following = area.scrollHeight-area.scrollTop-area.clientHeight < 80;
+      const el = bubble(response.text || t('unavailable')); el.dataset.mode = response.mode || '';
       for (const recommendation of response.recommendations || []) { const id = typeof recommendation === 'string' ? recommendation : recommendation.menuId || recommendation.id; const item = state.items.find(i => i.id === id); if (item) el.append(product(item)); }
       for (const proposal of response.proposals || []) {
         const expectedVersion = proposal.args?.expectedVersion ?? state.cart.version;
@@ -411,6 +474,7 @@
           }).finally(syncControls);
         }); panel.append(confirm); el.append(panel);
       }
+      if (following) area.scrollTop = area.scrollHeight;
     } catch(error) { if (!$('chatInputText').value) $('chatInputText').value = message; throw error; }
     finally {state.chatBusy = false; syncControls();}
   }
@@ -419,11 +483,13 @@
     const cartInvalid = state.cart.lines.some(line => {const item=state.items.find(i=>i.id===line.menuId),total=state.cart.lines.filter(l=>l.menuId===line.menuId).reduce((sum,l)=>sum+l.qty,0);return !item?.available || (Number.isInteger(item.stock)&&total>item.stock) || line.optionIds.some(id=>!(item?.modifierGroups||[]).some(g=>g.options.some(o=>o.id===id&&o.available!==false)));});
     if ($('btnProceedToPayment')) $('btnProceedToPayment').disabled = blocked || !state.cart.lines.length || cartInvalid;
     const fresh = state.quote && state.quote.cartVersion === state.cart.version && Date.parse(state.quote.expiresAt) > Date.now();
+    $('cartSheetTotal').closest('.cart-calc-box').hidden = !fresh;
     if ($('btnProcessPayment')) { $('btnProcessPayment').hidden = !fresh; $('btnProcessPayment').disabled = blocked || !fresh || !state.merchant?.paymentMethods?.includes(state.payment); }
     if ($('btnRefreshQuote')) { $('btnRefreshQuote').hidden = !!fresh; $('btnRefreshQuote').disabled = blocked || !state.cart.lines.length; $('btnRefreshQuote').textContent = t('review'); }
     if ($('btnAddCustomizedToCart')) $('btnAddCustomizedToCart').disabled = blocked || !validModifiers();
     all('[data-cart-mutation]').forEach(el => { el.disabled = blocked || el.dataset.limit === 'true'; });
     if ($('btnClearCart')) $('btnClearCart').disabled = blocked || !state.cart.lines.length;
+    if ($('btnClearCart')) $('btnClearCart').hidden = !state.cart.lines.length;
     all('.v18-proposal button').forEach(el => { el.disabled = blocked; });
     $('btnModMinus').disabled = blocked || state.qty <= 1; $('btnModPlus').disabled = blocked || state.qty >= modifierLimit();
     $('modQtyNumber').setAttribute('aria-label',String(state.qty));
@@ -475,6 +541,8 @@
     set('labelCustomerMemory',{id:'Preferensi & memori',en:'Preferences & memory',ms:'Pilihan & memori'}[state.language]);
     set('btnClearCart',{id:'Kosongkan keranjang',en:'Clear cart',ms:'Kosongkan troli'}[state.language]);
     $('btnHeaderBack').setAttribute('aria-label',labels.btnBackToChat);
+    const closeLabel = {id:'Tutup panel',en:'Close panel',ms:'Tutup panel'}[state.language];
+    all('.v18-sheet-grab').forEach(el=>{el.setAttribute('aria-label',closeLabel);el.title=closeLabel;});
     updateTableLabels();
     renderTheme();
     renderMenu(); renderCart(); if (state.order) updateOrder(state.order);
@@ -514,12 +582,12 @@
     form.addEventListener('submit',event=>{event.preventDefault();if(!consent.checked||save.disabled)return;save.disabled=true;run(async()=>{
       await verifySession();const values=preferences.value.split('\n').map(value=>value.trim()).filter(Boolean);
       if (values.length>20 || values.some(value=>value.length>200)) throw new Error({id:'Maksimal 20 preferensi, masing-masing 200 karakter.',en:'Use up to 20 preferences, each up to 200 characters.',ms:'Maksimum 20 pilihan, setiap satu sehingga 200 aksara.'}[state.language]);
-      await api('/profile',{method:'PUT',body:{consent:true,preferences:values}});notice(copy.saved);
+      await api('/profile',{method:'PUT',body:{consent:true,preferences:values}});notice(copy.saved,false,'success');
     }).finally(()=>{save.disabled=!consent.checked;});});
     const remove=$('btnResetMemoryProfile');remove.hidden=false;remove.textContent=copy.remove;remove.disabled=false;
     remove.onclick=()=>{if(remove.disabled)return;remove.disabled=true;run(async()=>{
       await verifySession();await api('/profile',{method:'DELETE'});preferences.value='';consent.checked=false;save.disabled=true;
-      $('chatMessageThread').replaceChildren();$('chatMessageThread').style.display='none';$('chatEmptyState').hidden=false;notice(copy.deleted);
+      $('chatMessageThread').replaceChildren();$('chatMessageThread').style.display='none';$('chatEmptyState').hidden=false;notice(copy.deleted,false,'success');
     }).finally(()=>{remove.disabled=false;});};
   }
   async function initialize() {
@@ -553,14 +621,21 @@
     $('modOptionsBody').prepend(document.querySelector('.mod-header-row'));
     $('modSpecialNote').closest('.modifier-group').hidden = true;
     $('btnChatNotes').hidden = true;
+    $('catalogSearchInput').style.removeProperty('outline');
     $('mobileQrBackdrop')?.remove();
     const refresh = button(t('review'),'tracker-btn-outline',() => run(reviewQuote)); refresh.id = 'btnRefreshQuote'; refresh.hidden = true; $('btnProcessPayment').before(refresh);
     $('phoneViewport').prepend(status);
+    const memoryCard=$('customerMemoryBackdropModal').querySelector('.mobile-qr-card-modal'),memoryHeader=$('memoryModalTitle').parentElement,memoryBody=node('div','v18-memory-body');
+    memoryHeader.classList.add('v18-memory-header');
+    memoryBody.append($('memoryModalSubtitle'),$('memoryModalSectionLabel').parentElement);
+    memoryCard.prepend($('btnCloseMemoryModal'));memoryHeader.after(memoryBody);
+    nativeGrab($('btnCloseMemoryModal'),memoryCard,$('customerMemoryBackdropModal'));
     new ResizeObserver(measureStatus).observe(status);
     new ResizeObserver(() => document.documentElement.style.setProperty('--activity-height',`${$('liveOrderActivityBanner').offsetHeight ? $('liveOrderActivityBanner').offsetHeight+8 : 0}px`)).observe($('liveOrderActivityBanner'));
     all('.bottom-sheet-backdrop').forEach(el => {
       el.inert = true; el.addEventListener('click',event => {if (event.target === el) dismissSheets();});
       const close = button('×','header-btn-circle v18-sheet-close',dismissSheets); close.setAttribute('aria-label','Close'); el.querySelector('.bottom-sheet-card')?.prepend(close);
+      nativeGrab(close,el.querySelector('.bottom-sheet-card'),el);
       if (el.id !== 'modifierModalBackdrop') {
         const card=el.querySelector('.bottom-sheet-card'),content=node('div','v18-sheet-content'),actions=node('div','v18-sheet-actions');
         for (const child of [...card.children]) {
@@ -569,14 +644,14 @@
           else content.append(child);
         }
         card.classList.add('v18-framed-sheet');card.append(content);if(actions.children.length)card.append(actions);
-        if (el.id==='cartBackdrop') {const clear=button('','tracker-btn-outline',()=>run(()=>changeCart(()=>[])));clear.id='btnClearCart';content.prepend(clear);}
+        if (el.id==='cartBackdrop') {const clear=button('','tracker-btn-outline',()=>run(()=>changeCart(()=>[])));clear.id='btnClearCart';$('cartSheetTitle').after(clear);}
       }
     });
     document.addEventListener('keydown',event => {
       if (event.key === 'Escape') { event.preventDefault(); if (document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]')) dismissSheets(); else closePopups(true); }
       const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
       if (event.key === 'Tab' && opened) {const focusable = [...opened.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href],[tabindex="0"]')].filter(el => el.getClientRects().length && !el.closest('[inert]')); const first=focusable[0],last=focusable.at(-1); if (event.shiftKey && (document.activeElement === first || !opened.contains(document.activeElement))) {event.preventDefault();last?.focus();} else if (!event.shiftKey && (document.activeElement === last || !opened.contains(document.activeElement))) {event.preventDefault();first?.focus();}}
-      if (['Enter',' '].includes(event.key) && event.target.matches('[role="button"],[role="menuitem"],[role="radio"]')) {event.preventDefault();event.target.click();}
+      if (['Enter',' '].includes(event.key) && event.target.matches('[role="button"],[role="menuitem"],[role="menuitemradio"],[role="radio"]')) {event.preventDefault();event.target.click();}
     });
     all('[data-lang]').forEach(el => el.addEventListener('click',() => {language(el.dataset.lang);showScreen('screenChatCashier');}));
     for (const id of ['btnHeaderLangToggle','menuItemChangeLanguage']) bind(id,() => showScreen('screenSelectLanguage'));
@@ -584,10 +659,12 @@
     for (const id of ['btnHeaderBack','btnLangBack','btnBackToChat','btnReceiptBackToHome']) bind(id,() => showScreen('screenChatCashier'));
     bind('optModeChat',() => showScreen('screenChatCashier')); for (const id of ['optModeMenu','qpLihatSemuaMenu']) bind(id,() => showScreen('screenMenuCatalog'));
     for (const [id,menu] of [['btnModeTrigger','modeDropdownMenu'],['btnHeaderOptions','actionPopupMenu']]) {
-      bind(id,() => {const open=!$(menu).classList.contains('open');closePopups();$(menu).classList.toggle('open',open);$(menu).inert=!open;$(menu).setAttribute('aria-hidden',String(!open));$(id).setAttribute('aria-expanded',String(open));});
-      $(id).addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp'].includes(event.key))return;event.preventDefault();if(!$(menu).classList.contains('open'))$(id).click();const choices=[...$(menu).querySelectorAll('[role="menuitem"]')].filter(el=>el.getClientRects().length);(event.key==='ArrowUp'?choices.at(-1):choices[0])?.focus();});
-      $(menu).addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const choices=[...$(menu).querySelectorAll('[role="menuitem"]')].filter(el=>el.getClientRects().length),index=choices.indexOf(document.activeElement);const next=event.key==='Home'?0:event.key==='End'?choices.length-1:(index+(event.key==='ArrowDown'?1:-1)+choices.length)%choices.length;choices[next]?.focus();});
+      const items=()=>[...$(menu).querySelectorAll('[role="menuitem"],[role="menuitemradio"]')].filter(el=>el.getClientRects().length);
+      bind(id,() => {const open=!$(menu).classList.contains('open');closePopups();$(menu).classList.toggle('open',open);$(menu).inert=!open;$(menu).setAttribute('aria-hidden',String(!open));$(id).setAttribute('aria-expanded',String(open));if(open){$(menu).scrollTop=0;items()[0]?.focus({preventScroll:true});}});
+      $(id).addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp'].includes(event.key))return;event.preventDefault();if(!$(menu).classList.contains('open'))$(id).click();const choices=items();(event.key==='ArrowUp'?choices.at(-1):choices[0])?.focus();});
+      $(menu).addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const choices=items(),index=choices.indexOf(document.activeElement);const next=event.key==='Home'?0:event.key==='End'?choices.length-1:(index+(event.key==='ArrowDown'?1:-1)+choices.length)%choices.length;choices[next]?.focus();});
     }
+    document.addEventListener('focusin',event=>{const opened=document.querySelector('.action-popup-menu.open,.mode-dropdown-menu.open');if(opened&&!opened.contains(event.target)&&!event.target.closest('#btnModeTrigger,#btnHeaderOptions'))closePopups();});
     document.addEventListener('click',event => {if (!event.target.closest('#btnModeTrigger,#btnHeaderOptions,.action-popup-menu,.mode-dropdown-menu')) closePopups();});
     window.addEventListener('popstate',event => {
       dismissing = false;
@@ -613,7 +690,7 @@
     });
     for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,() => {const view=viewRevision;run(async () => {await verifySession();await loadOrders();if(state.order){updateOrder(await api(`/orders/${state.order.id}`));if(view===viewRevision)sheet('orderTrackerBackdrop');}});});
     bind('btnSaveReceipt',() => {if(state.order)showScreen('screenThermalReceipt');});bind('btnPrintReceipt',() => window.print());bind('btnCloseTrackerSheet',dismissSheets);bind('btnTrackerOrderMore',() => {closeSheets();showScreen('screenMenuCatalog');});
-    for (const id of ['menuItemCallWaiter','btnTrackerCallWaiter']) bind(id,() => run(async () => {await transact('/waiter-calls','POST',{reason:t('help')},'waiter');notice(t('waiter'));}));
+    for (const id of ['menuItemCallWaiter','btnTrackerCallWaiter']) bind(id,() => run(async () => {await transact('/waiter-calls','POST',{reason:t('help')},'waiter');notice(t('waiter'),false,'success');}));
     bind('menuItemTableStatus',() => {const box=$('tableInfoTitle').parentElement.nextElementSibling;box.replaceChildren(node('p','',state.session?`${state.merchant.name} - Table ${state.tableId}`:t('session')));sheet('tableInfoBackdrop');});bind('btnCloseTableInfo',dismissSheets);
     $('modSpecialNote').disabled=true;$('modSpecialNote').placeholder=t('unavailable');
     $('btnChatNotes').setAttribute('aria-disabled','true');bind('btnChatNotes',()=>notice(t('unavailable')));
@@ -623,7 +700,7 @@
     bind('btnChatSend',() => {if($('btnChatSend').disabled)return;const message=$('chatInputText').value.trim();$('chatInputText').value='';run(() => chat(message));});$('chatInputText').addEventListener('input',syncControls);$('chatInputText').addEventListener('keydown',event => {if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!$('btnChatSend').disabled){event.preventDefault();$('btnChatSend').click();}});
     all('.quick-prompt-pill').filter(el=>el.id!=='qpLihatSemuaMenu').forEach(el=>el.addEventListener('click',()=>run(()=>chat(el.dataset.prompt || el.textContent.trim()))));
     $('catalogSearchInput').addEventListener('input',renderMenu);bind('btnClearSearch',()=>{$('catalogSearchInput').value='';renderMenu();});
-    window.addEventListener('offline',()=>{invalidate();notice(t('offline'));syncControls();});window.addEventListener('online',()=>run(async()=>{if(!state.session)await initialize();else await recover();}));
+    window.addEventListener('offline',()=>{invalidate();notice(t('offline'),false,'error');syncControls();});window.addEventListener('online',()=>run(async()=>{if(!state.session)await initialize();else await recover();}));
     window.addEventListener('pagehide',()=>{state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
     document.documentElement.dataset.theme=storage.get('aiodma:v18:theme')==='dark'?'dark':'light';language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage',{replace:true});run(initialize);
   }

@@ -16,7 +16,7 @@ async function main(){
   const output=path.resolve('output/playwright/coffeenity-customer-'+Date.now());fs.mkdirSync(output,{recursive:true});
   try{
     for(const width of [320,390,1440]){
-      const context=await browser.newContext({viewport:{width,height:844}}),page=await context.newPage(),errors=[],mutations=[];
+      const context=await browser.newContext({viewport:{width,height:844},hasTouch:true}),page=await context.newPage(),errors=[],mutations=[];
       page.on('pageerror',()=>errors.push('Browser exception'));
       page.on('response',async r=>{if(new URL(r.url()).pathname==='/api/v1/session'&&r.status()>=400){try{const e=await r.json();diagnostics.push({method:r.request().method(),status:r.status(),code:e.error?.code});}catch{diagnostics.push({status:r.status()});}}});
       page.on('request',r=>{const p=new URL(r.url()).pathname;if(r.method()!=='GET'&&p.startsWith('/api/v1'))mutations.push(p);if(p.startsWith('/api/v1'))diagnostics.push({request:p,method:r.method()});});
@@ -32,13 +32,24 @@ async function main(){
         phase='menu';await page.screenshot({path:path.join(output,`${width}-menu.png`)});
         await page.locator('.btn-add-product:not(:disabled)').first().click();await expect(page.locator('#modifierModalBackdrop.open')).toBeVisible();
         const target=await page.locator('#modifierModalBackdrop .v18-sheet-close').evaluate(el=>{const r=el.getBoundingClientRect();return {width:r.width,height:r.height};});assert.ok(target.width>=44&&target.height>=44);
-        await page.keyboard.press('Escape');await expect(page.locator('#modifierModalBackdrop.open')).toHaveCount(0);
+        assert.equal(await page.locator('#modifierModalBackdrop .v18-sheet-grab').textContent(),'');
+        await page.screenshot({path:path.join(output,`${width}-native-modifier.png`)});
+        await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});
+        const box=await page.locator('#modifierModalBackdrop .v18-sheet-grab').boundingBox(),cdp=await context.newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+120}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
+        await expect(page.locator('#modifierModalBackdrop.open')).toHaveCount(0);
         await page.locator('#btnCatalogCartPill').click();await expect(page.locator('#cartBackdrop.open')).toBeVisible();
+        assert.equal(await page.locator('#cartSheetTotal').evaluate(el=>el.closest('.cart-calc-box').hidden),true);
+        await page.screenshot({path:path.join(output,`${width}-native-cart.png`)});
         await page.keyboard.press('Escape');await expect(page.locator('#cartBackdrop.open')).toHaveCount(0);
+        await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemCustomerMemory').click();await expect(page.locator('#v18MemoryPreferences')).toBeVisible();
+        await page.locator('.v18-memory-body').evaluate(el=>{el.scrollTop=el.scrollHeight;});
+        const reachable=await page.locator('#btnCloseMemoryModal').evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.y>=0&&r.bottom<=innerHeight&&(hit===el||el.contains(hit));});assert.ok(reachable);
+        await page.screenshot({path:path.join(output,`${width}-native-memory.png`)});await page.keyboard.press('Escape');await expect(page.locator('#customerMemoryBackdropModal')).toHaveAttribute('aria-hidden','true');
         await page.locator('#btnHeaderThemeToggle').click();await page.screenshot({path:path.join(output,`${width}-dark-menu.png`)});
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
         assert.deepEqual(errors,[]);assert.deepEqual(mutations.filter(p=>p!=='/api/v1/session'),[]);
-        console.log(`PASS Coffeenity ${width}: QR/session, ${products} catalog products, modal/back/cart/theme, no overflow/exceptions; no ordering/financial mutations`);
+        console.log(`PASS Coffeenity ${width}: QR/session, ${products} catalog products, native touch dismissal/cart/memory/back/theme, no overflow/exceptions; no ordering/financial mutations`);
       }finally{await context.close();}
     }
     console.log('Evidence: '+output);

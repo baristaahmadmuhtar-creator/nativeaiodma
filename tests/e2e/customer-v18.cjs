@@ -269,13 +269,77 @@ async function storageBoundaries(browser) {
     console.log('PASS storage/replay boundaries: catalog burst coalesced, no mutation without durable storage, clear cart, configured payment only, committed order survives cleanup failure and reconciles once');
   }finally{await context.close();}
 }
+async function nativeLayers(browser,width,height) {
+  const context=await browser.newContext({viewport:{width,height},hasTouch:true,serviceWorkers:'block',reducedMotion:width===320?'reduce':'no-preference'}),model=await fixture(context),page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  model.items=[{...clone(item),image:'/assets/products/kopi_milk_aren.jpg',name:'Pot of Artisan House Coffee with Oat Milk'},second];
+  async function drag(selector,dy,slow=false) {
+    await reachable(page,selector);const box=await page.locator(selector).boundingBox();
+    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2,box.y+box.height/2+dy,{steps:8});
+    if(slow)await new Promise(resolve=>setTimeout(resolve,220));await page.mouse.up();
+  }
+  async function ring(selector) {
+    await page.keyboard.press('Tab');await page.locator(selector).focus();
+    const style=await page.locator(selector).evaluate(el=>{const s=getComputedStyle(el);return {width:s.outlineWidth,style:s.outlineStyle};});
+    assert.deepEqual(style,{width:'2px',style:'solid'},selector+' has a visible keyboard focus indicator');
+  }
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);await page.locator('[data-lang="en-US"]').click();
+    await ring('#btnHeaderThemeToggle');await page.locator('#qpLihatSemuaMenu').click();await ring('#catalogSearchInput');
+    const searchWidth=await page.locator('#catalogSearchInput').evaluate(el=>el.getBoundingClientRect().width);assert.ok(searchWidth>=120,'Search retains usable width: '+searchWidth);
+    await capture(page,`${width}-native-menu.png`);
+    await page.locator('#catalogSearchInput').fill('Coffee');await reachable(page,'#btnClearSearch');await page.locator('#btnClearSearch').click();
+    await page.locator('#btnModeTrigger').click();assert.equal(await page.locator('#optModeMenu').getAttribute('aria-checked'),'true');assert.equal(await page.locator('#optModeChat .mode-option-check').evaluate(el=>getComputedStyle(el).opacity),'0');
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'optModeChat');await ring('#optModeMenu');await page.keyboard.press('Escape');
+    await page.locator('#btnHeaderOptions').click();await page.locator('#catalogSearchInput').focus();assert.equal(await page.locator('#actionPopupMenu').getAttribute('aria-hidden'),'true');
+    await addCoffee(page);await page.waitForFunction(()=>document.querySelector('#customerV18Status').dataset.tone==='success'&&!document.querySelector('#customerV18Status').hidden);
+    await capture(page,`${width}-native-feedback.png`);
+    assert.equal(await page.evaluate(()=>document.documentElement.style.getPropertyValue('--notice-height')),'0px');
+    await page.waitForFunction(()=>document.querySelector('#customerV18Status').hidden);
+    await page.locator('#btnCatalogCartPill').click();assert.equal(await page.locator('#cartSheetTotal').evaluate(el=>el.closest('.cart-calc-box').hidden),true);
+    const handle='#cartBackdrop .v18-sheet-grab';assert.equal(await page.locator(handle).textContent(),'');await ring(handle);
+    await drag(handle,12,true);assert.equal(await page.locator('#cartBackdrop').getAttribute('aria-hidden'),'false');
+    await drag(handle,-20,true);assert.equal(await page.locator('#cartBackdrop').getAttribute('aria-hidden'),'false');
+    assert.equal(await page.locator('#cartBackdrop .bottom-sheet-card').evaluate(el=>el.style.transform),'');
+    await capture(page,`${width}-native-cart.png`);
+    await drag(handle,120);await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});assert.equal(await page.evaluate(()=>document.activeElement.id),'btnCatalogCartPill');
+    await page.goForward();await page.waitForSelector('#cartBackdrop.open');await reachable(page,handle);
+    await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);
+    await drag('#paymentBackdrop .v18-sheet-grab',120);await page.waitForSelector('#cartBackdrop.open');assert.match(await page.locator('#cartSheetTotal').textContent(),/BND\s4\.50/);
+    await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});
+    await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemCustomerMemory').click();await page.waitForSelector('#v18MemoryPreferences');
+    await ring('#v18MemoryPreferences');await page.locator('.v18-memory-body').evaluate(el=>{el.scrollTop=el.scrollHeight;});await reachable(page,'#btnCloseMemoryModal');await reachable(page,'#btnResetMemoryProfile');
+    await capture(page,`${width}-native-memory.png`);await drag('#btnCloseMemoryModal',120);await page.waitForSelector('#customerMemoryBackdropModal[aria-hidden="false"]',{state:'hidden'});
+    // A real touch stream exercises pointer capture, not a synthetic CSS translation.
+    await page.locator('#btnCatalogCartPill').click();await reachable(page,handle);const box=await page.locator(handle).boundingBox(),cdp=await context.newCDPSession(page);
+    const x=box.x+box.width/2,y=box.y+box.height/2;
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+60}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});assert.equal(await page.locator('#cartBackdrop').getAttribute('aria-hidden'),'false');
+    assert.equal(await page.locator('#cartBackdrop .bottom-sheet-card').evaluate(el=>el.style.transform),'');
+    await reachable(page,handle);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+120}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});await cdp.detach();
+    await page.locator('#btnHeaderBack').click();await page.locator('#chatInputText').fill('hello');model.sessionDelay=600;await page.locator('#btnChatSend').click();await page.locator('#chatInputText').fill('next');
+    await reachable(page,'#btnChatSend');assert.equal(await page.locator('#btnChatSend').evaluate(el=>getComputedStyle(el).borderRadius),'50%');
+    await page.waitForSelector('.v18-proposal');await page.locator('#btnHeaderThemeToggle').click();
+    assert.equal(await page.locator('.v18-proposal').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');
+    await reachable(page,'.v18-proposal button');
+    assert.equal(await page.locator('.chat-bubble-ai .product-card-img-wrap').evaluate(el=>getComputedStyle(el).display),'none');await capture(page,`${width}-native-dark-chat.png`);
+    await page.emulateMedia({contrast:'more'});await page.locator('#btnFloatingCart').click();
+    assert.equal(await page.locator('#cartBackdrop .bottom-sheet-card').evaluate(el=>getComputedStyle(el).backdropFilter),'none');await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});
+    await page.emulateMedia({forcedColors:'active'});await page.locator('#btnFloatingCart').click();
+    assert.equal(await page.locator('#cartBackdrop .v18-sheet-grab > span').evaluate(el=>getComputedStyle(el).opacity),'1');await page.keyboard.press('Escape');await page.waitForSelector('#cartBackdrop.open',{state:'hidden'});await page.emulateMedia({forcedColors:'none',contrast:'no-preference'});
+    await context.setOffline(true);await page.waitForFunction(()=>document.querySelector('#customerV18Status').dataset.tone==='error');await new Promise(resolve=>setTimeout(resolve,2900));assert.equal(await page.locator('#customerV18Status').evaluate(el=>el.hidden),false);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
+    console.log(`PASS native layers ${width}x${height}: focus rings, mode checks, search width, transient feedback, drag/snap/cancel/touch/history, pinned memory controls, canonical cart totals, circular busy send, persistent offline`);
+  }catch(e){await capture(page,`${width}-native-failure.png`);console.log('Native layer evidence: '+output);throw e;}finally{await context.close();}
+}
 async function main(url=process.env.CUSTOMER_V18_URL) {
   const candidates=[process.env.CUSTOMER_V18_BROWSER,await require('puppeteer').executablePath(),
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', chromium.executablePath()].filter(Boolean);
   const executablePath=candidates.find(file=>fs.existsSync(file));
   assert.ok(executablePath,'Configure CUSTOMER_V18_BROWSER with an installed Chromium executable');
   const browser=await chromium.launch({headless:true,executablePath});
-  try {if(url)await live(browser,url);else {for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}console.log('Screenshots: '+output);}
+  try {if(url)await live(browser,url);else {if(!process.env.CUSTOMER_V18_NATIVE_ONLY){for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await nativeLayers(browser,...size);}console.log('Screenshots: '+output);}
   finally{await browser.close();}
 }
 if(require.main===module)main().catch(error=>{console.error(error);process.exitCode=1;});
