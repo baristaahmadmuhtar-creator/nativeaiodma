@@ -33,6 +33,12 @@ Local screenshots and fixture databases are excluded from deployment. Production
 verification is recorded separately in `release-readiness.md`; do not infer a
 successful deployment from local tests alone.
 
+Final deployed code: `0a64d8e095fd475c5e6621558854fa0a4fb0ce61`. GitHub CI
+`37308218969` passed all suites, including the synthetic order smoke. Public
+verification also passed on `https://nativeaiodma-v18.vercel.app`; evidence is
+at `output/playwright/onboarding-1791202580315/`. The disposable outlet was
+returned to draft and customer sessions revoked after testing.
+
 ## Remaining Release Gates
 
 This is a supervised cafe pilot, not an unconditional full-production signoff.
