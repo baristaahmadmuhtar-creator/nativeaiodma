@@ -129,6 +129,7 @@
     const p = state.pending;
     try {
       const result = await api(p.path,{method:p.method,body:p.body,key:p.key});
+      if (p.kind === 'order' && !validOrder(result)) throw Object.assign(new Error(t('pending')),{status:0});
       savePending(null); return result;
     } catch (error) {
       if (error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429) savePending(null);
@@ -143,7 +144,10 @@
     if (p) {
       if (p.kind === 'order') {
         const found = await api(`/submissions/${encodeURIComponent(p.key)}`);
-        if (found.found) { savePending(null); await accepted(found.order); return; }
+        if (found.found) {
+          if (!validOrder(found.order)) throw Object.assign(new Error(t('pending')),{status:0});
+          savePending(null); await accepted(found.order); return;
+        }
       }
       const result = await sendPending();
       if (p.kind === 'order') await accepted(result);

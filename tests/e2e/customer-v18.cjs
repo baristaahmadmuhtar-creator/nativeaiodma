@@ -57,11 +57,12 @@ async function fixture(context) {
         assert.ok(key);assert.equal(body.confirmed,true);assert.equal(body.paymentMethod,'CASH');assert.equal(body.quoteId,model.quote.id);
         if(model.keys.has(key))return respond(route,model.keys.get(key));
         const order={...model.quote,id:crypto.randomUUID(),merchantId:'fixture',orderNumber:'FIXTURE1',table:'Meja 5',tableNum:5,status:'received',paymentStatus:'UNPAID',paymentMethod:body.paymentMethod,version:1,createdAt:new Date().toISOString()};model.orders.unshift(order);model.keys.set(key,order);model.cart={version:model.cart.version+1,lines:[]};
-        if(model.loseOrder){model.loseOrder=false;return route.abort('failed');}return respond(route,order,201);
+        if(model.loseOrder){model.loseOrder=false;return route.abort('failed');}
+        if(model.malformedOrder){model.malformedOrder=false;return respond(route,{...order,items:null},201);}return respond(route,order,201);
       }
       if(endpoint==='/orders')return respond(route,model.orders);
       if(endpoint.startsWith('/orders/'))return respond(route,model.orders.find(o=>o.id===endpoint.split('/').at(-1)));
-      if(endpoint.startsWith('/submissions/')){const order=model.keys.get(endpoint.split('/').at(-1));return respond(route,{found:!!order,order:order||null});}
+      if(endpoint.startsWith('/submissions/')){const order=model.keys.get(endpoint.split('/').at(-1));if(model.malformedLookup){model.malformedLookup=false;return respond(route,{found:true,order:{...order,items:null}});}return respond(route,{found:!!order,order:order||null});}
       if(endpoint==='/waiter-calls'){assert.ok(key);return respond(route,{id:'call',status:'pending'});}
       if(endpoint==='/ai/chat')return respond(route,{text:'<img src=x onerror=alert(1)>',mode:'degraded',recommendations:[{id:'tea'}],proposals:[{id:'proposal-id',name:model.aiMode==='checkout'?'present_checkout':'add_cart_items',args:{items:[{menuId:'tea',qty:1,optionIds:[]}],expectedVersion:model.cart.version}}]});
       if(endpoint==='/ai/proposals/proposal-id/confirm'){assert.ok(key);assert.ok(body.messageId);assert.equal(body.expectedVersion,model.cart.version);if(model.aiMode==='checkout')return respond(route,{action:'present_checkout'});model.cart={version:model.cart.version+1,lines:[...model.cart.lines,{menuId:'tea',qty:1,optionIds:[]}]};return respond(route,{action:'cart_updated',cart:model.cart});}
@@ -365,7 +366,17 @@ async function comfort(browser,width,height) {
       await addCoffee(page);await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();
       await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);await opaqueContrast('.payment-method-card:not([hidden]) .pm-name','.payment-method-card:not([hidden])');
       await capture(page,`${width}-comfort-${theme}-payment.png`);
-      await page.locator('#btnProcessPayment').click();await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));
+      model.malformedOrder=theme==='dark';await page.locator('#btnProcessPayment').click();
+      if(theme==='dark') {
+        await page.waitForFunction(()=>document.querySelector('#customerV18Status').dataset.tone==='error'&&!document.querySelector('#customerV18Status button').hidden);
+        assert.equal(model.orders.length,1);model.malformedLookup=true;await page.locator('#customerV18Status button').click();
+        await page.waitForFunction(()=>!document.querySelector('#customerV18Status button').disabled&&document.querySelector('#btnProcessPayment').getAttribute('aria-busy')==='false');
+        assert.equal(await page.locator('#screenOrderSuccess').evaluate(el=>el.classList.contains('active')),false,'malformed recovery is not an acknowledgement');
+        assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(key=>key.endsWith(':pending'))),true,'durable submission survives malformed responses');
+        await page.locator('#customerV18Status button').click();
+        assert.equal(model.requests.filter(r=>r.endpoint==='/orders'&&r.method==='POST').length,1,'recovery never duplicates the order');
+      }
+      await page.waitForFunction(()=>document.querySelector('#screenOrderSuccess').classList.contains('active'));
       await opaqueContrast('.success-title','#screenOrderSuccess');await opaqueContrast('.success-sub','#screenOrderSuccess');await capture(page,`${width}-comfort-${theme}-success.png`);
       await page.locator('#btnSaveReceipt').click();await opaqueContrast('.receipt-brand-name','.thermal-paper-card');await opaqueContrast('#receiptTotal','.thermal-paper-card');
       assert.equal(await page.locator('.thermal-paper-card').getAttribute('data-payment'),'UNPAID');await capture(page,`${width}-comfort-${theme}-receipt.png`);
