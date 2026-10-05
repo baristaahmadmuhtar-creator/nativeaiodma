@@ -192,7 +192,7 @@
     $('#dialog-title').textContent = title; $('#dialog-body').replaceChildren();
     if (!editor.open) editor.showModal();
     editor.scrollTop = 0;
-    requestAnimationFrame(() => {
+    queueMicrotask(() => {
       if (!editor.open) return;
       const input = $('#dialog-body').querySelector('input:not([readonly]):not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled)');
       (input || $('#close-editor')).focus({ preventScroll: true });

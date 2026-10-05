@@ -65,6 +65,8 @@ async function main() {
       return data;
     }
     async function submit(name, endpoint, method, status = 200) {
+      const validation = await dialog.getByRole('button',{name,exact:true}).evaluate(button=>({valid:button.form.checkValidity(),invalid:[...button.form.elements].filter(input=>input.willValidate&&!input.validity.valid).map(input=>input.name)}));
+      assert.equal(validation.valid,true,`Invalid editor controls: ${validation.invalid.join(', ')}`);
       const response = page.waitForResponse(r => new URL(r.url()).pathname === `/api/v1${endpoint}` && r.request().method() === method);
       await dialog.getByRole('button', { name, exact: true }).click();
       const result = await envelope(await response, status);
@@ -110,6 +112,8 @@ async function main() {
     console.log('PASS every admin tab: real responses; unavailable integrations accurately labelled');
 
     await visit('menu', '/admin/menu'); phase = 'menu create';
+    await page.getByRole('button', {name:'+ Tambah menu',exact:true}).hover();
+    assert.equal(await page.getByRole('button',{name:'+ Tambah menu',exact:true}).evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(23, 25, 28)');
     await page.getByRole('button', { name: '+ Tambah menu', exact: true }).click();
     await expect(dialog.locator('[name=id]')).toBeFocused();
     await dialog.locator('[name=id]').fill('unsaved_test'); acceptDialog = false;

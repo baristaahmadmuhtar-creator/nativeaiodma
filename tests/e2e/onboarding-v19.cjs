@@ -62,6 +62,8 @@ async function main() {
       await page.locator('#navigation a[href="#onboarding"]').click();
       await page.getByRole('button', { name: 'Terbitkan cafe', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Tarik publikasi', exact: true })).toBeVisible();
+      await page.getByRole('button',{name:'Tarik publikasi',exact:true}).hover();
+      assert.equal(await page.getByRole('button',{name:'Tarik publikasi',exact:true}).evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(23, 25, 28)');
       await page.screenshot({ path: path.join(output, `${width}-published.png`), fullPage: true });
       await page.getByRole('button', { name: 'Ganti tema', exact: true }).click();
       await page.screenshot({ path: path.join(output, `${width}-dark.png`), fullPage: true });

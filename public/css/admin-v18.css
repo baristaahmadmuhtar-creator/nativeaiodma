@@ -12,3 +12,4 @@
 .toast{position:static;transform:none;max-width:100%;margin:0 0 18px;box-shadow:none;overflow-wrap:anywhere}
 dialog{overscroll-behavior:contain}body:has(dialog[open]){overflow:hidden}
 #workspace{scroll-margin-top:88px}nav{overscroll-behavior-x:contain}
+button.primary:hover:not(:disabled){background:var(--primary);color:var(--on-primary)}
