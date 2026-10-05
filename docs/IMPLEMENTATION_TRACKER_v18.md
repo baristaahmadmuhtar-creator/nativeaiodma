@@ -1,7 +1,7 @@
 # AIODMA v18 Implementation Tracker
 
 Updated: 2026-10-06. Scope authorized through publication; production promotion remains gate-controlled.
-Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed customer refinement code: `387fc645ab9d4f0c2ec91d3b78831b4ccd764dfd`, preserving v20 operations.
+Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed native customer layer code: `593a263c36453d370388a17b577f608228f7ba36`, preserving v20 operations.
 
 ## Gate Status
 
@@ -13,7 +13,7 @@ Baseline: d8884b195f3a6144191568a2e1513916d314c4c3. Deployed customer refinement
 | G3 | PARTIAL | Bounded provider/orchestrator, consented profile and explicit proposal confirmation implemented. Customer contract and real local API browser journeys pass; 240-case corpus/live provider evaluation remains missing. |
 | G4 | PARTIAL, DEPENDENCIES NOT PASSED | Admin browser journey passes locally. Self-service signup/MFA/outlet publication passed locally and publicly. Email verification, reporting, external integrations and complete production PWA acceptance remain. |
 | G5 | PARTIAL | Local automated suites pass, CI exists, and Vercel production build applied Neon migrations and seed data. Soak, restore drill, load testing, live AI evaluation and complete public journey acceptance remain. |
-| G6 | CUSTOMER AND SELF-SERVICE PILOT LIVE VERIFIED | Vercel deployment `dpl_DpH6XgZPPNo1j5cWpufMPyoVQMFc` is Ready at `https://nativeaiodma-v18.vercel.app`. Public disposable-outlet full role flow and original Coffeenity customer QR/menu/modals passed. Original owner requires their enrolled MFA code; no authenticator reset. G5 remains partial. |
+| G6 | CUSTOMER AND SELF-SERVICE PILOT LIVE VERIFIED | Vercel deployment `dpl_GtKuaqdL2gEa7cGS5WKJt5HncaUy` is Ready at `https://nativeaiodma-v18.vercel.app`. Public disposable-outlet full role flow and original Coffeenity customer QR/menu/native grabbers/preferences passed. Original owner requires their enrolled MFA code; no authenticator reset. G5 remains partial. |
 
 ## Task Coverage
 
@@ -32,11 +32,11 @@ T30-T35: incomplete. T36: automated public admin/order/KDS/receipt and distinct-
 
 - `npm run test:unit`: 63 passed, 0 failed.
 - `npm run test:integration`: 43 passed, 0 failed, actual local PostgreSQL.
-- `npm run test:customer`: four journey contracts and four refinement configurations passed, plus long scrolling, PDF, storage failures and catalog burst coalescing. See v21 acceptance.
+- `npm run test:customer`: four journey contracts, four refinements and four native layer configurations passed, plus long scrolling, PDF, storage failures and catalog burst coalescing. See v21/v22 acceptance.
 - `npm run test:customer:live`: passed against the real local API with PostgreSQL persistence.
 - `node tests/e2e/admin-v18.cjs`: passed; notifications/policy/current-order links, waiter service-only transition and mobile screenshots at `output/admin-v18/d3365111e199/`.
 - `node tests/e2e/onboarding-v19.cjs`: passed mobile/desktop with production MFA; final public smoke passed with its test outlet returned to draft. See `release-readiness.md` and the v19 PRD.
-- GitHub CI `37336924094` passed every suite on deployed code `387fc64`, including distinct-role onboarding/order smoke on Linux.
+- GitHub CI `37342663796` passed every suite on deployed code `593a263`, including native customer layers and distinct-role onboarding/order smoke on Linux.
 - Vercel production build: migrations applied and two published test merchants seeded on Neon; least-privilege runtime database role verified; deployment status Ready.
 - Public customer smoke: QR exchange and session passed for Coffeenity Table 1; 62 products and production images loaded; cart persistence and BND 1.50 quote passed; no order was confirmed and browser console errors were empty.
 - Integration scope: non-superuser application role, private-file boundary, QR/session/CSRF checks, tenant and same-table guest isolation, cart/order idempotency, exact manual settlement, scoped SSE/replay/revocation and transaction context reset.
@@ -62,6 +62,13 @@ T30-T35: incomplete. T36: automated public admin/order/KDS/receipt and distinct-
 - Final deterministic evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-xEiQJs/`.
 - Public full-role smoke: `output/playwright/onboarding-1791216130884/`; original Coffeenity 320/390/1440 read-only customer smoke: `output/playwright/coffeenity-customer-1791216743382/`.
 - Coffeenity password/default outlet recognized; enrolled MFA must be supplied by the user. Original-owner full session was not automated on this release. See `release-readiness.md` for precise scope.
+
+## v22 Native Layer Evidence
+
+- Native-style grabbers, drag/snap/cancel/touch, transient feedback, persistent errors, pinned preferences, compact search/cart/send, theme-aware proposal contrast and keyboard/mode state are verified. Acceptance: `docs/UX_ACCEPTANCE_v22_NATIVE_SHEETS.md`.
+- Final local customer evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-3mxqEl/`; local admin: `output/admin-v18/acfd8a3fbbf0/`; local full-role MFA/order flow: `output/playwright/onboarding-1791218357469/`.
+- Public full-role smoke: `output/playwright/onboarding-1791218795368/`; original Coffeenity 320/390/1440 non-ordering touch/visual smoke: `output/playwright/coffeenity-customer-1791218907903/`.
+- Actual Safari/IME/VoiceOver/operator acceptance remains open. No zero-bug certification, live provider credential, external payment or guaranteed background push is claimed.
 
 ## External and Environment Constraints
 

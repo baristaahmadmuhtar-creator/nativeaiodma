@@ -14,6 +14,14 @@ async function main(){
   const executablePath=[await require('puppeteer').executablePath(),'C:/Program Files/Google/Chrome/Application/chrome.exe',chromium.executablePath()].find(p=>fs.existsSync(p));
   const browser=await chromium.launch({executablePath,headless:true});
   const output=path.resolve('output/playwright/coffeenity-customer-'+Date.now());fs.mkdirSync(output,{recursive:true});
+  async function capture(page,name){
+    await page.evaluate(async()=>{
+      const visible=[...document.images].filter(img=>{const r=img.getBoundingClientRect();return !img.hidden&&img.src&&r.width&&r.height&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;});
+      await Promise.race([Promise.all(visible.map(img=>img.decode().catch(()=>{}))),new Promise(resolve=>setTimeout(resolve,5000))]);
+      await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));
+    });
+    await page.screenshot({path:path.join(output,name)});
+  }
   try{
     for(const width of [320,390,1440]){
       const context=await browser.newContext({viewport:{width,height:844},hasTouch:true}),page=await context.newPage(),errors=[],mutations=[];
@@ -29,24 +37,24 @@ async function main(){
         diagnostics.push({session});
         assert.deepEqual(session,{status:200,tenant:'coffeenity',table:link.table,role:'guest'});
         const products=await page.locator('#menuGridContainer .product-card').count();assert.ok(products>0);
-        phase='menu';await page.screenshot({path:path.join(output,`${width}-menu.png`)});
+        phase='menu';await capture(page,`${width}-menu.png`);
         await page.locator('.btn-add-product:not(:disabled)').first().click();await expect(page.locator('#modifierModalBackdrop.open')).toBeVisible();
         const target=await page.locator('#modifierModalBackdrop .v18-sheet-close').evaluate(el=>{const r=el.getBoundingClientRect();return {width:r.width,height:r.height};});assert.ok(target.width>=44&&target.height>=44);
         assert.equal(await page.locator('#modifierModalBackdrop .v18-sheet-grab').textContent(),'');
-        await page.screenshot({path:path.join(output,`${width}-native-modifier.png`)});
+        await capture(page,`${width}-native-modifier.png`);
         await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});
         const box=await page.locator('#modifierModalBackdrop .v18-sheet-grab').boundingBox(),cdp=await context.newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
         await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+120}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
         await expect(page.locator('#modifierModalBackdrop.open')).toHaveCount(0);
         await page.locator('#btnCatalogCartPill').click();await expect(page.locator('#cartBackdrop.open')).toBeVisible();
         assert.equal(await page.locator('#cartSheetTotal').evaluate(el=>el.closest('.cart-calc-box').hidden),true);
-        await page.screenshot({path:path.join(output,`${width}-native-cart.png`)});
+        await capture(page,`${width}-native-cart.png`);
         await page.keyboard.press('Escape');await expect(page.locator('#cartBackdrop.open')).toHaveCount(0);
         await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemCustomerMemory').click();await expect(page.locator('#v18MemoryPreferences')).toBeVisible();
         await page.locator('.v18-memory-body').evaluate(el=>{el.scrollTop=el.scrollHeight;});
         const reachable=await page.locator('#btnCloseMemoryModal').evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.y>=0&&r.bottom<=innerHeight&&(hit===el||el.contains(hit));});assert.ok(reachable);
-        await page.screenshot({path:path.join(output,`${width}-native-memory.png`)});await page.keyboard.press('Escape');await expect(page.locator('#customerMemoryBackdropModal')).toHaveAttribute('aria-hidden','true');
-        await page.locator('#btnHeaderThemeToggle').click();await page.screenshot({path:path.join(output,`${width}-dark-menu.png`)});
+        await capture(page,`${width}-native-memory.png`);await page.keyboard.press('Escape');await expect(page.locator('#customerMemoryBackdropModal')).toHaveAttribute('aria-hidden','true');
+        await page.locator('#btnHeaderThemeToggle').click();await capture(page,`${width}-dark-menu.png`);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
         assert.deepEqual(errors,[]);assert.deepEqual(mutations.filter(p=>p!=='/api/v1/session'),[]);
         console.log(`PASS Coffeenity ${width}: QR/session, ${products} catalog products, native touch dismissal/cart/memory/back/theme, no overflow/exceptions; no ordering/financial mutations`);

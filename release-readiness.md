@@ -1,12 +1,22 @@
 # Release Readiness
 
-Verdict: **CUSTOMER REFINEMENT AND CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCTION ACCEPTED**. Updated 2026-10-06.
+Verdict: **NATIVE CUSTOMER LAYERS AND CAFE PILOT LIVE VERIFIED, NOT FULL PRODUCTION ACCEPTED**. Updated 2026-10-06.
 
-Current customer release `387fc645ab9d4f0c2ec91d3b78831b4ccd764dfd` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_DpH6XgZPPNo1j5cWpufMPyoVQMFc` as Ready; immutable URL: `https://nativeaiodma-v18-fnc2e4toj-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` remain in use. Existing owner credentials, catalog edits, publication and orders are preserved by conflict-safe provisioning. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
+Current customer release `593a263c36453d370388a17b577f608228f7ba36` is deployed with owner authorization at `https://nativeaiodma-v18.vercel.app`. Vercel reports deployment `dpl_GtKuaqdL2gEa7cGS5WKJt5HncaUy` as Ready; immutable URL: `https://nativeaiodma-v18-co8w8hyy6-alphas-projects-9d57a19f.vercel.app`. Connected Neon PostgreSQL, restricted runtime and migration `007_operations.sql` remain in use. Existing owner credentials, catalog edits, publication and orders are preserved by conflict-safe provisioning. Secrets, local databases and screenshots remain excluded by `.vercelignore`.
+
+## v22 Native Customer Layer Verification
+
+- Centered grabbers replace modal X buttons, with bounded drag/flick dismissal, cancelled/short/upward gesture recovery, accessible tap/keyboard closure and one-layer history restoration. Preferences now shares the sheet/scroll contract. Success feedback is transient; actionable errors persist. Search/cart/send controls, long names, mode state, focus indicators and dark proposal contrast are refined. See `docs/UX_ACCEPTANCE_v22_NATIVE_SHEETS.md`.
+- 63 unit and 43 real PostgreSQL integration tests passed. All 14 customer journey groups passed locally on final source, including four native layer configurations, Chromium touch streams, contrast/forced colors, receipt PDF and durable retry. Final deterministic evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-3mxqEl/`.
+- Real local customer API corroborated exactly one persisted unpaid order: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-4FAfjL/`. Admin evidence: `output/admin-v18/acfd8a3fbbf0/`. Full local production-MFA distinct-role flow passed at 390/1440: `output/playwright/onboarding-1791218357469/`.
+- GitHub CI passed every suite on deployed source `593a263`: https://github.com/baristaahmadmuhtar-creator/nativeaiodma/actions/runs/37342663796. Vercel production deployment was Ready and promoted on 2026-10-06 at 00:45 GMT+0800.
+- Public disposable-outlet signup/MFA/publication, unpaid guest order/receipt, synthetic cashier settlement, kitchen ready, waiter served, owner completed, inbox acknowledgement, AI pause/permissions, unpublication/session revocation and recovery-code login passed: `output/playwright/onboarding-1791218795368/`. No external funds or original cafe transactions were involved.
+- Original Coffeenity QR/session, 62 products, actual touch-stream grabber dismissal, cart, scrollable preferences, Back and themes passed at 320/390/1440 without ordering/financial mutations. Settled image/animation capture evidence: `output/playwright/coffeenity-customer-1791218907903/`. The screenshot helper was subsequently refined without changing deployed application code.
+- Original owner MFA was not reset, bypassed or exercised in this release. Existing access remains unchanged. Real iPhone/Safari/IME/VoiceOver and cafe operator acceptance still require testing; other full production gates below remain open.
 
 ## v21 Customer Refinement Verification
 
-The customer refinement is verified locally, in Linux CI and on the public alias. See `docs/PRD_v21_CUSTOMER_REFINEMENT.md`, `docs/UX_ACCEPTANCE_v21.md` and `docs/SECURITY_REVIEW_v21_CUSTOMER.md`.
+The following records describe the previous customer source `387fc64` and deployment `dpl_DpH6XgZPPNo1j5cWpufMPyoVQMFc`. See `docs/PRD_v21_CUSTOMER_REFINEMENT.md`, `docs/UX_ACCEPTANCE_v21.md` and `docs/SECURITY_REVIEW_v21_CUSTOMER.md`.
 
 - 63 unit and 43 real PostgreSQL integration tests passed. Customer contracts/refinements passed all eight viewport configurations, long scrolling, receipt PDF generation, reduced-motion/reduced-height checks and storage/catalog-event boundaries. Final fixture evidence: `C:/Users/Alpha/AppData/Local/Temp/aiodma-customer-v18-xEiQJs/`.
 - Actual local customer API persisted exactly one unpaid order. Real admin evidence: `output/admin-v18/df51259e92d0/`; production-MFA distinct-role onboarding/order evidence: `output/playwright/onboarding-1791215292773/` (390/1440).
