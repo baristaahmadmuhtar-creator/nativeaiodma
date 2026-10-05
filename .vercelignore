@@ -1,0 +1,14 @@
+.git/
+.github/
+.vercel/
+node_modules/
+.local/
+.env*
+output/
+test-results/
+playwright-report/
+.npm-cache/
+.cache/
+coverage/
+Swift/
+*.log
