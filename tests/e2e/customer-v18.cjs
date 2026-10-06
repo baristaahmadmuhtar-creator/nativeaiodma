@@ -422,6 +422,71 @@ async function comfort(browser,width,height) {
     console.log(`PASS comfort ${width}x${height}: OS theme, 48px controls, screen/print contrast, canonical tracker/refunds, malformed/stale events, safe areas, hidden scrollbar keyboard scroll, error priority`);
   }catch(e){await capture(page,`${width}-comfort-failure.png`);console.log('Comfort evidence: '+output);throw e;}finally{await context.close();}
 }
+async function swipeMotion(browser,width,height) {
+  const context=await browser.newContext({viewport:{width,height},hasTouch:true,serviceWorkers:'block',reducedMotion:width===320?'reduce':'no-preference'});
+  const model=await fixture(context),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await context.addInitScript(()=>{window.__streams=[];window.EventSource=class {constructor(){window.__streams.push(this);}close(){}emit(data){this.onmessage?.({data:JSON.stringify(data)});}};});
+  const emit=async data=>page.evaluate(data=>window.__streams.at(-1).emit(data),data);
+  const banner='#btnOpenOrderTrackerFromBanner';
+  async function settled(){await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});}
+  async function drag(dx,dy=0,hold=false){
+    await reachable(page,banner);const r=await page.locator(banner).boundingBox(),x=r.x+r.width/2,y=r.y+r.height/2;
+    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});
+    if(hold)await new Promise(resolve=>setTimeout(resolve,160));await page.mouse.up();await settled();
+  }
+  async function restore(){await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemOpenTracker').click();await page.waitForSelector('#orderTrackerBackdrop.open');await page.keyboard.press('Escape');await page.waitForSelector('#orderTrackerBackdrop.open',{state:'hidden'});await settled();}
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    await addCoffee(page);await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);await page.locator('#btnProcessPayment').click();await page.waitForSelector('#screenOrderSuccess.active');await page.locator('#btnBackToChat').click();await settled();
+    const mutations=()=>model.requests.filter(r=>r.method!=='GET').length;
+    for(const theme of ['light','dark']) {
+      if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#btnHeaderThemeToggle').click();await settled();
+      const before=mutations();
+      assert.equal(await page.locator(banner).evaluate(el=>getComputedStyle(el).touchAction),'pan-y pinch-zoom');
+      await drag(12,0,true);assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true);assert.equal(await page.locator('#orderTrackerBackdrop.open').count(),0);
+      await drag(0,70,true);assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true);assert.equal(await page.locator('#orderTrackerBackdrop.open').count(),0,'vertical movement is not a tap');
+      const box=await page.locator(banner).boundingBox(),cdp=await context.newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+60,y}]});await capture(page,`${width}-motion-${theme}-swipe.png`);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await settled();
+      assert.equal(await page.locator(banner).evaluate(el=>el.style.translate),'');assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true);
+      await page.locator(banner).click();await page.waitForSelector('#orderTrackerBackdrop.open');await page.keyboard.press('Escape');await page.waitForSelector('#orderTrackerBackdrop.open',{state:'hidden'});await settled();
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+(theme==='light'?-125:125),y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
+      await page.waitForSelector('#liveOrderActivityBanner',{state:'hidden'});await settled();
+      assert.equal(await page.locator('#orderTrackerBackdrop.open').count(),0,'swipe never opens tracking');assert.equal(await page.locator('#menuItemHideTrackerBanner').evaluate(el=>el.hidden),true);
+      assert.equal(await page.evaluate(()=>document.documentElement.style.getPropertyValue('--activity-height')),'0px');
+      const order=model.orders[0];order.version++;order.status='preparing';await emit({type:'ORDER_UPDATED',order});
+      assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),false,'SSE does not resurrect dismissed banner');assert.equal(await page.locator('#customerV18Status').evaluate(el=>el.hidden),true,'dismissed progress does not return as a toast');
+      assert.equal(mutations(),before,'presentation gestures never mutate financial/backend state');
+      await capture(page,`${width}-motion-${theme}-dismissed.png`);
+      await page.reload();await ready(page);await page.locator('[data-lang="en-US"]').click();await settled();
+      assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),false,'tab reload preserves session-scoped dismissal');
+      await restore();assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true);
+      await drag(45,0,true);assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true,'a held short drag is not a flick');
+      await reachable(page,banner);const flickBox=await page.locator(banner).boundingBox(),touch=await context.newCDPSession(page),fx=flickBox.x+flickBox.width/2,fy=flickBox.y+flickBox.height/2;
+      await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:fx,y:fy}]});await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:fx+80,y:fy}]});await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:fx+25,y:fy}]});await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await settled();
+      assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true,'reversed velocity cannot dismiss a short drag');
+      await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:fx,y:fy}]});await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:fx+60,y:fy}]});await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.detach();await page.waitForSelector('#liveOrderActivityBanner',{state:'hidden'});await restore();
+      await page.locator(banner).focus();await page.keyboard.press('Delete');assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),false);assert.equal(await page.evaluate(()=>document.activeElement.id),'btnHeaderOptions');await restore();
+      await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemHideTrackerBanner').click();assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),false);await restore();
+      await page.locator(banner).click();await page.waitForSelector('#orderTrackerBackdrop.open');await page.keyboard.press('Escape');await page.waitForSelector('#orderTrackerBackdrop.open',{state:'hidden'});
+      await page.locator('#btnHeaderThemeToggle').focus();await page.keyboard.down('Space');await new Promise(resolve=>setTimeout(resolve,170));
+      const scale=await page.locator('#btnHeaderThemeToggle').evaluate(el=>getComputedStyle(el).scale);assert.ok(width===320?scale==='1':Number(scale)<1,'consistent keyboard press and reduced motion');await page.keyboard.up('Space');await settled();
+      assert.equal(await page.locator('#btnHeaderThemeToggle').evaluate(el=>getComputedStyle(el).scale),'1');
+    }
+    const oldId=model.orders[0].id;await page.locator(banner).focus();await page.keyboard.press('Delete');
+    await page.locator('#qpLihatSemuaMenu').click();await addCoffee(page);await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);await page.locator('#btnProcessPayment').click();await page.waitForSelector('#screenOrderSuccess.active');await page.locator('#btnBackToChat').click();await settled();
+    assert.notEqual(model.orders[0].id,oldId);
+    assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),true,'new order is not hidden by old presentation preference');
+    if(width===320) {
+      await page.evaluate(()=>{const get=Storage.prototype.getItem,set=Storage.prototype.setItem;Storage.prototype.getItem=function(key){if(this===sessionStorage&&key.endsWith(':hidden-tracking'))throw new Error('Blocked presentation storage');return get.call(this,key);};Storage.prototype.setItem=function(key,value){if(this===sessionStorage&&key.endsWith(':hidden-tracking'))throw new Error('Blocked presentation storage');return set.call(this,key,value);};});
+      await page.locator(banner).focus();await page.keyboard.press('Delete');
+      const streams=await page.evaluate(()=>window.__streams.length);await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await page.waitForFunction(count=>window.__streams.length>count,streams);
+      assert.equal(await page.locator('#liveOrderActivityBanner').isVisible(),false,'blocked storage retains in-memory dismissal through session recovery');await restore();
+    }
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
+    console.log(`PASS swipe/motion ${width}x${height}: both themes, short/vertical/cancel/touch/flick/reversal, no accidental tap or mutation, SSE/reload dismissal, accessible hide/reopen, new-order visibility, keyboard/reduced motion`);
+  }catch(e){await capture(page,`${width}-motion-failure.png`);console.log('Swipe evidence: '+output);throw e;}finally{await context.close();}
+}
 async function main(url=process.env.CUSTOMER_V18_URL) {
   const candidates=[process.env.CUSTOMER_V18_BROWSER,await require('puppeteer').executablePath(),
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', chromium.executablePath()].filter(Boolean);
@@ -429,8 +494,11 @@ async function main(url=process.env.CUSTOMER_V18_URL) {
   assert.ok(executablePath,'Configure CUSTOMER_V18_BROWSER with an installed Chromium executable');
   const browser=await chromium.launch({headless:true,executablePath});
   try {if(url)await live(browser,url);else {
-    if(!process.env.CUSTOMER_V18_COMFORT_ONLY){if(!process.env.CUSTOMER_V18_NATIVE_ONLY){for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await nativeLayers(browser,...size);}
-    if(!process.env.CUSTOMER_V18_NATIVE_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await comfort(browser,...size);
+    if(!process.env.CUSTOMER_V18_MOTION_ONLY){
+      if(!process.env.CUSTOMER_V18_COMFORT_ONLY){if(!process.env.CUSTOMER_V18_NATIVE_ONLY){for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await nativeLayers(browser,...size);}
+      if(!process.env.CUSTOMER_V18_NATIVE_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await comfort(browser,...size);
+    }
+    if(!process.env.CUSTOMER_V18_NATIVE_ONLY&&!process.env.CUSTOMER_V18_COMFORT_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await swipeMotion(browser,...size);
   }console.log('Screenshots: '+output);}
   finally{await browser.close();}
 }

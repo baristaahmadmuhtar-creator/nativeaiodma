@@ -14,6 +14,7 @@
   let currentScreen = 'screenSelectLanguage';
   let viewRevision = 0;
   let menuRefresh = null, menuDirty = false;
+  let hiddenActivityOrder = null, resetActivityGesture = () => {};
   const words = {
     id: { all:'Semua', empty:'Belum ada item', search:'Cari menu', add:'Tambahkan', review:'Periksa pesanan', confirm:'Konfirmasi pesanan', retry:'Coba lagi', offline:'Offline. Pemesanan memerlukan koneksi.', session:'Scan QR meja yang valid untuk memesan.', unavailable:'Belum tersedia', pending:'Hasil permintaan belum pasti. Coba lagi dengan permintaan yang sama.', paid:'LUNAS', unpaid:'BELUM LUNAS', tax:'Pajak', service:'Layanan', discount:'Diskon', waiter:'Panggilan pelayan terkirim', received:'Diterima', accepted:'Diterima dapur', preparing:'Disiapkan', ready:'Siap', served:'Disajikan', completed:'Selesai', cancelled:'Dibatalkan', rejected:'Ditolak', transfer:'Transfer manual', cash:'Tunai', paymentNote:'Pembayaran diverifikasi oleh kasir.', expired:'Ringkasan berubah atau kedaluwarsa. Periksa kembali.', saved:'Keranjang diperbarui', help:'Mohon bantuan pelayan di meja', failed:'Permintaan gagal', reconnect:'Perbarui koneksi' },
     en: { all:'All', empty:'No items yet', search:'Search menu', add:'Add', review:'Review order', confirm:'Confirm order', retry:'Retry', offline:'Offline. Ordering requires a connection.', session:'Scan a valid table QR to order.', unavailable:'Unavailable', pending:'The request outcome is uncertain. Retry the same request.', paid:'PAID', unpaid:'UNPAID', tax:'Tax', service:'Service', discount:'Discount', waiter:'Waiter request sent', received:'Received', accepted:'Accepted', preparing:'Preparing', ready:'Ready', served:'Served', completed:'Completed', cancelled:'Cancelled', rejected:'Rejected', transfer:'Manual transfer', cash:'Cash', paymentNote:'Payment is verified by the cashier.', expired:'The quote changed or expired. Review it again.', saved:'Cart updated', help:'Please send a waiter to the table', failed:'Request failed', reconnect:'Reconnect' },
@@ -193,6 +194,7 @@
     const heading = $(id).querySelector('h1,h2,h3') || $(id); heading.tabIndex = -1; heading.focus({preventScroll:true});
   }
   function closeSheets({ record = true, restore = true } = {}) {
+    resetActivityGesture();
     const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
     if (opened) viewRevision++;
     resetSheetDrags.forEach(reset => reset());
@@ -242,6 +244,86 @@
     handle.addEventListener('click',event => {
       if (event.detail && performance.now()<suppressClickUntil) {event.preventDefault();event.stopImmediatePropagation();}
     },true);
+  }
+  function syncActivity() {
+    const visible = !!state.order && hiddenActivityOrder !== state.order.id;
+    $('liveOrderActivityBanner').style.display = visible ? '' : 'none';
+    $('menuItemHideTrackerBanner').hidden = !visible;
+    $('menuItemOpenTracker').style.display = state.order ? '' : 'none';
+    if (!visible) document.documentElement.style.setProperty('--activity-height','0px');
+  }
+  function rememberActivity(id) {
+    hiddenActivityOrder = id;
+    try {
+      if (id) sessionStorage.setItem(`${state.namespace}:hidden-tracking`,id);
+      else sessionStorage.removeItem(`${state.namespace}:hidden-tracking`);
+    } catch { /* Dismissal still works in memory when optional storage is blocked. */ }
+  }
+  function hideActivity() {
+    if (!state.order) return;
+    const restoreFocus = $('btnOpenOrderTrackerFromBanner').contains(document.activeElement);
+    rememberActivity(state.order.id); syncActivity();
+    if (restoreFocus) $('btnHeaderOptions').focus({preventScroll:true});
+    set('accessibilityLiveRegion',({id:'Banner disembunyikan. Pesanan tetap dapat dilacak dari menu.',en:'Banner hidden. Your order remains available in the tracking menu.',ms:'Banner disembunyikan. Pesanan masih boleh dijejak dari menu.'})[state.language]);
+  }
+  function activitySwipe() {
+    const handle = $('btnOpenOrderTrackerFromBanner');
+    let drag = null, animation = null, revision = 0, suppressClickUntil = 0;
+    const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function clearVisual() {
+      for (const key of ['translate','opacity','rotate']) handle.style.removeProperty(key);
+      handle.classList.remove('v18-swiping');
+    }
+    function reset() {
+      revision++; animation?.cancel(); animation = null;
+      const active = drag; drag = null; clearVisual();
+      if (active && handle.hasPointerCapture(active.id)) handle.releasePointerCapture(active.id);
+    }
+    function settle(dx = 0, dismissed = false) {
+      const from = {translate:handle.style.translate || '0px 0px',opacity:handle.style.opacity || '1',rotate:handle.style.rotate || 'y 0deg'};
+      reset(); const token = revision, orderId = state.order?.id;
+      const finish = () => {if (token !== revision) return; animation = null; clearVisual(); if (dismissed && orderId === state.order?.id) hideActivity();};
+      if (reduceMotion() || !handle.animate) {finish();return;}
+      handle.classList.add('v18-swiping');
+      animation = handle.animate([from,{translate:`${dx}px 0px`,opacity:dismissed?0:1,rotate:'y 0deg'}],{duration:dismissed?190:260,easing:'cubic-bezier(.2,.8,.2,1)'});
+      animation.finished.then(finish,()=>{});
+    }
+    handle.addEventListener('pointerdown',event => {
+      if (!event.isPrimary) {if(drag){suppressClickUntil=performance.now()+450;settle();}return;}
+      if (event.button !== 0 || handle.closest('[inert]') || !state.order || hiddenActivityOrder === state.order.id) return;
+      reset(); suppressClickUntil = 0; drag = {id:event.pointerId,x:event.clientX,y:event.clientY,dx:0,travel:0,axis:null,sampleX:event.clientX,sampleTime:performance.now(),velocity:0};
+      handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener('pointermove',event => {
+      if (!drag || drag.id !== event.pointerId) return;
+      const dx = event.clientX-drag.x, dy = event.clientY-drag.y, time = performance.now();
+      drag.travel = Math.max(drag.travel,Math.hypot(dx,dy));
+      if (!drag.axis && drag.travel > 8) drag.axis = Math.abs(dx) > Math.abs(dy)*1.2 ? 'x' : 'y';
+      if (drag.axis !== 'x') return;
+      drag.dx = dx; drag.velocity = (event.clientX-drag.sampleX)/Math.max(1,time-drag.sampleTime); drag.sampleX=event.clientX; drag.sampleTime=time;
+      handle.classList.add('v18-swiping');
+      handle.style.translate = `${dx}px 0px`;
+      handle.style.opacity = String(Math.max(.3,1-Math.abs(dx)/Math.max(1,handle.offsetWidth)));
+      handle.style.rotate = reduceMotion() ? 'y 0deg' : `y ${Math.max(-2,Math.min(2,dx/60))}deg`;
+    });
+    handle.addEventListener('pointerup',event => {
+      if (!drag || drag.id !== event.pointerId) return;
+      const {dx,axis,travel,velocity,sampleTime} = drag;
+      if (travel <= 6) {reset();return;}
+      if (travel > 6) suppressClickUntil = performance.now()+450;
+      const flick = performance.now()-sampleTime < 100 && Math.abs(velocity)>.65 && Math.sign(velocity)===Math.sign(dx);
+      const dismiss = axis==='x' && (Math.abs(dx)>=Math.min(110,handle.offsetWidth*.3) || (Math.abs(dx)>32 && flick));
+      settle(dismiss ? Math.sign(dx)*(handle.offsetWidth+32) : 0,dismiss);
+    });
+    const cancel = () => {if(drag){if(drag.travel>6)suppressClickUntil=performance.now()+450;settle();}};
+    for (const name of ['pointercancel','lostpointercapture']) handle.addEventListener(name,cancel);
+    handle.addEventListener('click',event => {
+      if (event.detail && (performance.now()<suppressClickUntil || animation)) {event.preventDefault();event.stopImmediatePropagation();}
+    },true);
+    handle.addEventListener('keydown',event => {if(['Delete','Backspace'].includes(event.key)){event.preventDefault();reset();hideActivity();}});
+    window.addEventListener('blur',cancel);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
+    resetActivityGesture = reset;
   }
   function sheet(id, { record = true } = {}) {
     if (dismissing) return;
@@ -427,6 +509,7 @@
   }
   function updateOrder(order) {
     if (!validOrder(order) || (state.order?.id === order.id && state.order.version > order.version)) return false;
+    if (state.order?.id !== order.id) resetActivityGesture();
     state.order = order;
     const label = t(order.status), paid = paymentLabel(order);
     set('successSubtitle',`#${order.orderNumber} - ${label}. ${paid}`); set('receiptBrandName',state.merchant?.name || 'AIODMA'); set('receiptOrderId',`#${order.orderNumber}`);
@@ -449,7 +532,8 @@
     timeline.hidden = ['cancelled','rejected'].includes(order.status);
     for (const id of ['trackerStatusBadge','activityBannerBadge']) $(id).dataset.status = order.status;
     set('activityBannerTitle',`#${order.orderNumber} - ${order.table}`); set('activityBannerSub',`${label} - ${paid}`); set('activityBannerBadge',label);
-    $('liveOrderActivityBanner').style.display = ''; $('menuItemOpenTracker').style.display = '';
+    $('btnOpenOrderTrackerFromBanner').setAttribute('aria-label',`${({id:'Lacak pesanan',en:'Track order',ms:'Jejak pesanan'})[state.language]} #${order.orderNumber} - ${order.table}. ${label}. ${paid}`);
+    syncActivity();
     return true;
   }
   async function loadOrders() {
@@ -459,7 +543,7 @@
     if (before?.id !== state.order?.id) return;
     const selected = orders.find(o => o.id === state.order?.id) || orders[0];
     if (selected) { if (!validOrder(selected)) throw new Error(t('reconnect')); updateOrder(selected); }
-    else { state.order = null; $('liveOrderActivityBanner').style.display = 'none'; $('menuItemOpenTracker').style.display = 'none'; }
+    else { resetActivityGesture(); state.order = null; syncActivity(); }
   }
   function refreshCatalog() {
     invalidate(); menuDirty = true;
@@ -480,7 +564,7 @@
           const applied = updateOrder(data.order);
           if(applied && changed && !state.pending && !state.busy) {
             const message = `#${data.order.orderNumber} - ${t(data.order.status)}. ${paymentLabel(data.order)}`;
-            const inlineTracking = $('orderTrackerBackdrop').classList.contains('open') || ['screenThermalReceipt','screenOrderSuccess'].includes(currentScreen);
+            const inlineTracking = hiddenActivityOrder === data.order.id || $('orderTrackerBackdrop').classList.contains('open') || ['screenThermalReceipt','screenOrderSuccess'].includes(currentScreen);
             if (inlineTracking) { if (status.hidden || status.dataset.tone !== 'error') set('accessibilityLiveRegion',message); }
             else notice(message,false,'success',true);
           }
@@ -590,6 +674,9 @@
     Object.entries(labels).forEach(([id,label])=>{set(id,label);$(id).setAttribute('aria-label',label);});
     for (const [id,key] of [['btnProceedToPayment','review'],['btnProcessPayment','confirm'],['btnAddCustomizedToCart','add']]) $(id).setAttribute('aria-label',t(key));
     set('labelCustomerMemory',{id:'Preferensi & memori',en:'Preferences & memory',ms:'Pilihan & memori'}[state.language]);
+    const hideLabel = {id:'Sembunyikan banner pesanan',en:'Hide order banner',ms:'Sembunyikan banner pesanan'}[state.language];
+    set('labelHideTrackerBanner',hideLabel); $('menuItemHideTrackerBanner').setAttribute('aria-label',hideLabel);
+    set('labelMenuTracker',({id:'Lacak pesanan saya',en:'Track my order',ms:'Jejak pesanan saya'})[state.language]);$('menuItemOpenTracker').setAttribute('aria-label',$('labelMenuTracker').textContent);
     set('btnClearCart',{id:'Kosongkan keranjang',en:'Clear cart',ms:'Kosongkan troli'}[state.language]);
     $('btnHeaderBack').setAttribute('aria-label',labels.btnBackToChat);
     const closeLabel = {id:'Tutup panel',en:'Close panel',ms:'Tutup panel'}[state.language];
@@ -656,7 +743,10 @@
     }
     state.session = session; state.merchantId = session.tenantId; state.tableId = session.tableId;
     const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(session.csrfToken));
+    const previousNamespace = state.namespace;
     state.namespace = `aiodma:v18:${state.merchantId}:${Array.from(new Uint8Array(digest)).map(n => n.toString(16).padStart(2,'0')).join('')}`;
+    resetActivityGesture(); if (previousNamespace !== state.namespace) hiddenActivityOrder = null;
+    try {const saved=sessionStorage.getItem(`${state.namespace}:hidden-tracking`);if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(saved || '')) hiddenActivityOrder=saved;} catch { /* Optional presentation preference only. */ }
     state.pending = readPending();
     updateTableLabels();
     const clean = new URL(location.href); clean.searchParams.delete('token'); history.replaceState(history.state,'',clean); query.delete('token');
@@ -705,6 +795,7 @@
       }
     });
     all('.chat-scroll-area,.catalog-scroll-area,.v18-sheet-content,.mod-options-body,.v18-memory-body').forEach(el => {el.tabIndex=0;});
+    activitySwipe();
     document.addEventListener('keydown',event => {
       if (event.key === 'Escape') { event.preventDefault(); if (document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]')) dismissSheets(); else closePopups(true); }
       const opened = document.querySelector('.bottom-sheet-backdrop.open,#customerMemoryBackdropModal[aria-hidden="false"]');
@@ -746,7 +837,8 @@
     const methods=all('.payment-method-card'); methods.forEach((el,index) => {if(index===1||index===2){el.remove();return;} const method=index===0?'MANUAL_TRANSFER':'CASH';el.dataset.pm=method;el.addEventListener('click',() => {if(el.hidden || el.getAttribute('aria-disabled') === 'true')return;state.payment=method;syncPaymentMethods();});
       el.addEventListener('keydown',event => {if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;event.preventDefault();const choices=all('.payment-method-card[data-pm]').filter(card=>!card.hidden),i=choices.indexOf(el);const next=event.key==='Home'?0:event.key==='End'?choices.length-1:(i+(['ArrowRight','ArrowDown'].includes(event.key)?1:-1)+choices.length)%choices.length;choices[next]?.click();choices[next]?.focus();});
     });
-    for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,() => {const view=viewRevision;run(async () => {await verifySession();await loadOrders();if(state.order){updateOrder(await api(`/orders/${state.order.id}`));if(view===viewRevision)sheet('orderTrackerBackdrop');}});});
+    bind('menuItemHideTrackerBanner',() => {resetActivityGesture();hideActivity();});
+    for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,() => {const view=viewRevision;run(async () => {await verifySession();await loadOrders();if(state.order){updateOrder(await api(`/orders/${state.order.id}`));if(view===viewRevision){resetActivityGesture();rememberActivity(null);syncActivity();sheet('orderTrackerBackdrop');}}});});
     bind('btnSaveReceipt',() => {if(state.order)showScreen('screenThermalReceipt');});bind('btnPrintReceipt',() => window.print());bind('btnCloseTrackerSheet',dismissSheets);bind('btnTrackerOrderMore',() => {closeSheets();showScreen('screenMenuCatalog');});
     for (const id of ['menuItemCallWaiter','btnTrackerCallWaiter']) bind(id,() => run(async () => {await transact('/waiter-calls','POST',{reason:t('help')},'waiter');notice(t('waiter'),false,'success');}));
     bind('menuItemTableStatus',() => {const box=$('tableInfoTitle').parentElement.nextElementSibling;box.replaceChildren(node('p','',state.session?`${state.merchant.name} - Table ${state.tableId}`:t('session')));sheet('tableInfoBackdrop');});bind('btnCloseTableInfo',dismissSheets);
@@ -759,7 +851,7 @@
     all('.quick-prompt-pill').filter(el=>el.id!=='qpLihatSemuaMenu').forEach(el=>el.addEventListener('click',()=>run(()=>chat(el.dataset.prompt || el.textContent.trim()))));
     $('catalogSearchInput').addEventListener('input',renderMenu);bind('btnClearSearch',()=>{$('catalogSearchInput').value='';renderMenu();});
     window.addEventListener('offline',()=>{trackingConnection(false);invalidate();notice(t('offline'),false,'error');syncControls();});window.addEventListener('online',()=>{trackingConnection(false);run(async()=>{if(!state.session)await initialize();else await recover();});});
-    window.addEventListener('pagehide',()=>{state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
+    window.addEventListener('pagehide',()=>{resetActivityGesture();state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
     language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage',{replace:true});run(initialize);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();

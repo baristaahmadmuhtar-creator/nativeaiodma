@@ -120,6 +120,11 @@ async function main() {
         await cashier.locator('#editor [name=reference]').fill('SMOKE TEST - synthetic cash ledger; no real funds');
         await cashier.locator('#editor').getByRole('button',{name:'Catat pembayaran',exact:true}).click(); await expect(cashier.locator('#editor')).not.toBeVisible();
         await expect(sharedCustomer.locator('.receipt-success-text')).toHaveText('PAID',{timeout:20000});
+        await sharedCustomer.locator('#btnReceiptBackToHome').click();await settle(sharedCustomer);
+        const banner=await sharedCustomer.locator('#btnOpenOrderTrackerFromBanner').boundingBox(),bx=banner.x+banner.width/2,by=banner.y+banner.height/2;
+        await sharedCustomer.mouse.move(bx,by);await sharedCustomer.mouse.down();await sharedCustomer.mouse.move(bx+125,by,{steps:8});await sharedCustomer.mouse.up();
+        await expect(sharedCustomer.locator('#liveOrderActivityBanner')).not.toBeVisible();
+        await expect(sharedCustomer.locator('#orderTrackerBackdrop')).not.toHaveClass(/open/);
         async function transition(operator,status) {
           await operator.locator('#refresh').click();await expect(operator.locator('#page-content')).not.toHaveAttribute('aria-busy','true');
           await operator.getByRole('button',{name:'Detail',exact:true}).click(); await operator.locator('#editor [name=status]').selectOption(status);
@@ -127,6 +132,14 @@ async function main() {
         }
         for (const [status,label] of [['accepted','Accepted'],['preparing','Preparing'],['ready','Ready']]) {
           await transition(kitchen,status);await expect(sharedCustomer.locator('.receipt-order-subtext')).toHaveText(label,{timeout:20000});
+          if(status==='accepted') {
+            await expect(sharedCustomer.locator('#liveOrderActivityBanner')).not.toBeVisible();
+            assert.equal(await sharedCustomer.locator('#customerV18Status').evaluate(el=>el.hidden),true,'real SSE respects hidden tracking preference');
+            await sharedCustomer.locator('#btnHeaderOptions').click();await sharedCustomer.locator('#menuItemOpenTracker').click();
+            await expect(sharedCustomer.locator('#orderTrackerBackdrop')).toHaveClass(/open/);
+            await expect(sharedCustomer.locator('#trackerStatusBadge')).toHaveText('Accepted');await sharedCustomer.keyboard.press('Escape');await expect(sharedCustomer.locator('#orderTrackerBackdrop')).not.toHaveClass(/open/);
+            await sharedCustomer.goBack();await expect(sharedCustomer.locator('#screenThermalReceipt')).toHaveClass(/active/);
+          }
         }
         await transition(waiter,'served');await expect(sharedCustomer.locator('.receipt-order-subtext')).toHaveText('Served',{timeout:20000});
         await page.locator('#navigation a[href="#orders"]').click();await transition(page,'completed');
@@ -157,7 +170,7 @@ async function main() {
           return (await (await fetch('/api/v1/ai/chat',{method:'POST',headers:{'Content-Type':'application/json','X-AIODMA-Surface':'customer','X-CSRF-Token':s.csrfToken},body:JSON.stringify({messageId:crypto.randomUUID(),message:'Please recommend coffee',language:'en'})})).json()).data;
         });assert.equal(blocked.reason,'AI_DISABLED');assert.deepEqual(blocked.proposals,[]);
         for(const ctx of staffContexts)await ctx.close();
-        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; actual customer SSE payment/status rendering, dark receipt/tracker, inbox acknowledgement, AI pause and permission guards`);
+        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; swipe dismissal survives real SSE, accessible tracking reopen, customer payment/status rendering, dark receipt/tracker, inbox acknowledgement, AI pause and permission guards`);
       }
       await page.locator('#navigation a[href="#onboarding"]').click();
       await page.getByRole('button', { name: 'Tarik publikasi', exact: true }).click();
