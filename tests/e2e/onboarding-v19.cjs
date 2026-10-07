@@ -125,6 +125,12 @@ async function main() {
         await sharedCustomer.mouse.move(bx,by);await sharedCustomer.mouse.down();await sharedCustomer.mouse.move(bx+125,by,{steps:8});await sharedCustomer.mouse.up();
         await expect(sharedCustomer.locator('#liveOrderActivityBanner')).not.toBeVisible();
         await expect(sharedCustomer.locator('#orderTrackerBackdrop')).not.toHaveClass(/open/);
+        await context.setOffline(true);await expect(sharedCustomer.locator('#customerV18Status')).toHaveAttribute('data-tone','error');
+        await sharedCustomer.locator('#btnHeaderOptions').click();await sharedCustomer.locator('#menuItemOpenTracker').click();await expect(sharedCustomer.locator('#orderTrackerBackdrop')).toHaveClass(/open/);
+        await expect(sharedCustomer.locator('#trackerConnectionLabel')).toHaveText('Offline. Showing the last known status.');await expect(sharedCustomer.locator('#trackerPaymentStatusLabel')).toHaveText('PAID');await expect(sharedCustomer.locator('#btnTrackerCallWaiter')).toBeDisabled();
+        await settle(sharedCustomer);assert.equal(await sharedCustomer.locator('#btnCloseTrackerSheet').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true,'offline tracker close action is pinned and reachable');
+        await sharedCustomer.screenshot({path:path.join(output,`${width}-offline-tracker.png`)});await sharedCustomer.locator('#btnCloseTrackerSheet').click();await expect(sharedCustomer.locator('#orderTrackerBackdrop')).not.toHaveClass(/open/);
+        await sharedCustomer.locator('#btnOpenOrderTrackerFromBanner').focus();await sharedCustomer.keyboard.press('Delete');await context.setOffline(false);await sharedCustomer.waitForFunction(()=>document.querySelector('#customerV18Status').hidden);
         async function transition(operator,status) {
           await operator.locator('#refresh').click();await expect(operator.locator('#page-content')).not.toHaveAttribute('aria-busy','true');
           await operator.getByRole('button',{name:'Detail',exact:true}).click(); await operator.locator('#editor [name=status]').selectOption(status);
@@ -170,12 +176,16 @@ async function main() {
           return (await (await fetch('/api/v1/ai/chat',{method:'POST',headers:{'Content-Type':'application/json','X-AIODMA-Surface':'customer','X-CSRF-Token':s.csrfToken},body:JSON.stringify({messageId:crypto.randomUUID(),message:'Please recommend coffee',language:'en'})})).json()).data;
         });assert.equal(blocked.reason,'AI_DISABLED');assert.deepEqual(blocked.proposals,[]);
         for(const ctx of staffContexts)await ctx.close();
-        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; swipe dismissal survives real SSE, accessible tracking reopen, customer payment/status rendering, dark receipt/tracker, inbox acknowledgement, AI pause and permission guards`);
+        console.log(`PASS ${liveUrl?'production':'local'} disposable outlet: guest unpaid receipt -> cashier synthetic settlement -> kitchen ready -> waiter served -> owner completed; offline read-only tracking/reconnect and pinned close, swipe dismissal survives real SSE, customer payment/status rendering, dark receipt/tracker, inbox acknowledgement, AI pause and permission guards`);
       }
       await page.locator('#navigation a[href="#onboarding"]').click();
       await page.getByRole('button', { name: 'Tarik publikasi', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Terbitkan cafe', exact: true })).toBeVisible();
       assert.equal(await sharedCustomer.evaluate(async()=> (await fetch('/api/v1/session',{headers:{'X-AIODMA-Surface':'customer'}})).status),401);
+      if(process.env.ONBOARDING_ORDER_SMOKE==='1') {
+        await sharedCustomer.locator('#btnCloseTrackerSheet').click();await expect(sharedCustomer.locator('#orderTrackerBackdrop')).not.toHaveClass(/open/);
+        await sharedCustomer.locator('#btnHeaderOptions').click();await sharedCustomer.locator('#menuItemOpenTracker').click();await expect(sharedCustomer.locator('#customerV18Status')).toHaveAttribute('data-tone','error');await expect(sharedCustomer.locator('#menuItemOpenTracker')).not.toBeVisible();await expect(sharedCustomer.locator('#liveOrderActivityBanner')).not.toBeVisible();await expect(sharedCustomer.locator('#orderTrackerBackdrop')).not.toHaveClass(/open/);
+      }
       await sharedCustomer.close();
       await page.locator('#logout').click(); await expect(page.locator('#login-form')).toBeVisible();
       await page.locator('#login-form [name=email]').fill(email); await page.locator('#login-form [name=password]').fill(password);

@@ -52,6 +52,7 @@ button:disabled, [aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
   #mainHeaderBar { gap:4px; flex-wrap:wrap; padding:calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) 12px calc(12px + var(--safe-left)) !important; }
   #mainHeaderBar > div:last-child { gap:4px !important; flex-shrink:0; margin-left:auto; }
   #mainHeaderBar .mode-dropdown-wrapper { margin-inline:auto; }
+  #mainHeaderBar:has(.action-popup-menu.open,.mode-dropdown-menu.open) { z-index:200 !important; }
   #mainHeaderBar .header-btn-circle { width:48px; height:48px; flex:0 0 48px; }
   #btnModeTrigger { width:84px; min-height:48px !important; padding:10px 8px !important; font-size:13px !important; gap:4px; }
   #btnModeTrigger svg { width:14px; height:14px; flex-shrink:0; }
@@ -65,7 +66,7 @@ button:disabled, [aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
   }
   .v18-status span { min-width:0; flex:1; }
   .v18-status button { flex-shrink:0; min-height:44px; margin:0; }
-  .bottom-sheet-card > .v18-status { flex-shrink:0; max-height:96px; overflow:auto; border-bottom:1px solid var(--border-subtle,#ddd); }
+  .bottom-sheet-card > .v18-status { flex-shrink:0; max-height:96px; overflow:auto; display:flex; align-items:center; gap:8px; border-radius:12px; padding:10px 12px; }
   .chat-scroll-area,.catalog-scroll-area { padding-top:calc(var(--header-space) + var(--activity-height) + var(--notice-height)) !important; }
   .live-activity-banner { top:var(--header-space) !important; animation:none !important; touch-action:pan-y pinch-zoom; transition:none !important; }
   :root[data-customer-screen="screenSelectLanguage"] .live-activity-banner,
@@ -95,7 +96,7 @@ button:disabled, [aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
   .bottom-sheet-backdrop.open .bottom-sheet-card { transform:translateY(0) !important; }
   .bottom-sheet-card > * { flex-shrink:0; min-width:0; }
   .bottom-sheet-card.v18-framed-sheet { overflow:hidden !important; }
-  .v18-sheet-content { min-height:0; flex:1 1 auto; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:14px; }
+  .bottom-sheet-card > .v18-sheet-content { min-height:0; flex:1 1 auto; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:14px; }
   .v18-sheet-content > * { flex-shrink:0; min-width:0; }
   .v18-sheet-actions { display:grid; gap:8px; flex-shrink:0; }
   .v18-sheet-actions > button { margin:0; width:100%; min-height:52px; }

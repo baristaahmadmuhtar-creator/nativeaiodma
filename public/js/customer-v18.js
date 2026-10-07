@@ -73,6 +73,14 @@
     return null;
   }
   function invalidate() { state.quote = null; clearTimeout(quoteTimer); syncControls(); }
+  function denySession() {
+    state.session = null; state.events?.close(); trackingConnection(false); invalidate();
+    if (state.order) {
+      closeSheets();
+      if (['screenOrderSuccess','screenThermalReceipt'].includes(currentScreen)) showScreen('screenChatCashier');
+      syncActivity();
+    }
+  }
   async function api(path, { method = 'GET', body, key } = {}) {
     const controller = new AbortController(), epoch = state.epoch; controllers.add(controller);
     const timeout = setTimeout(() => controller.abort(), 20000);
@@ -85,7 +93,7 @@
       if (epoch !== state.epoch) throw new DOMException('Stale response','AbortError');
       if (!response.ok || envelope?.success !== true) {
         const error = Object.assign(new Error(envelope?.error?.message || t('failed')), {status:response.status,code:envelope?.error?.code,requestId:envelope?.requestId});
-        if (response.status === 401) { state.session = null; state.events?.close(); invalidate(); }
+        if (response.status === 401) denySession();
         throw error;
       }
       return envelope.data;
@@ -102,10 +110,12 @@
     queue = result; return result;
   }
   async function verifySession() {
-    if (!state.session || !navigator.onLine) throw new Error(t(navigator.onLine ? 'session' : 'offline'));
+    const principal = state.session;
+    if (!principal || !navigator.onLine) throw new Error(t(navigator.onLine ? 'session' : 'offline'));
     const current = await api('/session');
-    if (current.csrfToken !== state.session.csrfToken || current.tenantId !== state.merchantId || current.tableId !== state.tableId || current.role !== 'guest') {
-      state.session = null; state.events?.close(); invalidate(); throw new Error(t('session'));
+    if (state.session !== principal) throw new DOMException('Stale principal','AbortError');
+    if (current.csrfToken !== principal.csrfToken || current.tenantId !== state.merchantId || current.tableId !== state.tableId || current.role !== 'guest') {
+      denySession(); throw new Error(t('session'));
     }
   }
   function savePending(value) {
@@ -180,7 +190,7 @@
   }
   function showScreen(id, { record = true, replace = false } = {}) {
     if (!$(id)?.classList.contains('screen')) return;
-    if (['screenOrderSuccess','screenThermalReceipt'].includes(id) && !state.order) id = 'screenChatCashier';
+    if (['screenOrderSuccess','screenThermalReceipt'].includes(id) && !canReadOrder()) id = 'screenChatCashier';
     const changed = currentScreen !== id;
     if (changed) viewRevision++;
     const hadSheet = !!history.state?.aiodmaCustomer?.sheet;
@@ -211,6 +221,9 @@
     if (history.state?.aiodmaCustomer?.sheet) { dismissing = true; closeSheets({record:false}); history.back(); }
     else closeSheets();
   }
+  function interruptGestures() {
+    resetSheetDrags.forEach(reset => reset()); resetActivityGesture();
+  }
   function nativeGrab(handle, card, backdrop) {
     handle.className = 'v18-sheet-close v18-sheet-grab';
     const line = node('span'); line.setAttribute('aria-hidden','true'); handle.replaceChildren(line);
@@ -220,36 +233,40 @@
       card.style.removeProperty('transform'); card.style.removeProperty('transition'); card.classList.remove('v18-dragging');
       if (active && handle.hasPointerCapture(active.id)) handle.releasePointerCapture(active.id);
     }
-    resetSheetDrags.add(reset);
+    const cancel = () => {if(drag?.travel>6)suppressClickUntil=performance.now()+350;reset();};
+    resetSheetDrags.add(cancel);
     handle.addEventListener('pointerdown',event => {
       if (!event.isPrimary || event.button !== 0 || backdrop.getAttribute('aria-hidden') !== 'false') return;
-      reset(); drag = {id:event.pointerId,start:event.clientY,x:event.clientX,dy:0,travel:0,time:performance.now()};
+      reset(); suppressClickUntil = 0; drag = {id:event.pointerId,start:event.clientY,x:event.clientX,dy:0,travel:0,axis:null,sampleY:event.clientY,sampleTime:performance.now(),velocity:0};
       handle.setPointerCapture(event.pointerId); card.classList.add('v18-dragging');
       card.style.setProperty('transition','none','important');
     });
     handle.addEventListener('pointermove',event => {
       if (!drag || drag.id !== event.pointerId) return;
-      drag.dy = Math.max(0,event.clientY-drag.start);
-      drag.travel = Math.max(drag.travel,Math.hypot(event.clientX-drag.x,event.clientY-drag.start));
+      const dy = event.clientY-drag.start, dx = event.clientX-drag.x, time = performance.now();
+      drag.travel = Math.max(drag.travel,Math.hypot(dx,dy));
+      if (!drag.axis && drag.travel > 8) drag.axis = Math.abs(dy)>Math.abs(dx)*1.2 ? 'y' : 'x';
+      if (drag.axis !== 'y') return;
+      drag.dy = Math.max(0,dy); drag.velocity = (event.clientY-drag.sampleY)/Math.max(1,time-drag.sampleTime); drag.sampleY=event.clientY;drag.sampleTime=time;
       card.style.setProperty('transform',`translateY(${drag.dy}px)`,'important');
     });
     handle.addEventListener('pointerup',event => {
       if (!drag || drag.id !== event.pointerId) return;
-      const {dy,time,travel} = drag, threshold = Math.max(50,Math.min(100,card.offsetHeight*.22));
-      const dismiss = dy >= threshold || (dy > 24 && dy/Math.max(1,performance.now()-time) > .6);
+      const {dy,axis,velocity,sampleTime,travel} = drag, threshold = Math.max(50,Math.min(100,card.offsetHeight*.22));
+      const dismiss = axis==='y' && (dy >= threshold || (dy > 24 && velocity > .6 && performance.now()-sampleTime < 100));
       if (travel > 6) suppressClickUntil = performance.now()+350;
       reset(); if (dismiss) dismissSheets();
     });
-    for (const name of ['pointercancel','lostpointercapture']) handle.addEventListener(name,() => {if(drag?.travel>6)suppressClickUntil=performance.now()+350;reset();});
+    for (const name of ['pointercancel','lostpointercapture']) handle.addEventListener(name,cancel);
     handle.addEventListener('click',event => {
       if (event.detail && performance.now()<suppressClickUntil) {event.preventDefault();event.stopImmediatePropagation();}
     },true);
   }
   function syncActivity() {
-    const visible = !!state.order && hiddenActivityOrder !== state.order.id;
+    const readable = canReadOrder(), visible = readable && hiddenActivityOrder !== state.order.id;
     $('liveOrderActivityBanner').style.display = visible ? '' : 'none';
     $('menuItemHideTrackerBanner').hidden = !visible;
-    $('menuItemOpenTracker').style.display = state.order ? '' : 'none';
+    $('menuItemOpenTracker').style.display = readable ? '' : 'none';
     if (!visible) document.documentElement.style.setProperty('--activity-height','0px');
   }
   function rememberActivity(id) {
@@ -268,21 +285,26 @@
   }
   function activitySwipe() {
     const handle = $('btnOpenOrderTrackerFromBanner');
-    let drag = null, animation = null, revision = 0, suppressClickUntil = 0;
+    let drag = null, animation = null, completeExit = null, revision = 0, suppressClickUntil = 0;
     const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
     function clearVisual() {
       for (const key of ['translate','opacity','rotate']) handle.style.removeProperty(key);
       handle.classList.remove('v18-swiping');
     }
     function reset() {
+      const commit = completeExit; completeExit = null;
+      if(drag?.travel>6)suppressClickUntil=performance.now()+450;
       revision++; animation?.cancel(); animation = null;
       const active = drag; drag = null; clearVisual();
       if (active && handle.hasPointerCapture(active.id)) handle.releasePointerCapture(active.id);
+      commit?.();
     }
     function settle(dx = 0, dismissed = false) {
       const from = {translate:handle.style.translate || '0px 0px',opacity:handle.style.opacity || '1',rotate:handle.style.rotate || 'y 0deg'};
       reset(); const token = revision, orderId = state.order?.id;
-      const finish = () => {if (token !== revision) return; animation = null; clearVisual(); if (dismissed && orderId === state.order?.id) hideActivity();};
+      const commit = () => {if (dismissed && orderId === state.order?.id) hideActivity();};
+      if (dismissed) completeExit = commit;
+      const finish = () => {if (token !== revision) return; completeExit = null; animation = null; clearVisual(); commit();};
       if (reduceMotion() || !handle.animate) {finish();return;}
       handle.classList.add('v18-swiping');
       animation = handle.animate([from,{translate:`${dx}px 0px`,opacity:dismissed?0:1,rotate:'y 0deg'}],{duration:dismissed?190:260,easing:'cubic-bezier(.2,.8,.2,1)'});
@@ -291,6 +313,7 @@
     handle.addEventListener('pointerdown',event => {
       if (!event.isPrimary) {if(drag){suppressClickUntil=performance.now()+450;settle();}return;}
       if (event.button !== 0 || handle.closest('[inert]') || !state.order || hiddenActivityOrder === state.order.id) return;
+      if (completeExit) return;
       reset(); suppressClickUntil = 0; drag = {id:event.pointerId,x:event.clientX,y:event.clientY,dx:0,travel:0,axis:null,sampleX:event.clientX,sampleTime:performance.now(),velocity:0};
       handle.setPointerCapture(event.pointerId);
     });
@@ -321,8 +344,6 @@
       if (event.detail && (performance.now()<suppressClickUntil || animation)) {event.preventDefault();event.stopImmediatePropagation();}
     },true);
     handle.addEventListener('keydown',event => {if(['Delete','Backspace'].includes(event.key)){event.preventDefault();reset();hideActivity();}});
-    window.addEventListener('blur',cancel);
-    document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
     resetActivityGesture = reset;
   }
   function sheet(id, { record = true } = {}) {
@@ -507,6 +528,9 @@
         Number.isInteger(item.qty) && item.qty > 0 && item.qty <= 99 && minor(item.lineTotalMinor) &&
         Array.isArray(item.modifiers) && item.modifiers.length <= 30 && item.modifiers.every(option => option && text(option.name,500)));
   }
+  function canReadOrder() {
+    return state.session?.role==='guest' && state.session.tenantId===state.merchantId && state.session.tableId===state.tableId && validOrder(state.order);
+  }
   function updateOrder(order) {
     if (!validOrder(order) || (state.order?.id === order.id && state.order.version > order.version)) return false;
     if (state.order?.id !== order.id) resetActivityGesture();
@@ -557,14 +581,14 @@
     state.events?.close(); const epoch = state.epoch; const events = new EventSource('/api/v1/events?surface=customer'); state.events = events;
     trackingConnection(false);
     events.onmessage = event => {
-      if (epoch !== state.epoch) return;
+      if (epoch !== state.epoch || !state.session) return;
       try { const data = JSON.parse(event.data); if (data.order && (!state.order || state.order.id === data.order.id)) {
           const previous=state.order;
           const changed=previous?.id===data.order.id && data.order.version>previous.version;
           const applied = updateOrder(data.order);
           if(applied && changed && !state.pending && !state.busy) {
             const message = `#${data.order.orderNumber} - ${t(data.order.status)}. ${paymentLabel(data.order)}`;
-            const inlineTracking = hiddenActivityOrder === data.order.id || $('orderTrackerBackdrop').classList.contains('open') || ['screenThermalReceipt','screenOrderSuccess'].includes(currentScreen);
+            const inlineTracking = hiddenActivityOrder === data.order.id || document.querySelector('.action-popup-menu.open,.mode-dropdown-menu.open') || $('orderTrackerBackdrop').classList.contains('open') || ['screenThermalReceipt','screenOrderSuccess'].includes(currentScreen);
             if (inlineTracking) { if (status.hidden || status.dataset.tone !== 'error') set('accessibilityLiveRegion',message); }
             else notice(message,false,'success',true);
           }
@@ -582,6 +606,20 @@
   function trackingConnection(live) {
     state.trackingLive = live && navigator.onLine;
     set('trackerConnectionLabel',state.trackingLive ? ({id:'Terhubung ke pembaruan langsung',en:'Connected to live updates',ms:'Disambung ke kemas kini langsung'})[state.language] : ({id:navigator.onLine?'Menyambungkan ulang. Status terakhir tetap ditampilkan.':'Offline. Status terakhir tetap ditampilkan.',en:navigator.onLine?'Reconnecting. Showing the last known status.':'Offline. Showing the last known status.',ms:navigator.onLine?'Menyambung semula. Status terakhir dipaparkan.':'Luar talian. Status terakhir dipaparkan.'})[state.language]);
+  }
+  function openTracker() {
+    const view = viewRevision;
+    const open = () => {resetActivityGesture();rememberActivity(null);syncActivity();sheet('orderTrackerBackdrop');};
+    // Offline access is only to an already validated view under the retained guest principal.
+    if (!navigator.onLine && canReadOrder()) {trackingConnection(false);open();return;}
+    return run(async () => {
+      await verifySession(); await loadOrders();
+      if (!state.order) return;
+      const id = state.order.id, latest = await api(`/orders/${id}`);
+      if (!validOrder(latest) || latest.id !== id) throw new Error(t('reconnect'));
+      updateOrder(latest);
+      if (view===viewRevision) open();
+    });
   }
   function bubble(text, user = false) { const area = $('chatScrollArea'), following = area.scrollHeight-area.scrollTop-area.clientHeight < 80;
     const el = node('div',user ? 'chat-bubble-user' : 'chat-bubble-ai'); el.append(node('div',user ? '' : 'chat-bubble-ai-text',text)); $('chatEmptyState').hidden = true; $('chatMessageThread').style.display = ''; $('chatMessageThread').append(el); if (user || following) area.scrollTop = area.scrollHeight; return el; }
@@ -626,6 +664,9 @@
     if ($('btnClearCart')) $('btnClearCart').disabled = blocked || !state.cart.lines.length;
     if ($('btnClearCart')) $('btnClearCart').hidden = !state.cart.lines.length;
     all('.v18-proposal button').forEach(el => { el.disabled = blocked; });
+    const assistanceBlocked = !state.session || !navigator.onLine || state.busy > 0 || !!state.pending;
+    $('btnTrackerCallWaiter').disabled = assistanceBlocked;
+    $('menuItemCallWaiter').setAttribute('aria-disabled',String(assistanceBlocked));
     $('btnModMinus').disabled = blocked || state.qty <= 1; $('btnModPlus').disabled = blocked || state.qty >= modifierLimit();
     $('modQtyNumber').setAttribute('aria-label',String(state.qty));
     all('.payment-method-card[data-pm]').forEach(el => el.setAttribute('aria-disabled',String(blocked)));
@@ -745,7 +786,11 @@
     const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(session.csrfToken));
     const previousNamespace = state.namespace;
     state.namespace = `aiodma:v18:${state.merchantId}:${Array.from(new Uint8Array(digest)).map(n => n.toString(16).padStart(2,'0')).join('')}`;
-    resetActivityGesture(); if (previousNamespace !== state.namespace) hiddenActivityOrder = null;
+    resetActivityGesture();
+    if (previousNamespace !== state.namespace) {
+      hiddenActivityOrder = null; state.order = null; closeSheets(); syncActivity();
+      if (['screenOrderSuccess','screenThermalReceipt'].includes(currentScreen)) showScreen('screenChatCashier',{replace:true});
+    }
     try {const saved=sessionStorage.getItem(`${state.namespace}:hidden-tracking`);if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(saved || '')) hiddenActivityOrder=saved;} catch { /* Optional presentation preference only. */ }
     state.pending = readPending();
     updateTableLabels();
@@ -763,7 +808,12 @@
     }
     let viewportFrame = 0;
     const queueViewport = () => { if (!viewportFrame) viewportFrame = requestAnimationFrame(() => {viewportFrame=0;sizeViewport();}); };
-    sizeViewport(); window.addEventListener('resize',queueViewport); window.visualViewport?.addEventListener('resize',queueViewport); window.visualViewport?.addEventListener('scroll',queueViewport);
+    const resizeViewport = () => {interruptGestures();queueViewport();};
+    sizeViewport(); window.addEventListener('resize',resizeViewport); window.visualViewport?.addEventListener('resize',resizeViewport); window.visualViewport?.addEventListener('scroll',queueViewport);
+    window.addEventListener('blur',interruptGestures);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)interruptGestures();});
+    document.addEventListener('pointerdown',event=>{if(!event.isPrimary)interruptGestures();},{capture:true});
+    matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',interruptGestures);
     $('modOptionsBody').prepend(document.querySelector('.mod-header-row'));
     $('modSpecialNote').closest('.modifier-group').hidden = true;
     $('btnChatNotes').hidden = true;
@@ -787,7 +837,7 @@
         const card=el.querySelector('.bottom-sheet-card'),content=node('div','v18-sheet-content'),actions=node('div','v18-sheet-actions');
         for (const child of [...card.children]) {
           if (child===close) continue;
-          if (['btnProceedToPayment','btnProcessPayment','btnRefreshQuote'].includes(child.id)) actions.append(child);
+          if (['btnProceedToPayment','btnProcessPayment','btnRefreshQuote','btnCloseTrackerSheet','btnCloseTableInfo'].includes(child.id)) actions.append(child);
           else content.append(child);
         }
         card.classList.add('v18-framed-sheet');card.append(content);if(actions.children.length)card.append(actions);
@@ -809,7 +859,7 @@
     bind('optModeChat',() => showScreen('screenChatCashier')); for (const id of ['optModeMenu','qpLihatSemuaMenu']) bind(id,() => showScreen('screenMenuCatalog'));
     for (const [id,menu] of [['btnModeTrigger','modeDropdownMenu'],['btnHeaderOptions','actionPopupMenu']]) {
       const items=()=>[...$(menu).querySelectorAll('[role="menuitem"],[role="menuitemradio"]')].filter(el=>el.getClientRects().length);
-      bind(id,() => {const open=!$(menu).classList.contains('open');closePopups();$(menu).classList.toggle('open',open);$(menu).inert=!open;$(menu).setAttribute('aria-hidden',String(!open));$(id).setAttribute('aria-expanded',String(open));if(open){$(menu).scrollTop=0;items()[0]?.focus({preventScroll:true});}});
+      bind(id,() => {const open=!$(menu).classList.contains('open');closePopups();$(menu).classList.toggle('open',open);$(menu).inert=!open;$(menu).setAttribute('aria-hidden',String(!open));$(id).setAttribute('aria-expanded',String(open));if(open){if(!status.hidden&&status.dataset.tone==='success')notice('');$(menu).scrollTop=0;items()[0]?.focus({preventScroll:true});}});
       $(id).addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp'].includes(event.key))return;event.preventDefault();if(!$(menu).classList.contains('open'))$(id).click();const choices=items();(event.key==='ArrowUp'?choices.at(-1):choices[0])?.focus();});
       $(menu).addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const choices=items(),index=choices.indexOf(document.activeElement);const next=event.key==='Home'?0:event.key==='End'?choices.length-1:(index+(event.key==='ArrowDown'?1:-1)+choices.length)%choices.length;choices[next]?.focus();});
     }
@@ -821,7 +871,7 @@
       if (!navigation) { closeSheets({record:false}); return; }
       if (navigation.screen !== currentScreen) showScreen(navigation.screen,{record:false});
       else closeSheets({record:false});
-      if (['cartBackdrop','paymentBackdrop','modifierModalBackdrop','orderTrackerBackdrop','tableInfoBackdrop'].includes(navigation.sheet) && (navigation.sheet !== 'modifierModalBackdrop' || state.selected) && (navigation.sheet !== 'orderTrackerBackdrop' || state.order)) {
+      if (['cartBackdrop','paymentBackdrop','modifierModalBackdrop','orderTrackerBackdrop','tableInfoBackdrop'].includes(navigation.sheet) && (navigation.sheet !== 'modifierModalBackdrop' || state.selected) && (navigation.sheet !== 'orderTrackerBackdrop' || canReadOrder())) {
         if (navigation.sheet==='paymentBackdrop' && !state.cart.lines.length) {recordNavigation('cartBackdrop',true);sheet('cartBackdrop',{record:false});}
         else sheet(navigation.sheet,{record:false});
       }
@@ -838,9 +888,9 @@
       el.addEventListener('keydown',event => {if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;event.preventDefault();const choices=all('.payment-method-card[data-pm]').filter(card=>!card.hidden),i=choices.indexOf(el);const next=event.key==='Home'?0:event.key==='End'?choices.length-1:(i+(['ArrowRight','ArrowDown'].includes(event.key)?1:-1)+choices.length)%choices.length;choices[next]?.click();choices[next]?.focus();});
     });
     bind('menuItemHideTrackerBanner',() => {resetActivityGesture();hideActivity();});
-    for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,() => {const view=viewRevision;run(async () => {await verifySession();await loadOrders();if(state.order){updateOrder(await api(`/orders/${state.order.id}`));if(view===viewRevision){resetActivityGesture();rememberActivity(null);syncActivity();sheet('orderTrackerBackdrop');}}});});
+    for (const id of ['btnTrackLiveOrder','menuItemOpenTracker','btnOpenOrderTrackerFromBanner']) bind(id,openTracker);
     bind('btnSaveReceipt',() => {if(state.order)showScreen('screenThermalReceipt');});bind('btnPrintReceipt',() => window.print());bind('btnCloseTrackerSheet',dismissSheets);bind('btnTrackerOrderMore',() => {closeSheets();showScreen('screenMenuCatalog');});
-    for (const id of ['menuItemCallWaiter','btnTrackerCallWaiter']) bind(id,() => run(async () => {await transact('/waiter-calls','POST',{reason:t('help')},'waiter');notice(t('waiter'),false,'success');}));
+    for (const id of ['menuItemCallWaiter','btnTrackerCallWaiter']) bind(id,() => {if($('menuItemCallWaiter').getAttribute('aria-disabled')==='true')return;run(async () => {await transact('/waiter-calls','POST',{reason:t('help')},'waiter');notice(t('waiter'),false,'success');});});
     bind('menuItemTableStatus',() => {const box=$('tableInfoTitle').parentElement.nextElementSibling;box.replaceChildren(node('p','',state.session?`${state.merchant.name} - Table ${state.tableId}`:t('session')));sheet('tableInfoBackdrop');});bind('btnCloseTableInfo',dismissSheets);
     $('modSpecialNote').disabled=true;$('modSpecialNote').placeholder=t('unavailable');
     $('btnChatNotes').setAttribute('aria-disabled','true');bind('btnChatNotes',()=>notice(t('unavailable')));
@@ -851,7 +901,7 @@
     all('.quick-prompt-pill').filter(el=>el.id!=='qpLihatSemuaMenu').forEach(el=>el.addEventListener('click',()=>run(()=>chat(el.dataset.prompt || el.textContent.trim()))));
     $('catalogSearchInput').addEventListener('input',renderMenu);bind('btnClearSearch',()=>{$('catalogSearchInput').value='';renderMenu();});
     window.addEventListener('offline',()=>{trackingConnection(false);invalidate();notice(t('offline'),false,'error');syncControls();});window.addEventListener('online',()=>{trackingConnection(false);run(async()=>{if(!state.session)await initialize();else await recover();});});
-    window.addEventListener('pagehide',()=>{resetActivityGesture();state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
+    window.addEventListener('pagehide',()=>{interruptGestures();state.epoch++;controllers.forEach(c=>c.abort());state.events?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)run(initialize);});
     language(storage.get('aiodma:v18:language')||'id');showScreen('screenSelectLanguage',{replace:true});run(initialize);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();

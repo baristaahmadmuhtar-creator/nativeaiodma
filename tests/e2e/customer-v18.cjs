@@ -24,15 +24,16 @@ async function fixture(context) {
     if(p.startsWith('/api/v1')) {
       const endpoint=p.slice(7), body=request.postDataJSON(), key=request.headers()['idempotency-key'];
       model.requests.push({endpoint,method,body,key});
-      if(endpoint==='/menu')return respond(route,{merchant:{id:'fixture',name:'Fixture Cafe',currency:'BND',paymentMethods:model.paymentMethods||['CASH','MANUAL_TRANSFER']},items:model.items});
+      if(endpoint==='/menu')return respond(route,{merchant:{id:'fixture',name:'Fixture Cafe',currency:'BND',orderingPaused:!!model.orderingPaused,paymentMethods:model.paymentMethods||['CASH','MANUAL_TRANSFER']},items:model.items});
       if(endpoint==='/session') {
         if(method==='POST'){assert.equal(body.token,'fixture-valid-qr-token');model.authenticated=true;}
         if(!model.authenticated)return fail(route,401,'SESSION_REQUIRED');
-        if(model.sessionDelay)await new Promise(resolve=>setTimeout(resolve,model.sessionDelay));
-        return respond(route,{csrfToken:'fixture-csrf-session-1',tenantId:'fixture',tableId:5,role:'guest'});
+        if(model.sessionGate){model.onDelayedSession?.();let timeout;try{await Promise.race([model.sessionGate,new Promise(resolve=>{timeout=setTimeout(resolve,5000);})]);}finally{clearTimeout(timeout);}}
+        if(model.sessionDelay){model.delayedSessions=(model.delayedSessions||0)+1;await new Promise(resolve=>setTimeout(resolve,model.sessionDelay));}
+        return respond(route,{csrfToken:model.csrfToken||'fixture-csrf-session-1',tenantId:'fixture',tableId:5,role:'guest'});
       }
       if(!model.authenticated)return fail(route,401,'SESSION_REQUIRED');
-      if(method!=='GET')assert.equal(request.headers()['x-csrf-token'],'fixture-csrf-session-1');
+      if(method!=='GET')assert.equal(request.headers()['x-csrf-token'],model.csrfToken||'fixture-csrf-session-1');
       if(endpoint==='/profile'){
         if(model.profileDelay)await new Promise(resolve=>setTimeout(resolve,model.profileDelay));
         if(method==='PUT'){assert.equal(body.consent,true);model.profile=clone(body);}
@@ -40,7 +41,7 @@ async function fixture(context) {
         return respond(route,model.profile);
       }
       if(endpoint==='/events'){const burst=model.menuBurst||0;model.menuBurst=0;return route.fulfill({status:200,contentType:'text/event-stream',body:': connected\n\n'+'data: {"type":"MENU_UPDATED"}\n\n'.repeat(burst)});}
-      if(endpoint==='/cart'&&method==='GET')return respond(route,model.cart);
+      if(endpoint==='/cart'&&method==='GET'){if(model.cartDelay)await new Promise(resolve=>setTimeout(resolve,model.cartDelay));return respond(route,model.cart);}
       if(endpoint==='/cart') {
         assert.ok(key);if(model.keys.has(key))return respond(route,model.keys.get(key));
         if(model.conflict){model.conflict=false;model.cart.version++;return fail(route,409,'CART_STALE');}
@@ -61,7 +62,7 @@ async function fixture(context) {
         if(model.malformedOrder){model.malformedOrder=false;return respond(route,{...order,items:null},201);}return respond(route,order,201);
       }
       if(endpoint==='/orders')return respond(route,model.orders);
-      if(endpoint.startsWith('/orders/'))return respond(route,model.orders.find(o=>o.id===endpoint.split('/').at(-1)));
+      if(endpoint.startsWith('/orders/')){const order=model.orders.find(o=>o.id===endpoint.split('/').at(-1));return respond(route,model.badOrderRead?{...order,items:null}:order);}
       if(endpoint.startsWith('/submissions/')){const order=model.keys.get(endpoint.split('/').at(-1));if(model.malformedLookup){model.malformedLookup=false;return respond(route,{found:true,order:{...order,items:null}});}return respond(route,{found:!!order,order:order||null});}
       if(endpoint==='/waiter-calls'){assert.ok(key);return respond(route,{id:'call',status:'pending'});}
       if(endpoint==='/ai/chat')return respond(route,{text:'<img src=x onerror=alert(1)>',mode:'degraded',recommendations:[{id:'tea'}],proposals:[{id:'proposal-id',name:model.aiMode==='checkout'?'present_checkout':'add_cart_items',args:{items:[{menuId:'tea',qty:1,optionIds:[]}],expectedVersion:model.cart.version}}]});
@@ -487,6 +488,61 @@ async function swipeMotion(browser,width,height) {
     console.log(`PASS swipe/motion ${width}x${height}: both themes, short/vertical/cancel/touch/flick/reversal, no accidental tap or mutation, SSE/reload dismissal, accessible hide/reopen, new-order visibility, keyboard/reduced motion`);
   }catch(e){await capture(page,`${width}-motion-failure.png`);console.log('Swipe evidence: '+output);throw e;}finally{await context.close();}
 }
+async function resilience(browser,width,height) {
+  const context=await browser.newContext({viewport:{width,height},hasTouch:true,serviceWorkers:'block'}),model=await fixture(context),page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await context.addInitScript(()=>{window.__streams=[];window.EventSource=class {constructor(){window.__streams.push(this);}close(){}emit(data){this.onmessage?.({data:JSON.stringify(data)});}};});
+  const emit=async data=>page.evaluate(data=>window.__streams.at(-1).emit(data),data);
+  const settled=()=>page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});
+  async function startDrag(selector,dx,dy){await reachable(page,selector);const r=await page.locator(selector).boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.mouse.move(r.x+r.width/2+dx,r.y+r.height/2+dy,{steps:8});}
+  const count=()=>model.requests.length;
+  try {
+    await page.goto(origin+'/?merchant=fixture&table=5&token=fixture-valid-qr-token');await ready(page);await page.locator('[data-lang="en-US"]').click();await page.locator('#qpLihatSemuaMenu').click();
+    await page.locator('[data-menu-id="coffee"] .btn-add-product').click();
+    const handle='#modifierModalBackdrop .v18-sheet-grab',card='#modifierModalBackdrop .bottom-sheet-card';
+    await startDrag(handle,140,120);await page.mouse.up();await settled();assert.equal(await page.locator('#modifierModalBackdrop.open').count(),1,'diagonal/horizontal movement never dismisses a sheet');
+    for(const interrupt of ['blur','resize','motion']) {
+      await startDrag(handle,0,40);assert.ok(await page.locator(card).evaluate(el=>!!el.style.transform));
+      if(interrupt==='motion')await page.emulateMedia({reducedMotion:'reduce'});else await page.evaluate(name=>dispatchEvent(new Event(name)),interrupt);
+      await page.mouse.up();await settled();assert.equal(await page.locator(card).evaluate(el=>el.style.transform),'',interrupt+' clears sheet translation');assert.equal(await page.locator('#modifierModalBackdrop.open').count(),1,interrupt+' is cancellation, not dismissal');await page.emulateMedia({reducedMotion:'no-preference'});
+    }
+    await startDrag(handle,0,40);await page.mouse.up();await page.locator(handle).click();await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    await page.locator('[data-menu-id="coffee"] .btn-add-product').click();await reachable(page,handle);
+    const box=await page.locator(handle).boundingBox(),cdp=await context.newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+40}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y:y+40},{x:x+20,y:y+40}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await cdp.detach();await settled();
+    assert.equal(await page.locator(card).evaluate(el=>el.style.transform),'');assert.equal(await page.locator('#modifierModalBackdrop.open').count(),1,'multi-touch does not dismiss');await page.keyboard.press('Escape');await page.waitForSelector('#modifierModalBackdrop.open',{state:'hidden'});
+    await addCoffee(page);await page.locator('#btnCatalogCartPill').click();await page.locator('#btnProceedToPayment').click();await page.waitForFunction(()=>!document.querySelector('#btnProcessPayment').disabled);await page.locator('#btnProcessPayment').click();await page.waitForSelector('#screenOrderSuccess.active');await page.locator('#btnBackToChat').click();await settled();
+    const banner='#btnOpenOrderTrackerFromBanner';
+    await startDrag(banner,125,0);await page.mouse.up();await page.evaluate(()=>dispatchEvent(new Event('resize')));await page.waitForSelector('#liveOrderActivityBanner',{state:'hidden'});
+    assert.equal(await page.locator(banner).evaluate(el=>el.style.translate),'','accepted dismissal remains committed when interrupted');
+    for(const theme of ['light','dark']) {
+      if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#btnHeaderThemeToggle').click();await settled();
+      await context.setOffline(true);await page.waitForFunction(()=>document.querySelector('#customerV18Status').dataset.tone==='error');const before=count(),known=await page.locator('#activityBannerSub').textContent();
+      const order=model.orders[0];order.status=theme==='light'?'preparing':'ready';order.version++;
+      await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemOpenTracker').click();await page.waitForSelector('#orderTrackerBackdrop.open');
+      assert.equal(count(),before,'cached offline tracking does not attempt network');assert.equal(await page.locator('#activityBannerSub').textContent(),known,'offline state is last-known, not invented live data');
+      assert.equal(await page.locator('#trackerConnectionLabel').textContent(),'Offline. Showing the last known status.');assert.equal(await page.locator('#btnTrackerCallWaiter').isDisabled(),true);assert.equal(await page.locator('#customerV18Status').evaluate(el=>el.hidden),false,'persistent offline error stays visible');
+      await capture(page,`${width}-resilience-${theme}-offline.png`);await reachable(page,'#btnCloseTrackerSheet');await page.keyboard.press('Escape');await page.waitForSelector('#orderTrackerBackdrop.open',{state:'hidden'});
+      await page.locator('#btnHeaderOptions').click();assert.equal(await page.locator('#menuItemCallWaiter').getAttribute('aria-disabled'),'true');await page.locator('#menuItemCallWaiter').focus();await page.keyboard.press('Enter');assert.equal(count(),before);await page.keyboard.press('Escape');
+      await context.setOffline(false);await page.waitForFunction(status=>document.querySelector('#trackerStatusBadge').dataset.status===status,order.status);await page.waitForFunction(()=>document.querySelector('#customerV18Status').hidden);await page.evaluate(()=>window.__streams.at(-1).onopen());await page.waitForFunction(()=>document.querySelector('#trackerConnectionLabel').textContent==='Connected to live updates');
+      await page.locator('#btnHeaderOptions').click();await reachable(page,'#menuItemOpenTracker');order.version++;await emit({type:'ORDER_UPDATED',order});assert.equal(await page.locator('#customerV18Status').evaluate(el=>el.hidden),true,'progress never covers the open menu');await page.locator('#menuItemOpenTracker').click();await page.waitForSelector('#orderTrackerBackdrop.open');assert.equal(await page.locator('#trackerStatusBadge').getAttribute('data-status'),order.status);await page.waitForFunction(()=>!document.querySelector('#btnTrackerCallWaiter').disabled);await capture(page,`${width}-resilience-${theme}-reconnected.png`);await page.keyboard.press('Escape');await page.waitForSelector('#orderTrackerBackdrop.open',{state:'hidden'});
+      await page.locator(banner).focus();await page.keyboard.press('Delete');
+    }
+    model.orderingPaused=true;await emit({type:'MENU_UPDATED'});await page.waitForFunction(()=>document.querySelector('#btnChatSend').disabled);await page.waitForFunction(()=>document.querySelector('#menuItemCallWaiter').getAttribute('aria-disabled')==='false');
+    model.badOrderRead=true;await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemOpenTracker').click();await page.waitForFunction(()=>document.querySelector('#customerV18Status > span').textContent==='Reconnect');assert.equal(await page.locator('#orderTrackerBackdrop.open').count(),0,'malformed live read never opens a cached fallback');model.badOrderRead=false;
+    let release,started;model.sessionGate=new Promise(resolve=>{release=resolve;});const delayed=new Promise(resolve=>{started=resolve;});model.onDelayedSession=started;
+    await page.evaluate(()=>window.__streams.at(-1).onopen());let deadline;try{await Promise.race([delayed,new Promise((_,reject)=>{deadline=setTimeout(()=>reject(new Error('Reconnect verification did not start')),3000);})]);}finally{clearTimeout(deadline);}
+    model.authenticated=false;await page.locator('#btnHeaderOptions').click();await page.locator('#menuItemOpenTracker').click();await page.waitForFunction(()=>document.querySelector('#customerV18Status').textContent.includes('SESSION_REQUIRED'));
+    const late=page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.status()===200);release();model.sessionGate=null;await late;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));assert.equal(await page.locator('#customerV18Status > span').textContent(),'SESSION_REQUIRED (test-request)','late verification cannot dereference or revive a denied principal');await context.setOffline(true);
+    assert.equal(await page.locator('#menuItemOpenTracker').isVisible(),false);
+    const prior=await page.locator('#activityBannerSub').textContent();await emit({type:'ORDER_UPDATED',order:{...model.orders[0],version:999,status:'received'}});assert.equal(await page.locator('#activityBannerSub').textContent(),prior,'late events after denial are ignored');
+    await page.evaluate(()=>dispatchEvent(new PopStateEvent('popstate',{state:{aiodmaCustomer:{screen:'screenThermalReceipt',sheet:'orderTrackerBackdrop'}}})));assert.equal(await page.locator('#orderTrackerBackdrop.open').count(),0,'known revoked principal cannot regain cached access through history');assert.equal(await page.locator('#screenThermalReceipt.active').count(),0);
+    model.authenticated=true;model.csrfToken='fixture-renewed-guest-session';model.orders=[];model.cartDelay=500;
+    const renewed=page.waitForRequest(r=>r.url().endsWith('/api/v1/cart')&&r.method()==='GET');await context.setOffline(false);await renewed;
+    await page.evaluate(()=>dispatchEvent(new PopStateEvent('popstate',{state:{aiodmaCustomer:{screen:'screenThermalReceipt',sheet:'orderTrackerBackdrop'}}})));assert.equal(await page.locator('#orderTrackerBackdrop.open').count(),0,'new principal cannot read old cache during hydration');assert.equal(await page.locator('#screenThermalReceipt.active').count(),0);await page.waitForFunction(()=>document.querySelector('#customerV18Status').hidden);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);console.log(`PASS resilience ${width}x${height}: directional/interrupted/multi-touch sheets, fresh tap, committed swipe, both-theme offline read-only tracking, reconnect, no mutations, malformed/revoked denial`);
+  }catch(e){await capture(page,`${width}-resilience-failure.png`);console.log('Resilience evidence: '+output);throw e;}finally{await context.close();}
+}
 async function main(url=process.env.CUSTOMER_V18_URL) {
   const candidates=[process.env.CUSTOMER_V18_BROWSER,await require('puppeteer').executablePath(),
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', chromium.executablePath()].filter(Boolean);
@@ -494,11 +550,14 @@ async function main(url=process.env.CUSTOMER_V18_URL) {
   assert.ok(executablePath,'Configure CUSTOMER_V18_BROWSER with an installed Chromium executable');
   const browser=await chromium.launch({headless:true,executablePath});
   try {if(url)await live(browser,url);else {
+    if(!process.env.CUSTOMER_V18_RESILIENCE_ONLY){
     if(!process.env.CUSTOMER_V18_MOTION_ONLY){
       if(!process.env.CUSTOMER_V18_COMFORT_ONLY){if(!process.env.CUSTOMER_V18_NATIVE_ONLY){for(const size of [[320,740],[390,844],[844,390],[1440,1000]])await contract(browser,...size);await scrolling(browser);for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await refinement(browser,...size);await storageBoundaries(browser);}for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await nativeLayers(browser,...size);}
       if(!process.env.CUSTOMER_V18_NATIVE_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await comfort(browser,...size);
     }
     if(!process.env.CUSTOMER_V18_NATIVE_ONLY&&!process.env.CUSTOMER_V18_COMFORT_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await swipeMotion(browser,...size);
+    }
+    if(!process.env.CUSTOMER_V18_NATIVE_ONLY&&!process.env.CUSTOMER_V18_COMFORT_ONLY&&!process.env.CUSTOMER_V18_MOTION_ONLY)for(const size of [[320,568],[390,844],[844,320],[1440,1000]])await resilience(browser,...size);
   }console.log('Screenshots: '+output);}
   finally{await browser.close();}
 }
